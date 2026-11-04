@@ -22,14 +22,12 @@ export default function ReviewPage() {
   const [tab, setTab] = useState<CheckTab>("requirements");
   const [viewport, setViewport] = useState("390 × 844");
   const [wipe, setWipe] = useState(52);
-  const [scanStarted, setScanStarted] = useState(false);
   const [notice, setNotice] = useState("Демо-данные показывают интерфейс. Анализ URL и загрузка в систему пока не подключены.");
   const selectedPage = pages.find((page) => page.path === selectedPath) ?? pages[0];
 
   const title = useMemo(() => `${selectedPage.label} · ${viewport}`, [selectedPage, viewport]);
 
   function startScan() {
-    setScanStarted(true);
     setNotice("Запуск анализа станет доступен после подключения безопасного браузерного сервиса.");
   }
 

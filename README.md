@@ -4,7 +4,7 @@ Mobile-first Next.js web application and Telegram Mini App.
 
 ## Current scope
 
-The first commit establishes the public product shell and explains the three supported starting modes: build from an idea, continue an existing project, or request read-only analysis. Account flows and project actions are intentionally not presented as active before the API supports them.
+The app currently includes a mobile-first product landing page and a demonstration review workspace at /review. Account flows, project creation, site crawling, stored uploads, Figma OAuth, captures, and report export require backend implementation.
 
 ## Local development
 
@@ -20,4 +20,4 @@ The product/API requirements live in [builder-docs](https://github.com/nurgeldis
 
 ## Design review workspace
 
-The first responsive UI prototype is available at `/review` on `feat/phase-0-foundation`. It demonstrates page-to-design mapping, compare modes, requirement/backend/AI result tabs, and mobile layout. URL scanning, persistent uploads, Figma OAuth, real captures, and report export are not connected yet; the screen marks these as demo behavior. The product and security contract is in [builder-docs](https://github.com/nurgeldiserikbay/builder-docs/blob/main/docs/DESIGN_CONFORMANCE.md).
+The responsive UI prototype is available at `/review` on `main`. It demonstrates page-to-design mapping, compare modes, requirement/backend/AI result tabs, and mobile layout. URL scanning, persistent uploads, Figma OAuth, real captures, and report export are not connected yet; the screen marks these as demo behavior. The product and security contract is in [builder-docs](https://github.com/nurgeldiserikbay/builder-docs/blob/main/docs/DESIGN_CONFORMANCE.md).

@@ -61,6 +61,13 @@ export default function HomePage() {
         <div className="mode-grid">{modes.map((mode) => <article className="mode-card" key={mode.number}><div className="mode-top"><span>{mode.number}</span><span className="mode-tag">{mode.tag}</span></div><h3>{mode.title}</h3><p>{mode.description}</p></article>)}</div>
       </section>
 
+      <section style={{ padding: '0 0 32px' }} aria-labelledby="review-tool-title">
+        <a href="/review" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, padding: '22px 24px', border: '1px solid #e4e0ed', borderRadius: 18, background: '#fff', color: 'inherit', textDecoration: 'none' }}>
+          <span><span style={{ display: 'block', color: '#7055df', fontSize: 11, fontWeight: 800, letterSpacing: '.08em' }}>НОВЫЙ ИНСТРУМЕНТ</span><strong id="review-tool-title" style={{ display: 'block', marginTop: 6, fontSize: 19 }}>Сверить сайт с ТЗ, backend и макетом</strong><span style={{ display: 'block', marginTop: 5, color: '#71707b', fontSize: 13 }}>Сравнение страниц рядом, загрузка макетов и разбор отличий.</span></span>
+          <span aria-hidden="true" style={{ flex: 'none', padding: '10px 13px', borderRadius: 10, background: '#7055df', color: '#fff', fontSize: 13, fontWeight: 750 }}>Открыть сверку →</span>
+        </a>
+      </section>
+
       <section className="principles-section">
         <div className="section-heading"><div><p className="eyebrow">РАБОТАЕМ ВМЕСТЕ</p><h2>Вы решаете, каким должен быть результат</h2></div><p>BuildPath объясняет важные развилки и ведёт работу по сохранённому плану.</p></div>
         <div className="principle-grid">{principles.map(([title, description], index) => <article className="principle" key={title}><span className="principle-number">0{index + 1}</span><div><h3>{title}</h3><p>{description}</p></div></article>)}</div>

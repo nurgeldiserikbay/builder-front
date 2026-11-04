@@ -16,3 +16,8 @@ npm run dev
 ```
 
 The product/API requirements live in [builder-docs](https://github.com/nurgeldiserikbay/builder-docs). The backend API contract is maintained in [builder-back](https://github.com/nurgeldiserikbay/builder-back/blob/main/apps/api/openapi.yaml).
+
+
+## Design review workspace
+
+The first responsive UI prototype is available at `/review` on `feat/phase-0-foundation`. It demonstrates page-to-design mapping, compare modes, requirement/backend/AI result tabs, and mobile layout. URL scanning, persistent uploads, Figma OAuth, real captures, and report export are not connected yet; the screen marks these as demo behavior. The product and security contract is in [builder-docs](https://github.com/nurgeldiserikbay/builder-docs/blob/main/docs/DESIGN_CONFORMANCE.md).

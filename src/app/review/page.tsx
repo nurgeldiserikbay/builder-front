@@ -1,6 +1,7 @@
 "use client";
 
-import { ChangeEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import type { ChangeEvent } from "react";
 import styles from "./review.module.css";
 
 type Page = { path: string; label: string; designName: string; findings: number; status: "review" | "done" };
@@ -40,7 +41,8 @@ export default function ReviewPage() {
       setNotice("Эта страница уже добавлена.");
       return;
     }
-    const label = path === "/" ? "Главная" : path.split("/").filter(Boolean).at(-1) ?? "Страница";
+    const segments = path.split("/").filter(Boolean);
+    const label = path === "/" ? "Главная" : segments[segments.length - 1] ?? "Страница";
     setPages((current) => [...current, { path, label: label[0].toUpperCase() + label.slice(1), designName: "Макет не назначен", findings: 0, status: "review" }]);
     setSelectedPath(path);
     setNotice("Страница добавлена. Назначение макета подключается вместе с загрузкой файлов.");

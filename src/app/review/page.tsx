@@ -354,7 +354,17 @@ export default function ReviewPage() {
             {!selectedDesign && <div className={styles.layerHint}>Загрузите PNG/JPEG макета слева, чтобы включить наложение.</div>}
           </div>}
         <p className={styles.captureInfo}>{selectedPage ? `Маршрут: ${selectedPage.route} · Статус: ${selectedPage.status} · Найдено замечаний: ${selectedPage.findingCount}` : "Снимок страницы пока не создавался."}</p>
-        {selectedCapture?.visualDiff?.status === "ready" && <p className={styles.captureInfo}>Пиксельно отличаются {selectedCapture.visualDiff.changedPercent ?? 0}% области · найдено зон: {selectedCapture.visualDiff.regions?.length ?? 0}. Это визуальная метрика, не оценка соответствия ТЗ. Отличия могут включать смещение, масштаб и сглаживание шрифтов.</p>}
+        {selectedCapture?.visualDiff?.status === "ready" && <>
+          <p className={styles.captureInfo}>Пиксельно отличаются {selectedCapture.visualDiff.changedPercent ?? 0}% области · найдено зон: {selectedCapture.visualDiff.regions?.length ?? 0}. Это визуальная метрика, не оценка соответствия ТЗ. Отличия могут включать смещение, масштаб и сглаживание шрифтов.</p>
+          {(selectedCapture.visualDiff.regions?.length ?? 0) > 0 && <details className={styles.diffRegions}>
+            <summary>Где отличия заметнее всего</summary>
+            <ol>{selectedCapture.visualDiff.regions?.slice(0, 8).map((region, index) => <li key={index}>
+              <span>Участок {index + 1}</span>
+              <small>{region.y < 0.33 ? "сверху" : region.y < 0.67 ? "в середине" : "снизу"}, {region.x < 0.33 ? "слева" : region.x < 0.67 ? "по центру" : "справа"}</small>
+              <strong>{region.changedPercent}% пикселей отличаются</strong>
+            </li>)}</ol>
+          </details>}
+        </>}
         <div className={styles.notReady}>
           <strong>Автоматическая оценка пока не подключена</strong>
           <p>Сейчас доступны захват страницы и пиксельная маска отличий от макета. Она помогает найти визуальные расхождения, но не оценивает требования, backend/API или смысловое соответствие дизайну.</p>

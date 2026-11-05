@@ -11,6 +11,7 @@ type Project = { id: string; workspaceId: string; name: string; status: string }
 type Review = { id: string; projectId: string; title: string; mode: string; status: string; locale: string; createdAt: string; updatedAt: string };
 type Page = { id: string; route: string; label: string; status: string; designAssetId: string | null; viewport: { width: number; height: number; deviceScale: number }; findingCount: number };
 type Design = { name: string; url: string };
+type Capture = { captureId: string; status: "queued" | "captured" | "failed"; screenshotUrl: string | null; sha256: string | null; viewport: Page["viewport"]; safeErrorCode: string | null; capturedAt: string | null };
 type CompareMode = "side" | "overlay" | "wipe";
 
 const statusText: Record<string, string> = {
@@ -31,6 +32,8 @@ export default function ReviewPage() {
   const [pages, setPages] = useState<Page[]>([]);
   const [selectedPageId, setSelectedPageId] = useState("");
   const [designs, setDesigns] = useState<Record<string, Design>>({});
+  const [captures, setCaptures] = useState<Record<string, Capture>>({});
+  const [captureBusy, setCaptureBusy] = useState(false);
   const [mode, setMode] = useState<CompareMode>("side");
   const [opacity, setOpacity] = useState(50);
   const [busy, setBusy] = useState(false);
@@ -100,6 +103,31 @@ export default function ReviewPage() {
 
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? null;
   const selectedDesign = selectedPage ? designs[selectedPage.id] : undefined;
+  const selectedCapture = selectedPage ? captures[selectedPage.id] : undefined;
+  useEffect(() => {
+    if (!review?.id || !selectedPage || !selectedCapture?.captureId) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = async () => {
+      try {
+        const next = await api<Capture>(`/reviews/${review.id}/captures/${selectedCapture.captureId}`);
+        if (!active) return;
+        setCaptures((current) => ({ ...current, [selectedPage.id]: next }));
+        if (next.status === "queued") setMessage("Браузерный worker готовит снимок страницы…");
+        else if (next.status === "failed") setMessage("Не удалось снять страницу: " + (next.safeErrorCode ?? "CAPTURE_FAILED"));
+        else if (next.status === "captured") setMessage("Снимок сайта готов и привязан к выбранному макету.");
+        timer = setTimeout(refresh, next.status === "captured" ? 240_000 : 1_500);
+      } catch (error) {
+        if (active) {
+          setMessage(error instanceof Error ? error.message : "Не удалось получить снимок страницы.");
+          timer = setTimeout(refresh, 10_000);
+        }
+      }
+    };
+    timer = setTimeout(refresh, selectedCapture.status === "queued" ? 1_000 : 0);
+    return () => { active = false; clearTimeout(timer); };
+  }, [review?.id, selectedPage?.id, selectedCapture?.captureId, selectedCapture?.status]);
+
   const previewUrl = selectedPage ? resolvePreviewUrl(selectedPage.route, siteUrl) : siteUrl;
 
   useEffect(() => {
@@ -222,6 +250,36 @@ export default function ReviewPage() {
     }
   }
 
+  async function captureSelectedPage() {
+    if (!review || !selectedPage?.designAssetId) {
+      setMessage("Сначала загрузите и привяжите проверенный макет к странице.");
+      return;
+    }
+    setCaptureBusy(true);
+    setMessage("");
+    try {
+      const queued = await api<{ jobId: string; captureId: string; status: string }>(`/reviews/${review.id}/captures`, {
+        method: "POST",
+        headers: { "Idempotency-Key": globalThis.crypto.randomUUID() },
+        body: JSON.stringify({ pageId: selectedPage.id, viewport: selectedPage.viewport }),
+      });
+      setCaptures((current) => ({
+        ...current,
+        [selectedPage.id]: {
+          captureId: queued.captureId, status: "queued", screenshotUrl: null, sha256: null,
+          viewport: selectedPage.viewport, safeErrorCode: null, capturedAt: null,
+        },
+      }));
+      setMessage("Снимок поставлен в очередь. Это может занять несколько секунд.");
+    } catch (error) {
+      const detail = error instanceof ApiError ? error.message : error instanceof Error ? error.message : "";
+      if (detail.includes("CHROMIUM")) setMessage("Для захвата страницы настройте путь к Chromium в worker.");
+      else setMessage(detail || "Не удалось поставить снимок в очередь.");
+    } finally {
+      setCaptureBusy(false);
+    }
+  }
+
   async function logout() {
     try { await api<void>("/auth/logout", { method: "POST" }); } finally { router.replace("/login"); }
   }
@@ -279,12 +337,13 @@ export default function ReviewPage() {
         </div>
         <div className={styles.controls}>
           <span className={styles.readOnly}>Только просмотр · страница сайта не изменяется</span>
+          <button className={styles.captureButton} disabled={!selectedPage?.designAssetId || captureBusy || selectedCapture?.status === "queued"} onClick={() => void captureSelectedPage()}>{captureBusy || selectedCapture?.status === "queued" ? "Снимок готовится…" : selectedCapture?.status === "captured" ? "Обновить снимок" : "Сделать снимок"}</button>
           {mode !== "side" && <label className={styles.opacity}>Смешивание<input type="range" min="10" max="90" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} /></label>}
         </div>
         {!selectedPage ? <div className={styles.previewEmpty}>{review ? "Ожидаем результаты обнаружения страниц." : "Здесь появится выбранная страница и её макет."}</div>
           : mode === "side" ? <div className={styles.compareSide}>
             <PreviewPanel title={selectedDesign ? "Макет · " + selectedDesign.name : "Макет не выбран"} designUrl={selectedDesign?.url} />
-            <SitePanel title={"Рабочий сайт · " + selectedPage.label} url={previewUrl} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} />
+            <SitePanel title={selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={selectedCapture?.screenshotUrl ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} />
           </div>
           : <div className={styles.compareLayer}>
             <SitePanel title={"Рабочий сайт · " + selectedPage.label} url={previewUrl} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} />
@@ -313,10 +372,11 @@ function PreviewPanel({ title, designUrl }: { title: string; designUrl?: string 
   </section>;
 }
 
-function SitePanel({ title, url, blocked, onBlocked }: { title: string; url: string; blocked: boolean; onBlocked: () => void }) {
+function SitePanel({ title, url, screenshotUrl, blocked, onBlocked }: { title: string; url: string; screenshotUrl?: string; blocked: boolean; onBlocked: () => void }) {
   return <section className={styles.previewPanel}>
     <div className={styles.panelTitle}>{title}</div>
-    {blocked ? <div className={styles.noDesign}><strong>Сайт запрещает встроенный просмотр</strong><small>Откройте его в новой вкладке, чтобы сравнить вручную.</small><a href={url} target="_blank" rel="noreferrer">Открыть сайт ↗</a></div>
-      : <iframe className={styles.siteFrame} title={title} src={url} sandbox="allow-scripts allow-forms allow-popups" referrerPolicy="no-referrer" onError={onBlocked} />}
+    {screenshotUrl ? <img className={styles.designImage} src={screenshotUrl} alt="Снимок выбранной страницы сайта" />
+      : blocked ? <div className={styles.noDesign}><strong>Сайт запрещает встроенный просмотр</strong><small>Откройте его в новой вкладке, чтобы сравнить вручную.</small><a href={url} target="_blank" rel="noreferrer">Открыть сайт ↗</a></div>
+        : <iframe className={styles.siteFrame} title={title} src={url} sandbox="allow-scripts allow-forms allow-popups" referrerPolicy="no-referrer" onError={onBlocked} />}
   </section>;
 }

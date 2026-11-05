@@ -11,7 +11,7 @@ type Project = { id: string; workspaceId: string; name: string; status: string }
 type Review = { id: string; projectId: string; title: string; mode: string; status: string; locale: string; createdAt: string; updatedAt: string };
 type Page = { id: string; route: string; label: string; status: string; designAssetId: string | null; viewport: { width: number; height: number; deviceScale: number }; findingCount: number };
 type Design = { name: string; url: string };
-type Capture = { captureId: string; status: "queued" | "captured" | "failed"; screenshotUrl: string | null; sha256: string | null; viewport: Page["viewport"]; safeErrorCode: string | null; capturedAt: string | null };
+type Capture = { captureId: string; status: "queued" | "captured" | "failed"; screenshotUrl: string | null; sha256: string | null; viewport: Page["viewport"]; safeErrorCode: string | null; capturedAt: string | null; visualDiff: { status: "ready" | "failed"; changedPercent?: number; changedPixels?: number; totalPixels?: number; regions?: { x: number; y: number; width: number; height: number; changedPercent: number }[]; diffOverlayUrl: string | null; safeErrorCode?: string } | null };
 type CompareMode = "side" | "overlay" | "wipe";
 
 const statusText: Record<string, string> = {
@@ -35,6 +35,7 @@ export default function ReviewPage() {
   const [captures, setCaptures] = useState<Record<string, Capture>>({});
   const [captureBusy, setCaptureBusy] = useState(false);
   const [mode, setMode] = useState<CompareMode>("side");
+  const [showDiff, setShowDiff] = useState(false);
   const [opacity, setOpacity] = useState(50);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -267,7 +268,7 @@ export default function ReviewPage() {
       setCaptures((current) => ({
         ...current,
         [selectedPage.id]: {
-          captureId: queued.captureId, status: "queued", screenshotUrl: null, sha256: null,
+          captureId: queued.captureId, status: "queued", screenshotUrl: null, sha256: null, visualDiff: null,
           viewport: selectedPage.viewport, safeErrorCode: null, capturedAt: null,
         },
       }));
@@ -339,12 +340,13 @@ export default function ReviewPage() {
         <div className={styles.controls}>
           <span className={styles.readOnly}>Только просмотр · страница сайта не изменяется</span>
           <button className={styles.captureButton} disabled={!selectedPage?.designAssetId || captureBusy || selectedCapture?.status === "queued"} onClick={() => void captureSelectedPage()}>{captureBusy || selectedCapture?.status === "queued" ? "Снимок готовится…" : selectedCapture?.status === "captured" ? "Обновить снимок" : "Сделать снимок"}</button>
+          {selectedCapture?.visualDiff?.status === "ready" && <button className={styles.captureButton} onClick={() => setShowDiff((value) => !value)}>{showDiff ? "Обычный снимок" : "Показать зоны отличий"}</button>}
           {mode !== "side" && <label className={styles.opacity}>Смешивание<input type="range" min="10" max="90" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} /></label>}
         </div>
         {!selectedPage ? <div className={styles.previewEmpty}>{review ? "Ожидаем результаты обнаружения страниц." : "Здесь появится выбранная страница и её макет."}</div>
           : mode === "side" ? <div className={styles.compareSide}>
             <PreviewPanel title={selectedDesign ? "Макет · " + selectedDesign.name : "Макет не выбран"} designUrl={selectedDesign?.url} />
-            <SitePanel title={selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={selectedCapture?.screenshotUrl ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} />
+            <SitePanel title={showDiff ? "Пиксельные отличия · " + selectedPage.label : selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={(showDiff ? selectedCapture?.visualDiff?.diffOverlayUrl : selectedCapture?.screenshotUrl) ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} />
           </div>
           : <div className={styles.compareLayer}>
             <SitePanel title={selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={selectedCapture?.screenshotUrl ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} />
@@ -352,6 +354,7 @@ export default function ReviewPage() {
             {!selectedDesign && <div className={styles.layerHint}>Загрузите PNG/JPEG макета слева, чтобы включить наложение.</div>}
           </div>}
         <p className={styles.captureInfo}>{selectedPage ? `Маршрут: ${selectedPage.route} · Статус: ${selectedPage.status} · Найдено замечаний: ${selectedPage.findingCount}` : "Снимок страницы пока не создавался."}</p>
+        {selectedCapture?.visualDiff?.status === "ready" && <p className={styles.captureInfo}>Пиксельно отличаются {selectedCapture.visualDiff.changedPercent ?? 0}% области · найдено зон: {selectedCapture.visualDiff.regions?.length ?? 0}. Это визуальная метрика, не оценка соответствия ТЗ. Отличия могут включать смещение, масштаб и сглаживание шрифтов.</p>}
         <div className={styles.notReady}>
           <strong>Автоматическая оценка пока не подключена</strong>
           <p>Сканирование сейчас находит страницы. Проверки ТЗ, backend/API и AI-выводы появятся после подключения захвата браузера, источников требований и сервиса сравнения. Пока ни один критерий не отмечается как пройденный.</p>

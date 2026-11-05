@@ -320,7 +320,7 @@ export default function ReviewPage() {
         {pages.length === 0
           ? <div className={styles.emptyPages}>{review?.status === "failed" ? "Не удалось найти доступные страницы. Проверьте ссылку и попробуйте снова." : review ? "Worker ищет страницы на этом сайте…" : "Список появится после сканирования."}</div>
           : <div className={styles.pageList}>{pages.map((page) =>
-            <button key={page.id} onClick={() => { setSelectedPageId(page.id); setPreviewBlocked(false); }} className={page.id === selectedPageId ? styles.pageSelected : styles.pageButton}>
+            <button key={page.id} onClick={() => { setSelectedPageId(page.id); setPreviewBlocked(false); setShowDiff(false); }} className={page.id === selectedPageId ? styles.pageSelected : styles.pageButton}>
               <span className={styles.pageIcon}>{page.status === "failed" ? "!" : "▤"}</span>
               <span className={styles.pageText}><strong>{page.label}</strong><small>{page.route}</small></span>
               {page.findingCount > 0 && <span className={styles.findingCount}>{page.findingCount}</span>}
@@ -357,7 +357,7 @@ export default function ReviewPage() {
         {selectedCapture?.visualDiff?.status === "ready" && <p className={styles.captureInfo}>Пиксельно отличаются {selectedCapture.visualDiff.changedPercent ?? 0}% области · найдено зон: {selectedCapture.visualDiff.regions?.length ?? 0}. Это визуальная метрика, не оценка соответствия ТЗ. Отличия могут включать смещение, масштаб и сглаживание шрифтов.</p>}
         <div className={styles.notReady}>
           <strong>Автоматическая оценка пока не подключена</strong>
-          <p>Сканирование сейчас находит страницы. Проверки ТЗ, backend/API и AI-выводы появятся после подключения захвата браузера, источников требований и сервиса сравнения. Пока ни один критерий не отмечается как пройденный.</p>
+          <p>Сейчас доступны захват страницы и пиксельная маска отличий от макета. Она помогает найти визуальные расхождения, но не оценивает требования, backend/API или смысловое соответствие дизайну.</p>
         </div>
       </div>
     </section>

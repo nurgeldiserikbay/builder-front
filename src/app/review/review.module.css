@@ -57,7 +57,7 @@
 .viewport{display:flex;align-items:center;gap:8px;font-size:10px;color:#68766d;white-space:nowrap}
 .viewport select{height:33px;border:1px solid #e1e6df;border-radius:8px;padding:0 8px;background:#fff;color:#35473a;font:inherit}
 .controls{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0 10px}
-.readOnly{font-size:10px;color:#768178}
+.readOnly{font-size:10px;color:#768178}.captureButton{height:32px;padding:0 11px;border:1px solid #2d6749;border-radius:8px;background:#2d6749;color:#fff;font:inherit;font-size:10px;font-weight:700;white-space:nowrap;cursor:pointer}.captureButton:disabled{opacity:.55;cursor:wait}
 .opacity{display:flex;align-items:center;gap:8px;font-size:10px;color:#6d786f}
 .opacity input{width:100px;accent-color:#2d6749}
 .compareSide{display:grid;grid-template-columns:1fr 1fr;gap:10px}

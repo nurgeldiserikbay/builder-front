@@ -41,7 +41,7 @@ export default function HomePage() {
           <p className="eyebrow"><span className="status-dot" /> ОТ ИДЕИ ДО ГОТОВОГО САЙТА</p>
           <h1>Расскажите, что вам нужно. <em>Остальное разложим по шагам.</em></h1>
           <p className="hero-text">BuildPath помогает спланировать, создать и проверить сайт прямо в браузере. Не нужны ноутбук, редактор кода или технические знания.</p>
-          <div className="preview-state"><span className="state-icon" aria-hidden="true">✳</span><span><strong>Платформа собирается</strong><br />Сейчас подготовлена основа. Регистрация и создание проектов появятся по мере реализации следующих этапов.</span></div>
+          <div className="preview-state"><span className="state-icon" aria-hidden="true">✳</span><span><strong>Платформа собирается</strong><br />Уже доступны вход, рабочее пространство и проверка сайта. Подключите API, чтобы анализировать страницы своего проекта.</span></div>
         </div>
         <aside className="journey-card" aria-label="Этапы работы над сайтом">
           <div className="card-heading"><span>ВАШ ПУТЬ</span><span className="pill">С телефона</span></div>

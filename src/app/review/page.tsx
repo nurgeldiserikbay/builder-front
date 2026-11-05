@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import styles from "./review.module.css";
@@ -31,6 +31,7 @@ export default function ReviewPage() {
   const [pages, setPages] = useState<Page[]>([]);
   const [selectedPageId, setSelectedPageId] = useState("");
   const [designs, setDesigns] = useState<Record<string, Design>>({});
+  const designUrls = useRef(new Set<string>());
   const [mode, setMode] = useState<CompareMode>("side");
   const [opacity, setOpacity] = useState(50);
   const [busy, setBusy] = useState(false);
@@ -99,8 +100,9 @@ export default function ReviewPage() {
   }, [review?.id, review?.status]);
 
   useEffect(() => () => {
-    Object.values(designs).forEach((design) => URL.revokeObjectURL(design.url));
-  }, [designs]);
+    designUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    designUrls.current.clear();
+  }, []);
 
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? null;
   const selectedDesign = selectedPage ? designs[selectedPage.id] : undefined;
@@ -164,8 +166,10 @@ export default function ReviewPage() {
     }
     setDesigns((current) => {
       const previous = current[selectedPage.id];
-      if (previous) URL.revokeObjectURL(previous.url);
-      return { ...current, [selectedPage.id]: { name: file.name, url: URL.createObjectURL(file) } };
+      if (previous) { URL.revokeObjectURL(previous.url); designUrls.current.delete(previous.url); }
+      const objectUrl = URL.createObjectURL(file);
+      designUrls.current.add(objectUrl);
+      return { ...current, [selectedPage.id]: { name: file.name, url: objectUrl } };
     });
     setMessage("Макет открыт только в этом браузере. Серверное приватное хранилище ещё не подключено.");
   }

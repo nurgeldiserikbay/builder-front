@@ -116,7 +116,7 @@ export default function ReviewPage() {
         if (next.status === "queued") setMessage("Браузерный worker готовит снимок страницы…");
         else if (next.status === "failed") setMessage("Не удалось снять страницу: " + (next.safeErrorCode ?? "CAPTURE_FAILED"));
         else if (next.status === "captured") setMessage("Снимок сайта готов и привязан к выбранному макету.");
-        timer = setTimeout(refresh, next.status === "captured" ? 240_000 : 1_500);
+        if (next.status === "queued") timer = setTimeout(refresh, 1_500);\n        else if (next.status === "captured") timer = setTimeout(refresh, 240_000);
       } catch (error) {
         if (active) {
           setMessage(error instanceof Error ? error.message : "Не удалось получить снимок страницы.");

@@ -100,7 +100,7 @@ export default function ReviewPage() {
 
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? null;
   const selectedDesign = selectedPage ? designs[selectedPage.id] : undefined;
-  const previewUrl = selectedPage?.route ?? siteUrl;
+  const previewUrl = selectedPage ? resolvePreviewUrl(selectedPage.route, siteUrl) : siteUrl;
 
   useEffect(() => {
     if (!review?.id || !selectedPage?.designAssetId) return;
@@ -299,6 +299,10 @@ export default function ReviewPage() {
       </div>
     </section>
   </main>;
+}
+
+function resolvePreviewUrl(route: string, base: string) {
+  try { return new URL(route, base).toString(); } catch { return base; }
 }
 
 function PreviewPanel({ title, designUrl }: { title: string; designUrl?: string }) {

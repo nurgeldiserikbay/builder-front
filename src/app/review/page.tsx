@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import styles from "./review.module.css";
@@ -31,7 +31,6 @@ export default function ReviewPage() {
   const [pages, setPages] = useState<Page[]>([]);
   const [selectedPageId, setSelectedPageId] = useState("");
   const [designs, setDesigns] = useState<Record<string, Design>>({});
-  const designUrls = useRef(new Set<string>());
   const [mode, setMode] = useState<CompareMode>("side");
   const [opacity, setOpacity] = useState(50);
   const [busy, setBusy] = useState(false);
@@ -99,14 +98,29 @@ export default function ReviewPage() {
     return () => { cancelled = true; clearTimeout(timer); };
   }, [review?.id, review?.status]);
 
-  useEffect(() => () => {
-    designUrls.current.forEach((url) => URL.revokeObjectURL(url));
-    designUrls.current.clear();
-  }, []);
-
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? null;
   const selectedDesign = selectedPage ? designs[selectedPage.id] : undefined;
   const previewUrl = selectedPage?.route ?? siteUrl;
+
+  useEffect(() => {
+    if (!review?.id || !selectedPage?.designAssetId) return;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = async () => {
+      try {
+        const asset = await api<{ url: string; expiresInSeconds: number }>(`/reviews/${review.id}/sources/design-upload/${selectedPage.designAssetId}/url`);
+        if (!active) return;
+        setDesigns((current) => ({ ...current, [selectedPage.id]: { name: current[selectedPage.id]?.name ?? "Сохранённый макет", url: asset.url } }));
+        timer = setTimeout(refresh, Math.max(30, asset.expiresInSeconds - 30) * 1000);
+      } catch (error) {
+        if (active) setMessage(error instanceof Error ? error.message : "Не удалось открыть сохранённый макет.");
+      }
+    };
+    void refresh();
+    return () => { active = false; clearTimeout(timer); };
+  }, [review?.id, selectedPage?.id, selectedPage?.designAssetId]);
+
+
   const previewTitle = useMemo(() => {
     if (!selectedPage) return "Предпросмотр сайта";
     return selectedPage.label + " · " + selectedPage.route;
@@ -158,20 +172,54 @@ export default function ReviewPage() {
     }
   }
 
-  function uploadDesign(file?: File) {
-    if (!file || !selectedPage) return;
+  async function uploadDesign(file?: File) {
+    if (!file || !selectedPage || !review) return;
     if (!["image/png", "image/jpeg"].includes(file.type)) {
-      setMessage("Для локального сравнения выберите PNG или JPEG.");
+      setMessage("Загрузите макет в формате PNG или JPEG.");
       return;
     }
-    setDesigns((current) => {
-      const previous = current[selectedPage.id];
-      if (previous) { URL.revokeObjectURL(previous.url); designUrls.current.delete(previous.url); }
-      const objectUrl = URL.createObjectURL(file);
-      designUrls.current.add(objectUrl);
-      return { ...current, [selectedPage.id]: { name: file.name, url: objectUrl } };
-    });
-    setMessage("Макет открыт только в этом браузере. Серверное приватное хранилище ещё не подключено.");
+    if (file.size < 1 || file.size > 20 * 1024 * 1024) {
+      setMessage("Размер макета должен быть не больше 20 МБ.");
+      return;
+    }
+    setMessage("");
+    setBusy(true);
+    try {
+      const digest = await globalThis.crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+      const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+      const reservation = await api<{ assetId: string; uploadUrl: string; method: "POST"; expiresAt: string; requiredFields: Record<string, string> }>(`/reviews/${review.id}/sources/design-upload`, {
+        method: "POST",
+        headers: { "Idempotency-Key": globalThis.crypto.randomUUID() },
+        body: JSON.stringify({ fileName: file.name, contentType: file.type, sizeBytes: file.size, sha256 }),
+      });
+      const form = new FormData();
+      Object.entries(reservation.requiredFields).forEach(([key, value]) => form.append(key, value));
+      form.append("file", file);
+      const stored = await fetch(reservation.uploadUrl, { method: reservation.method, body: form });
+      if (!stored.ok) throw new Error("Не удалось загрузить файл в приватное хранилище.");
+      await api<{ assetId: string; status: string }>(`/reviews/${review.id}/sources/design-upload/${reservation.assetId}/complete`, { method: "POST" });
+      await api<Page>(`/reviews/${review.id}/page-mappings/${selectedPage.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          designAssetId: reservation.assetId,
+          viewport: selectedPage.viewport,
+          requirementIds: [],
+        }),
+      });
+      const asset = await api<{ url: string; expiresInSeconds: number }>(`/reviews/${review.id}/sources/design-upload/${reservation.assetId}/url`);
+      setPages((current) => current.map((page) => page.id === selectedPage.id
+        ? { ...page, designAssetId: reservation.assetId, status: "mapped" }
+        : page));
+      setDesigns((current) => ({ ...current, [selectedPage.id]: { name: file.name, url: asset.url } }));
+      setMessage("Макет проверен, сохранён в приватном хранилище и привязан к странице.");
+    } catch (error) {
+      const detail = error instanceof ApiError ? error.message : error instanceof Error ? error.message : "";
+      if (detail.includes("SCANNER_UNAVAILABLE")) setMessage("Проверка файла пока недоступна: серверный сканер ClamAV не настроен или не отвечает.");
+      else if (detail.includes("STORAGE_NOT_CONFIGURED")) setMessage("Загрузка пока недоступна: приватное хранилище не настроено.");
+      else setMessage(detail || "Не удалось загрузить и проверить макет.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function logout() {
@@ -219,14 +267,14 @@ export default function ReviewPage() {
             </button>)}</div>}
         {selectedPage && <div className={styles.mapping}>
           <div className={styles.mappingInfo}><strong>Макет для этой страницы</strong><small>{selectedDesign?.name ?? (selectedPage.designAssetId ? "Назначен в проекте" : "Макет не выбран")}</small></div>
-          <label className={styles.smallUpload}>Выбрать файл<input type="file" accept="image/png,image/jpeg" onChange={(event) => uploadDesign(event.target.files?.[0])} /></label>
+          <label className={styles.smallUpload}>{busy ? "Проверяем…" : "Загрузить макет"}<input type="file" accept="image/png,image/jpeg" disabled={busy || !review} onChange={(event) => { void uploadDesign(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
         </div>}
-        <p className={styles.localOnly}>Выбранный файл остаётся в памяти этого браузера и не отправляется на сервер.</p>
+        <p className={styles.localOnly}>PNG/JPEG загружается в приватное хранилище только после проверки файла. Figma будет подключена отдельно.</p>
       </aside>
 
       <div className={styles.review}>
         <div className={styles.reviewHeader}>
-          <div><h2>{previewTitle}</h2><p>{selectedPage ? "Откройте страницу и сравните её с локальным макетом." : "После сканирования выберите страницу из списка."}</p></div>
+          <div><h2>{previewTitle}</h2><p>{selectedPage ? "Откройте страницу и сравните её с макетом." : "После сканирования выберите страницу из списка."}</p></div>
           <label className={styles.viewport}>Режим<select value={mode} onChange={(event) => setMode(event.target.value as CompareMode)}><option value="side">Рядом</option><option value="overlay">Наложение</option><option value="wipe">Сдвижная граница</option></select></label>
         </div>
         <div className={styles.controls}>
@@ -241,7 +289,7 @@ export default function ReviewPage() {
           : <div className={styles.compareLayer}>
             <SitePanel title={"Рабочий сайт · " + selectedPage.label} url={previewUrl} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} />
             {selectedDesign && <div className={mode === "overlay" ? styles.overlay : styles.wipe} style={mode === "overlay" ? { opacity: opacity / 100 } : { clipPath: "inset(0 " + (100 - opacity) + "% 0 0)" }}><PreviewPanel title="" designUrl={selectedDesign.url} /></div>}
-            {!selectedDesign && <div className={styles.layerHint}>Выберите PNG/JPEG макета слева, чтобы включить наложение.</div>}
+            {!selectedDesign && <div className={styles.layerHint}>Загрузите PNG/JPEG макета слева, чтобы включить наложение.</div>}
           </div>}
         <p className={styles.captureInfo}>{selectedPage ? `Маршрут: ${selectedPage.route} · Статус: ${selectedPage.status} · Найдено замечаний: ${selectedPage.findingCount}` : "Снимок страницы пока не создавался."}</p>
         <div className={styles.notReady}>
@@ -257,7 +305,7 @@ function PreviewPanel({ title, designUrl }: { title: string; designUrl?: string 
   return <section className={styles.previewPanel}>
     <div className={styles.panelTitle}>{title}</div>
     {designUrl ? <img className={styles.designImage} src={designUrl} alt="Локально выбранный макет страницы" />
-      : <div className={styles.noDesign}><span>◫</span><strong>Добавьте макет страницы</strong><small>PNG или JPEG · локальный просмотр</small></div>}
+      : <div className={styles.noDesign}><span>◫</span><strong>Добавьте макет страницы</strong><small>PNG или JPEG · приватный макет</small></div>}
   </section>;
 }
 

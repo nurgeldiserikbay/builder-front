@@ -114,9 +114,10 @@ export default function ReviewPage() {
         if (!active) return;
         setCaptures((current) => ({ ...current, [selectedPage.id]: next }));
         if (next.status === "queued") setMessage("Браузерный worker готовит снимок страницы…");
-        else if (next.status === "failed") setMessage("Не удалось снять страницу: " + (next.safeErrorCode ?? "CAPTURE_FAILED"));
+        else if (next.status === "failed") setMessage(next.safeErrorCode?.includes("BROWSER") ? "Worker не настроен: установите Chromium и задайте CAPTURE_CHROMIUM_EXECUTABLE_PATH." : "Не удалось снять страницу: " + (next.safeErrorCode ?? "CAPTURE_FAILED"));
         else if (next.status === "captured") setMessage("Снимок сайта готов и привязан к выбранному макету.");
-        if (next.status === "queued") timer = setTimeout(refresh, 1_500);\n        else if (next.status === "captured") timer = setTimeout(refresh, 240_000);
+        if (next.status === "queued") timer = setTimeout(refresh, 1_500);
+        else if (next.status === "captured") timer = setTimeout(refresh, 240_000);
       } catch (error) {
         if (active) {
           setMessage(error instanceof Error ? error.message : "Не удалось получить снимок страницы.");
@@ -346,7 +347,7 @@ export default function ReviewPage() {
             <SitePanel title={selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={selectedCapture?.screenshotUrl ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} />
           </div>
           : <div className={styles.compareLayer}>
-            <SitePanel title={"Рабочий сайт · " + selectedPage.label} url={previewUrl} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} />
+            <SitePanel title={selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={selectedCapture?.screenshotUrl ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} />
             {selectedDesign && <div className={mode === "overlay" ? styles.overlay : styles.wipe} style={mode === "overlay" ? { opacity: opacity / 100 } : { clipPath: "inset(0 " + (100 - opacity) + "% 0 0)" }}><PreviewPanel title="" designUrl={selectedDesign.url} /></div>}
             {!selectedDesign && <div className={styles.layerHint}>Загрузите PNG/JPEG макета слева, чтобы включить наложение.</div>}
           </div>}

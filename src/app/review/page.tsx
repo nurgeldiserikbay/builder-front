@@ -22,12 +22,13 @@ type ReviewReport = {
   review: { id: string; title: string; mode: string; status: string; siteOrigin: string | null; createdAt: string };
   summary: {
     pages: { total: number; mapped: number; captured: number };
+    visualDiff: { compared: number; averageChangedPercent: number | null };
     requirements: { total: number; byStatus: Record<string, number> };
     findings: { total: number; byStatus: Record<string, number> };
   };
   pages: Array<{
     id: string; route: string; title: string | null; status: string; designMapped: boolean;
-    latestCapture: { status: "queued" | "captured" | "failed"; capturedAt: string | null } | null;
+    latestCapture: { status: "queued" | "captured" | "failed"; capturedAt: string | null; visualDiff: { status: "ready" | "failed"; changedPercent: number | null } | null } | null;
     requirements: Array<{ id: string; category: string; title: string; status: string; verificationNote: string | null; evidenceCaptureId: string | null }>;
     findings: Array<{ id: string; category: string; severity: string; status: string; summary: string; createdAt: string }>;
   }>;
@@ -536,6 +537,7 @@ export default function ReviewPage() {
             <div><strong>{reportData.summary.pages.captured}</strong><span>снимков готово</span></div>
             <div><strong>{reportData.summary.requirements.total}</strong><span>пунктов ТЗ</span></div>
             <div><strong>{reportData.summary.findings.total}</strong><span>замечаний</span></div>
+            <div><strong>{reportData.summary.visualDiff.averageChangedPercent === null ? "—" : `${reportData.summary.visualDiff.averageChangedPercent}%`}</strong><span>среднее отличие</span></div>
           </div>
           <div className={styles.reportColumns}>
             <section><h4>Статусы требований</h4>
@@ -553,6 +555,7 @@ export default function ReviewPage() {
               <div><strong>{page.title || page.route}</strong><small>{page.route}</small></div>
               <span className={page.designMapped ? styles.reportGood : styles.reportPending}>{page.designMapped ? "Макет есть" : "Нет макета"}</span>
               <span className={page.latestCapture?.status === "captured" ? styles.reportGood : styles.reportPending}>{page.latestCapture?.status === "captured" ? "Снимок готов" : page.latestCapture?.status === "queued" ? "Снимок в очереди" : page.latestCapture?.status === "failed" ? "Снимок с ошибкой" : "Нет снимка"}</span>
+              <span className={page.latestCapture?.visualDiff?.status === "ready" ? styles.reportGood : styles.reportPending}>{page.latestCapture?.visualDiff?.status === "ready" ? page.latestCapture.visualDiff.changedPercent === null ? "Сравнение готово" : `Отличие ${page.latestCapture.visualDiff.changedPercent}%` : page.latestCapture?.visualDiff?.status === "failed" ? "Сравнение недоступно" : "Нет сравнения"}</span>
               <small>{page.requirements.length} требований · {page.findings.length} замечаний</small>
             </li>)}</ul>
           <details className={styles.reportLimitations}><summary>Границы этой проверки</summary><ul>{reportData.limitations.map((item) => <li key={item}>{item}</li>)}</ul></details>

@@ -165,3 +165,20 @@
 .reportLimitations ul{list-style:disc;padding:7px 0 0 17px;line-height:1.5}
 @media(max-width:780px){.reportMetrics{grid-template-columns:repeat(3,minmax(0,1fr))}.reportPageList li{grid-template-columns:1fr 1fr}.reportPageList li>div{grid-column:1/-1}}
 @media(max-width:540px){.reportMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}.reportColumns{grid-template-columns:1fr}.reportPageList li{grid-template-columns:1fr}.reportPageList li>div{grid-column:auto}}
+
+.reportActions{display:flex;align-items:center;gap:8px}
+.reportPrint{padding:7px 10px;border:1px solid #dce6d9;border-radius:7px;background:#fff;color:#315841;font:inherit;font-size:10px;font-weight:700;cursor:pointer}
+.reportClose{border:0;background:transparent;color:#66736a;font-size:20px;cursor:pointer}
+@media print{
+  @page{margin:12mm}
+  .page{max-width:none;padding:0;color:#111}
+  .topbar,.intro,.sourcebar,.notice,.sidebar,.reviewHeader,.controls,.previewEmpty,.compareSide,.compareLayer,.captureInfo,.diffRegions,.requirements,.findings,.notReady,.reportActions{display:none!important}
+  .workspace{display:block;margin:0}
+  .review{width:100%;padding:0;border:0;box-shadow:none}
+  .reportSummary{margin:0;padding:0;border:0;background:#fff;color:#111}
+  .reportHeading h3,.reportColumns h4,.reportPagesTitle{color:#111}
+  .reportMetrics>div,.reportColumns section,.reportPageList li{background:#fff;border:1px solid #ddd;break-inside:avoid}
+  .reportPageList{max-height:none;overflow:visible}
+  .reportPageList li{grid-template-columns:minmax(140px,1fr) repeat(4,auto);font-size:9pt}
+  .reportLimitations{break-inside:avoid}
+}

@@ -82,6 +82,14 @@ export default function ReviewPage() {
   const [previewBlocked, setPreviewBlocked] = useState(false);
 
   useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get("figma") === "connected") {
+      setMessage("Аккаунт Figma подключён. Теперь вставьте ссылку на нужный кадр.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
     let active = true;
     api<User>("/me")
       .then((currentUser) => {

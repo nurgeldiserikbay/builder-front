@@ -13,6 +13,7 @@ type Page = { id: string; route: string; label: string; status: string; designAs
 type Design = { name: string; url: string };
 type Capture = { captureId: string; status: "queued" | "captured" | "failed"; screenshotUrl: string | null; sha256: string | null; viewport: Page["viewport"]; safeErrorCode: string | null; capturedAt: string | null; visualDiff: { status: "ready" | "failed"; changedPercent?: number; changedPixels?: number; totalPixels?: number; regions?: { x: number; y: number; width: number; height: number; changedPercent: number }[]; diffOverlayUrl: string | null; safeErrorCode?: string } | null };
 type CompareMode = "side" | "overlay" | "wipe";
+type Finding = { id: string; pageId: string | null; category: string; severity: string; status: string; confidence: string; summary: string; coordinates: { x: number; y: number } | null; evidence: unknown; createdAt: string; updatedAt: string };
 
 const statusText: Record<string, string> = {
   draft: "Черновик", queued: "В очереди", discovering: "Ищем страницы",
@@ -33,6 +34,11 @@ export default function ReviewPage() {
   const [selectedPageId, setSelectedPageId] = useState("");
   const [designs, setDesigns] = useState<Record<string, Design>>({});
   const [captures, setCaptures] = useState<Record<string, Capture>>({});
+  const [findings, setFindings] = useState<Finding[]>([]);
+  const [findingCategory, setFindingCategory] = useState("design");
+  const [findingSeverity, setFindingSeverity] = useState("medium");
+  const [findingSummary, setFindingSummary] = useState("");
+  const [findingBusy, setFindingBusy] = useState(false);
   const [captureBusy, setCaptureBusy] = useState(false);
   const [mode, setMode] = useState<CompareMode>("side");
   const [showDiff, setShowDiff] = useState(false);
@@ -129,6 +135,15 @@ export default function ReviewPage() {
     timer = setTimeout(refresh, selectedCapture.status === "queued" ? 1_000 : 0);
     return () => { active = false; clearTimeout(timer); };
   }, [review?.id, selectedPage?.id, selectedCapture?.captureId, selectedCapture?.status]);
+
+  useEffect(() => {
+    if (!review?.id || !selectedPage?.id) { setFindings([]); return; }
+    let active = true;
+    api<Finding[]>(`/reviews/${review.id}/pages/${selectedPage.id}/findings`)
+      .then((items) => { if (active) setFindings(items); })
+      .catch((error: unknown) => { if (active) setMessage(error instanceof Error ? error.message : "Не удалось загрузить замечания."); });
+    return () => { active = false; };
+  }, [review?.id, selectedPage?.id]);
 
   const previewUrl = selectedPage ? resolvePreviewUrl(selectedPage.route, siteUrl) : siteUrl;
 
@@ -282,6 +297,33 @@ export default function ReviewPage() {
     }
   }
 
+  async function saveFinding(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!review || !selectedPage || !selectedCapture || selectedCapture.status !== "captured" || !findingSummary.trim()) return;
+    setFindingBusy(true);
+    try {
+      const created = await api<Finding>(`/reviews/${review.id}/findings`, {
+        method: "POST",
+        headers: { "Idempotency-Key": globalThis.crypto.randomUUID() },
+        body: JSON.stringify({
+          evidenceCaptureId: selectedCapture.captureId,
+          category: findingCategory,
+          severity: findingSeverity,
+          summary: findingSummary.trim(),
+          coordinate: null,
+        }),
+      });
+      setFindings((current) => [created, ...current.filter((item) => item.id !== created.id)]);
+      setPages((current) => current.map((page) => page.id === selectedPage.id ? { ...page, findingCount: page.findingCount + 1 } : page));
+      setFindingSummary("");
+      setMessage("Замечание сохранено с привязкой к снимку страницы.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Не удалось сохранить замечание.");
+    } finally {
+      setFindingBusy(false);
+    }
+  }
+
   async function logout() {
     try { await api<void>("/auth/logout", { method: "POST" }); } finally { router.replace("/login"); }
   }
@@ -365,6 +407,18 @@ export default function ReviewPage() {
             </li>)}</ol>
           </details>}
         </>}
+        {selectedCapture?.status === "captured" && <section className={styles.findings}>
+          <h3>Замечания по этой странице</h3>
+          <form onSubmit={(event) => void saveFinding(event)}>
+            <input value={findingSummary} onChange={(event) => setFindingSummary(event.target.value)} maxLength={500} placeholder="Опишите, что нужно проверить или исправить" aria-label="Текст замечания" required />
+            <div>
+              <label>Категория<select value={findingCategory} onChange={(event) => setFindingCategory(event.target.value)}><option value="design">Макет</option><option value="requirement">Требование</option><option value="backend">Backend/API</option><option value="accessibility">Доступность</option><option value="performance">Производительность</option><option value="seo">SEO</option><option value="security">Безопасность</option></select></label>
+              <label>Приоритет<select value={findingSeverity} onChange={(event) => setFindingSeverity(event.target.value)}><option value="critical">Критичный</option><option value="high">Высокий</option><option value="medium">Средний</option><option value="low">Низкий</option><option value="info">Информация</option></select></label>
+              <button type="submit" disabled={findingBusy || !findingSummary.trim()}>{findingBusy ? "Сохраняем…" : "Добавить замечание"}</button>
+            </div>
+          </form>
+          {findings.length > 0 && <ul>{findings.slice(0, 8).map((finding) => <li key={finding.id}><span className={styles.findingBadge}>{finding.severity}</span><span>{finding.summary}</span><small>{finding.category} · {finding.status}</small></li>)}</ul>}
+        </section>}
         <div className={styles.notReady}>
           <strong>Автоматическая оценка пока не подключена</strong>
           <p>Сейчас доступны захват страницы и пиксельная маска отличий от макета. Она помогает найти визуальные расхождения, но не оценивает требования, backend/API или смысловое соответствие дизайну.</p>

@@ -14,6 +14,7 @@ type Design = { name: string; url: string };
 type Capture = { captureId: string; status: "queued" | "captured" | "failed"; screenshotUrl: string | null; sha256: string | null; viewport: Page["viewport"]; safeErrorCode: string | null; capturedAt: string | null; visualDiff: { status: "ready" | "failed"; changedPercent?: number; changedPixels?: number; totalPixels?: number; regions?: { x: number; y: number; width: number; height: number; changedPercent: number }[]; diffOverlayUrl: string | null; safeErrorCode?: string } | null };
 type CompareMode = "side" | "overlay" | "wipe";
 type FindingPoint = { x: number; y: number; left: number; top: number };
+type Requirement = { id: string; pageId: string | null; category: string; title: string; details: string | null; status: "pending" | "satisfied" | "failed" | "blocked" | "unknown"; verificationNote: string | null; evidenceCaptureId: string | null; createdAt: string; updatedAt: string };
 type Finding = { id: string; pageId: string | null; category: string; severity: string; status: string; confidence: string; summary: string; coordinates: { x: number; y: number } | null; evidence: unknown; createdAt: string; updatedAt: string };
 
 const statusText: Record<string, string> = {
@@ -36,6 +37,11 @@ export default function ReviewPage() {
   const [designs, setDesigns] = useState<Record<string, Design>>({});
   const [captures, setCaptures] = useState<Record<string, Capture>>({});
   const [findings, setFindings] = useState<Finding[]>([]);
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [requirementDraft, setRequirementDraft] = useState("");
+  const [requirementCategory, setRequirementCategory] = useState("requirement");
+  const [requirementBusy, setRequirementBusy] = useState(false);
+  const [requirementStatusBusy, setRequirementStatusBusy] = useState<string | null>(null);
   const [findingCategory, setFindingCategory] = useState("design");
   const [findingSeverity, setFindingSeverity] = useState("medium");
   const [findingSummary, setFindingSummary] = useState("");
@@ -149,6 +155,15 @@ export default function ReviewPage() {
   }, [review?.id, selectedPage?.id]);
 
   useEffect(() => { setFindingPoint(null); }, [selectedPageId]);
+
+  useEffect(() => {
+    if (!review?.id || !selectedPage?.id) { setRequirements([]); return; }
+    let active = true;
+    api<Requirement[]>(`/reviews/${review.id}/pages/${selectedPage.id}/requirements`)
+      .then((items) => { if (active) setRequirements(items); })
+      .catch((error: unknown) => { if (active) setMessage(error instanceof Error ? error.message : "Не удалось загрузить чеклист ТЗ."); });
+    return () => { active = false; };
+  }, [review?.id, selectedPage?.id]);
 
   const previewUrl = selectedPage ? resolvePreviewUrl(selectedPage.route, siteUrl) : siteUrl;
 
@@ -302,6 +317,59 @@ export default function ReviewPage() {
     }
   }
 
+  async function saveRequirements(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!review || !selectedPage) return;
+    const titles = requirementDraft.split(/\\r?\\n/).map((item) => item.trim()).filter(Boolean);
+    if (titles.length === 0) return;
+    if (titles.length > 100 || titles.some((title) => title.length > 500)) {
+      setMessage("Можно добавить до 100 требований за раз, по одному на строку; длина пункта — до 500 символов.");
+      return;
+    }
+    setRequirementBusy(true);
+    try {
+      const created: Requirement[] = [];
+      for (const title of titles) {
+        const item = await api<Requirement>(`/reviews/${review.id}/requirements`, {
+          method: "POST",
+          headers: { "Idempotency-Key": globalThis.crypto.randomUUID() },
+          body: JSON.stringify({ pageId: selectedPage.id, title, category: requirementCategory }),
+        });
+        created.push(item);
+      }
+      setRequirements((current) => [...current, ...created]);
+      setRequirementDraft("");
+      setMessage(`Добавлено требований: ${created.length}. Отметка «Выполнено» потребует снимок страницы.`);
+    } catch (error) {
+      try {
+        const latest = await api<Requirement[]>(`/reviews/${review.id}/pages/${selectedPage.id}/requirements`);
+        setRequirements(latest);
+      } catch { /* Preserve the original save error for the user. */ }
+      setMessage(error instanceof Error ? error.message : "Не удалось сохранить требования.");
+    } finally {
+      setRequirementBusy(false);
+    }
+  }
+
+  async function updateRequirementStatus(requirementId: string, status: Requirement["status"]) {
+    if (!review) return;
+    setRequirementStatusBusy(requirementId);
+    try {
+      const updated = await api<Requirement>(`/reviews/${review.id}/requirements/${requirementId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status,
+          evidenceCaptureId: status === "pending" ? null : selectedCapture?.status === "captured" ? selectedCapture.captureId : null,
+        }),
+      });
+      setRequirements((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Не удалось обновить статус требования.");
+    } finally {
+      setRequirementStatusBusy(null);
+    }
+  }
+
   async function saveFinding(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!review || !selectedPage || !selectedCapture || selectedCapture.status !== "captured" || !findingSummary.trim()) return;
@@ -429,6 +497,24 @@ export default function ReviewPage() {
             </li>)}</ol>
           </details>}
         </>}
+        {selectedPage && <section className={styles.requirements}>
+          <h3>Требования для этой страницы</h3>
+          <p>Добавьте пункты ТЗ по одному на строку. Статус «Выполнено» можно поставить только со снимком-доказательством.</p>
+          <form onSubmit={(event) => void saveRequirements(event)}>
+            <textarea value={requirementDraft} onChange={(event) => setRequirementDraft(event.target.value)} maxLength={50_000} rows={3} placeholder={"Например:\\nВ шапке есть кнопка входа\\nФорма показывает ошибку при неверном email"} aria-label="Требования к странице, по одному на строку" />
+            <div>
+              <label>Тип<select value={requirementCategory} onChange={(event) => setRequirementCategory(event.target.value)}><option value="requirement">ТЗ</option><option value="design">Дизайн</option><option value="backend">Backend/API</option><option value="accessibility">Доступность</option><option value="performance">Производительность</option><option value="seo">SEO</option><option value="security">Безопасность</option></select></label>
+              <button type="submit" disabled={requirementBusy || !requirementDraft.trim()}>{requirementBusy ? "Сохраняем…" : "Добавить в чеклист"}</button>
+            </div>
+          </form>
+          {requirements.length > 0 && <ul>{requirements.map((item) => <li key={item.id}>
+            <span className={styles.requirementCategory}>{item.category}</span><span>{item.title}</span>
+            <select aria-label={`Статус требования: ${item.title}`} value={item.status} disabled={requirementStatusBusy === item.id || (item.status === "pending" && !selectedCapture)} onChange={(event) => void updateRequirementStatus(item.id, event.target.value as Requirement["status"])}>
+              <option value="pending">Ожидает проверки</option><option value="satisfied" disabled={selectedCapture?.status !== "captured"}>Выполнено</option><option value="failed">Не выполнено</option><option value="blocked">Заблокировано</option><option value="unknown">Неизвестно</option>
+            </select>
+            <small>{item.evidenceCaptureId ? "Есть снимок-доказательство" : "Пока без доказательства"}</small>
+          </li>)}</ul>}
+        </section>}
         {selectedCapture?.status === "captured" && <section className={styles.findings}>
           <h3>Замечания по этой странице</h3>
           <form onSubmit={(event) => void saveFinding(event)}>

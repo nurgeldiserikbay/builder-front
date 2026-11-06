@@ -116,3 +116,20 @@
 .pointHint{font-size:9px;line-height:1.4;color:#768178}
 .findings li>select{grid-column:2;justify-self:start;max-width:150px;height:26px;padding:0 7px;border:1px solid #dce4dc;border-radius:6px;background:#fff;color:#405647;font:inherit;font-size:9px}
 @media(max-width:700px){.captureImageFrame,.captureScreenshot{height:330px}}
+
+.requirements{margin-top:16px;border-top:1px solid #e8ece6;padding-top:13px}
+.requirements h3{margin:0 0 5px;font-size:12px;color:#405647}
+.requirements>p{margin:0 0 9px;font-size:9px;line-height:1.5;color:#768178}
+.requirements form{display:grid;gap:8px}
+.requirements textarea{width:100%;min-height:70px;padding:9px 10px;resize:vertical;border:1px solid #dce4dc;border-radius:7px;background:#fff;font:inherit;font-size:10px;line-height:1.5}
+.requirements form>div{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
+.requirements label{display:grid;gap:4px;font-size:9px;color:#768178}
+.requirements select{height:30px;max-width:160px;padding:0 8px;border:1px solid #dce4dc;border-radius:7px;background:#fff;color:#405647;font:inherit;font-size:10px}
+.requirements button{height:30px;padding:0 10px;border:0;border-radius:7px;background:#2d6749;color:#fff;font:inherit;font-size:10px;font-weight:700;cursor:pointer}
+.requirements button:disabled{opacity:.55;cursor:wait}
+.requirements ul{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.requirements li{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px 8px;padding:8px;border-radius:7px;background:#f7f8f6;font-size:10px;color:#445348}
+.requirements li>select{grid-column:2/-1;justify-self:start;max-width:180px;height:26px;padding:0 7px;border:1px solid #dce4dc;border-radius:6px;background:#fff;color:#405647;font:inherit;font-size:9px}
+.requirements li>small{grid-column:2/-1;color:#7a857d;font-size:9px}
+.requirementCategory{align-self:start;padding:3px 5px;border-radius:5px;background:#eaf0e9;color:#4c6b54;font-size:8px;font-weight:700;text-transform:uppercase}
+@media(max-width:700px){.requirements form>div{align-items:stretch;flex-direction:column}.requirements select{max-width:none;width:100%}.requirements button{width:100%}.requirements li{grid-template-columns:auto 1fr}.requirements li>select,.requirements li>small{grid-column:1/-1}}

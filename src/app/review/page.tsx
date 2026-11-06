@@ -529,7 +529,10 @@ export default function ReviewPage() {
         {reportData && <section className={styles.reportSummary} aria-live="polite">
           <div className={styles.reportHeading}>
             <div><h3>Сводка проверки</h3><small>{reportData.review.title} · сформировано {new Date(reportData.generatedAt).toLocaleString("ru-RU")}</small></div>
-            <button onClick={() => setReportData(null)} aria-label="Скрыть сводку">×</button>
+            <div className={styles.reportActions}>
+              <button className={styles.reportPrint} onClick={() => window.print()}>Печать / PDF</button>
+              <button className={styles.reportClose} onClick={() => setReportData(null)} aria-label="Скрыть сводку">×</button>
+            </div>
           </div>
           <div className={styles.reportMetrics}>
             <div><strong>{reportData.summary.pages.total}</strong><span>страниц</span></div>

@@ -139,7 +139,7 @@
 .reportHeading h3{margin:0 0 4px;font-size:14px;color:#294a37}
 .reportHeading small{font-size:10px;color:#768178}
 .reportHeading>button{border:0;background:transparent;color:#66736a;font-size:20px;cursor:pointer}
-.reportMetrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:13px 0}
+.reportMetrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:13px 0}
 .reportMetrics>div{display:grid;gap:3px;padding:10px;border-radius:8px;background:#f1f5ef}
 .reportMetrics strong{font-size:20px;color:#2d6749}
 .reportMetrics span{font-size:9px;color:#6e7a70}
@@ -152,7 +152,7 @@
 .reportColumns li strong{color:#2d6749}
 .reportPagesTitle{margin-top:13px}
 .reportPageList{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:270px;overflow:auto}
-.reportPageList li{display:grid;grid-template-columns:minmax(140px,1fr) auto auto auto;align-items:center;gap:8px;padding:8px;border-radius:7px;background:#fff;font-size:9px}
+.reportPageList li{display:grid;grid-template-columns:minmax(140px,1fr) repeat(4,auto);align-items:center;gap:8px;padding:8px;border-radius:7px;background:#fff;font-size:9px}
 .reportPageList li>div{display:grid;gap:3px;min-width:0}
 .reportPageList li>div strong,.reportPageList li>div small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .reportPageList li>div strong{color:#435348;font-size:10px}

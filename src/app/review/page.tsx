@@ -16,6 +16,23 @@ type CompareMode = "side" | "overlay" | "wipe";
 type FindingPoint = { x: number; y: number; left: number; top: number };
 type Requirement = { id: string; pageId: string | null; category: string; title: string; details: string | null; status: "pending" | "satisfied" | "failed" | "blocked" | "unknown"; verificationNote: string | null; evidenceCaptureId: string | null; createdAt: string; updatedAt: string };
 type Finding = { id: string; pageId: string | null; category: string; severity: string; status: string; confidence: string; summary: string; coordinates: { x: number; y: number } | null; evidence: unknown; createdAt: string; updatedAt: string };
+type ReviewReport = {
+  schemaVersion: number;
+  generatedAt: string;
+  review: { id: string; title: string; mode: string; status: string; siteOrigin: string | null; createdAt: string };
+  summary: {
+    pages: { total: number; mapped: number; captured: number };
+    requirements: { total: number; byStatus: Record<string, number> };
+    findings: { total: number; byStatus: Record<string, number> };
+  };
+  pages: Array<{
+    id: string; route: string; title: string | null; status: string; designMapped: boolean;
+    latestCapture: { status: "queued" | "captured" | "failed"; capturedAt: string | null } | null;
+    requirements: Array<{ id: string; category: string; title: string; status: string; verificationNote: string | null; evidenceCaptureId: string | null }>;
+    findings: Array<{ id: string; category: string; severity: string; status: string; summary: string; createdAt: string }>;
+  }>;
+  limitations: string[];
+};
 
 const statusText: Record<string, string> = {
   draft: "Черновик", queued: "В очереди", discovering: "Ищем страницы",
@@ -38,6 +55,8 @@ export default function ReviewPage() {
   const [captures, setCaptures] = useState<Record<string, Capture>>({});
   const [findings, setFindings] = useState<Finding[]>([]);
   const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [reportData, setReportData] = useState<ReviewReport | null>(null);
+  const [reportBusy, setReportBusy] = useState(false);
   const [requirementDraft, setRequirementDraft] = useState("");
   const [requirementCategory, setRequirementCategory] = useState("requirement");
   const [requirementBusy, setRequirementBusy] = useState(false);
@@ -197,6 +216,7 @@ export default function ReviewPage() {
     setBusy(true);
     setPages([]);
     setReview(null);
+    setReportData(null);
     try {
       const normalizedUrl = new URL(siteUrl).toString();
       let selectedProject = projects.find((item) => item.id === projectId);
@@ -414,21 +434,32 @@ export default function ReviewPage() {
     }
   }
 
-  async function downloadReport() {
-    if (!review) return;
+  async function loadReport() {
+    if (!review) return null;
+    setReportBusy(true);
     try {
-      const report = await api<unknown>(`/reviews/${review.id}/report`);
-      const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `buildpath-review-${review.id}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setMessage("Отчёт JSON сохранён. Он содержит текущий статус страниц, ТЗ и замечаний.");
+      const report = await api<ReviewReport>(`/reviews/${review.id}/report`);
+      setReportData(report);
+      return report;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Не удалось выгрузить отчёт.");
+      setMessage(error instanceof Error ? error.message : "Не удалось загрузить сводку проверки.");
+      return null;
+    } finally {
+      setReportBusy(false);
     }
+  }
+
+  async function downloadReport() {
+    const report = await loadReport();
+    if (!report || !review) return;
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `buildpath-review-${review.id}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setMessage("JSON-отчёт сохранён. Его можно приложить к задаче или передать разработчику.");
   }
 
   async function logout() {
@@ -488,11 +519,44 @@ export default function ReviewPage() {
         </div>
         <div className={styles.controls}>
           <span className={styles.readOnly}>Только просмотр · страница сайта не изменяется</span>
-          {review && <button className={styles.captureButton} onClick={() => void downloadReport()}>Скачать отчёт JSON</button>}
+          {review && <button className={styles.captureButton} disabled={reportBusy} onClick={() => reportData ? setReportData(null) : void loadReport()}>{reportBusy ? "Загружаем…" : reportData ? "Скрыть сводку" : "Показать сводку"}</button>}
+          {review && <button className={styles.captureButton} disabled={reportBusy} onClick={() => void downloadReport()}>Скачать отчёт JSON</button>}
           <button className={styles.captureButton} disabled={!selectedPage?.designAssetId || captureBusy || selectedCapture?.status === "queued"} onClick={() => void captureSelectedPage()}>{captureBusy || selectedCapture?.status === "queued" ? "Снимок готовится…" : selectedCapture?.status === "captured" ? "Обновить снимок" : "Сделать снимок"}</button>
           {selectedCapture?.visualDiff?.status === "ready" && <button className={styles.captureButton} onClick={() => setShowDiff((value) => !value)}>{showDiff ? "Обычный снимок" : "Показать зоны отличий"}</button>}
           {mode !== "side" && <label className={styles.opacity}>Смешивание<input type="range" min="10" max="90" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} /></label>}
         </div>
+        {reportData && <section className={styles.reportSummary} aria-live="polite">
+          <div className={styles.reportHeading}>
+            <div><h3>Сводка проверки</h3><small>{reportData.review.title} · сформировано {new Date(reportData.generatedAt).toLocaleString("ru-RU")}</small></div>
+            <button onClick={() => setReportData(null)} aria-label="Скрыть сводку">×</button>
+          </div>
+          <div className={styles.reportMetrics}>
+            <div><strong>{reportData.summary.pages.total}</strong><span>страниц</span></div>
+            <div><strong>{reportData.summary.pages.mapped}</strong><span>с макетом</span></div>
+            <div><strong>{reportData.summary.pages.captured}</strong><span>снимков готово</span></div>
+            <div><strong>{reportData.summary.requirements.total}</strong><span>пунктов ТЗ</span></div>
+            <div><strong>{reportData.summary.findings.total}</strong><span>замечаний</span></div>
+          </div>
+          <div className={styles.reportColumns}>
+            <section><h4>Статусы требований</h4>
+              {Object.keys(reportData.summary.requirements.byStatus).length === 0 ? <p>Требования ещё не добавлены.</p> :
+                <ul>{Object.entries(reportData.summary.requirements.byStatus).map(([status, count]) => <li key={status}><span>{({ pending: "Ожидает проверки", satisfied: "Выполнено", failed: "Не выполнено", blocked: "Заблокировано", unknown: "Неизвестно" } as Record<string, string>)[status] ?? status}</span><strong>{count}</strong></li>)}</ul>}
+            </section>
+            <section><h4>Статусы замечаний</h4>
+              {Object.keys(reportData.summary.findings.byStatus).length === 0 ? <p>Замечаний ещё нет.</p> :
+                <ul>{Object.entries(reportData.summary.findings.byStatus).map(([status, count]) => <li key={status}><span>{({ open: "Открыто", accepted: "Принято", dismissed: "Отклонено", fixed: "Исправлено", unknown: "Не проверено" } as Record<string, string>)[status] ?? status}</span><strong>{count}</strong></li>)}</ul>}
+            </section>
+          </div>
+          <h4 className={styles.reportPagesTitle}>По страницам</h4>
+          <ul className={styles.reportPageList}>{reportData.pages.map((page) =>
+            <li key={page.id}>
+              <div><strong>{page.title || page.route}</strong><small>{page.route}</small></div>
+              <span className={page.designMapped ? styles.reportGood : styles.reportPending}>{page.designMapped ? "Макет есть" : "Нет макета"}</span>
+              <span className={page.latestCapture?.status === "captured" ? styles.reportGood : styles.reportPending}>{page.latestCapture?.status === "captured" ? "Снимок готов" : page.latestCapture?.status === "queued" ? "Снимок в очереди" : page.latestCapture?.status === "failed" ? "Снимок с ошибкой" : "Нет снимка"}</span>
+              <small>{page.requirements.length} требований · {page.findings.length} замечаний</small>
+            </li>)}</ul>
+          <details className={styles.reportLimitations}><summary>Границы этой проверки</summary><ul>{reportData.limitations.map((item) => <li key={item}>{item}</li>)}</ul></details>
+        </section>}
         {!selectedPage ? <div className={styles.previewEmpty}>{review ? "Ожидаем результаты обнаружения страниц." : "Здесь появится выбранная страница и её макет."}</div>
           : mode === "side" ? <div className={styles.compareSide}>
             <PreviewPanel title={selectedDesign ? "Макет · " + selectedDesign.name : "Макет не выбран"} designUrl={selectedDesign?.url} />

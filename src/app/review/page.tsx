@@ -320,7 +320,7 @@ export default function ReviewPage() {
   async function saveRequirements(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!review || !selectedPage) return;
-    const titles = requirementDraft.split(/\\r?\\n/).map((item) => item.trim()).filter(Boolean);
+    const titles = requirementDraft.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
     if (titles.length === 0) return;
     if (titles.length > 100 || titles.some((title) => title.length > 500)) {
       setMessage("Можно добавить до 100 требований за раз, по одному на строку; длина пункта — до 500 символов.");
@@ -501,7 +501,7 @@ export default function ReviewPage() {
           <h3>Требования для этой страницы</h3>
           <p>Добавьте пункты ТЗ по одному на строку. Статус «Выполнено» можно поставить только со снимком-доказательством.</p>
           <form onSubmit={(event) => void saveRequirements(event)}>
-            <textarea value={requirementDraft} onChange={(event) => setRequirementDraft(event.target.value)} maxLength={50_000} rows={3} placeholder={"Например:\\nВ шапке есть кнопка входа\\nФорма показывает ошибку при неверном email"} aria-label="Требования к странице, по одному на строку" />
+            <textarea value={requirementDraft} onChange={(event) => setRequirementDraft(event.target.value)} maxLength={50_000} rows={3} placeholder={"Например:\nВ шапке есть кнопка входа\nФорма показывает ошибку при неверном email"} aria-label="Требования к странице, по одному на строку" />
             <div>
               <label>Тип<select value={requirementCategory} onChange={(event) => setRequirementCategory(event.target.value)}><option value="requirement">ТЗ</option><option value="design">Дизайн</option><option value="backend">Backend/API</option><option value="accessibility">Доступность</option><option value="performance">Производительность</option><option value="seo">SEO</option><option value="security">Безопасность</option></select></label>
               <button type="submit" disabled={requirementBusy || !requirementDraft.trim()}>{requirementBusy ? "Сохраняем…" : "Добавить в чеклист"}</button>

@@ -9,6 +9,7 @@ type User = { id: string; email: string; name: string | null };
 type Workspace = { id: string; name: string; role: string };
 type Project = { id: string; workspaceId: string; name: string; status: string };
 type Review = { id: string; projectId: string; title: string; mode: string; status: string; locale: string; createdAt: string; updatedAt: string };
+type FigmaConnectionStatus = { connected: boolean; figmaUserId: string | null; expiresAt: string | null; connectedAt: string | null };
 type Page = { id: string; route: string; label: string; status: string; designAssetId: string | null; viewport: { width: number; height: number; deviceScale: number }; findingCount: number };
 type Design = { name: string; url: string };
 type Capture = { captureId: string; status: "queued" | "captured" | "failed"; screenshotUrl: string | null; sha256: string | null; viewport: Page["viewport"]; safeErrorCode: string | null; capturedAt: string | null; visualDiff: { status: "ready" | "failed"; changedPercent?: number; changedPixels?: number; totalPixels?: number; regions?: { x: number; y: number; width: number; height: number; changedPercent: number }[]; diffOverlayUrl: string | null; safeErrorCode?: string } | null };
@@ -49,6 +50,9 @@ export default function ReviewPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState("");
   const [siteUrl, setSiteUrl] = useState("");
+  const [figmaConnection, setFigmaConnection] = useState<FigmaConnectionStatus | null>(null);
+  const [figmaUrlDraft, setFigmaUrlDraft] = useState("");
+  const [figmaBusy, setFigmaBusy] = useState(false);
   const [review, setReview] = useState<Review | null>(null);
   const [pages, setPages] = useState<Page[]>([]);
   const [selectedPageId, setSelectedPageId] = useState("");
@@ -84,11 +88,13 @@ export default function ReviewPage() {
         if (active) setUser(currentUser);
         return api<Workspace[]>("/workspaces");
       })
-      .then((items) => {
+      .then(async (items) => {
         if (!active) return;
         setWorkspaces(items);
         setWorkspaceId(items[0]?.id ?? "");
         if (items.length === 0) setMessage("В аккаунте пока нет доступного рабочего пространства.");
+        const figma = await api<FigmaConnectionStatus>("/integrations/figma/status");
+        if (active) setFigmaConnection(figma);
       })
       .catch((error: unknown) => {
         if (!active) return;
@@ -255,6 +261,69 @@ export default function ReviewPage() {
       else setMessage(error instanceof Error ? error.message : "Не удалось запустить проверку.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function connectFigma() {
+    setFigmaBusy(true);
+    try {
+      const result = await api<{ authorizationUrl: string }>("/integrations/figma/connect", { method: "POST" });
+      window.location.assign(result.authorizationUrl);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "";
+      setMessage(detail.includes("FIGMA_INTEGRATION_NOT_CONFIGURED")
+        ? "Figma пока не настроена на сервере. Нужны OAuth Client ID, Client Secret, callback URL и ключ шифрования."
+        : detail || "Не удалось открыть подключение Figma.");
+      setFigmaBusy(false);
+    }
+  }
+
+  async function disconnectFigma() {
+    setFigmaBusy(true);
+    try {
+      await api<{ connected: boolean }>("/integrations/figma/connection", { method: "DELETE" });
+      setFigmaConnection({ connected: false, figmaUserId: null, expiresAt: null, connectedAt: null });
+      setMessage("Связь с Figma отключена.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Не удалось отключить Figma.");
+    } finally {
+      setFigmaBusy(false);
+    }
+  }
+
+  async function importFigmaDesign() {
+    if (!review || !selectedPage || !figmaConnection?.connected || !figmaUrlDraft.trim()) return;
+    setFigmaBusy(true);
+    setMessage("");
+    try {
+      const imported = await api<{ assetId: string; status: string; fileKey: string; nodeId: string }>(`/reviews/${review.id}/sources/figma-import`, {
+        method: "POST",
+        body: JSON.stringify({ pageId: selectedPage.id, figmaUrl: figmaUrlDraft.trim(), viewport: selectedPage.viewport }),
+      });
+      const asset = await api<{ url: string; expiresInSeconds: number }>(`/reviews/${review.id}/sources/design-upload/${imported.assetId}/url`);
+      setPages((current) => current.map((page) => page.id === selectedPage.id
+        ? { ...page, designAssetId: imported.assetId, status: "mapped" }
+        : page));
+      setDesigns((current) => ({ ...current, [selectedPage.id]: { name: `Figma · ${imported.nodeId}`, url: asset.url } }));
+      setFigmaUrlDraft("");
+      setMessage("Макетный кадр импортирован из Figma, проверен и привязан к странице.");
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "";
+      if (detail.includes("FIGMA_RECONNECT_REQUIRED")) {
+        setFigmaConnection((current) => current ? { ...current, connected: false } : current);
+        setMessage("Срок доступа к Figma истёк. Подключите аккаунт заново.");
+      } else if (detail.includes("FIGMA_NOT_CONNECTED")) {
+        setFigmaConnection({ connected: false, figmaUserId: null, expiresAt: null, connectedAt: null });
+        setMessage("Сначала подключите аккаунт Figma.");
+      } else if (detail.includes("SCANNER_UNAVAILABLE") || detail.includes("SCANNER")) {
+        setMessage("Кадр получен, но серверный сканер ClamAV недоступен. Настройте сканер и повторите импорт.");
+      } else if (detail.includes("FIGMA_INTEGRATION_NOT_CONFIGURED")) {
+        setMessage("Интеграция Figma ещё не настроена на сервере.");
+      } else {
+        setMessage(detail || "Не удалось импортировать кадр из Figma.");
+      }
+    } finally {
+      setFigmaBusy(false);
     }
   }
 
@@ -508,9 +577,17 @@ export default function ReviewPage() {
             </button>)}</div>}
         {selectedPage && <div className={styles.mapping}>
           <div className={styles.mappingInfo}><strong>Макет для этой страницы</strong><small>{selectedDesign?.name ?? (selectedPage.designAssetId ? "Назначен в проекте" : "Макет не выбран")}</small></div>
-          <label className={styles.smallUpload}>{busy ? "Проверяем…" : "Загрузить макет"}<input type="file" accept="image/png,image/jpeg" disabled={busy || !review} onChange={(event) => { void uploadDesign(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
+          <label className={styles.smallUpload}>{busy ? "Проверяем…" : "Загрузить PNG/JPEG"}<input type="file" accept="image/png,image/jpeg" disabled={busy || !review} onChange={(event) => { void uploadDesign(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
+          <div className={styles.figmaImport}>
+            <strong>Импорт из Figma</strong>
+            {figmaConnection?.connected ? <>
+              <input type="url" value={figmaUrlDraft} onChange={(event) => setFigmaUrlDraft(event.target.value)} placeholder="Ссылка на кадр с node-id" aria-label="Ссылка на кадр Figma" />
+              <button type="button" disabled={figmaBusy || !figmaUrlDraft.trim()} onClick={() => void importFigmaDesign()}>{figmaBusy ? "Импортируем…" : "Импортировать кадр"}</button>
+              <button type="button" className={styles.figmaDisconnect} disabled={figmaBusy} onClick={() => void disconnectFigma()}>Отключить Figma</button>
+            </> : <button type="button" disabled={figmaBusy} onClick={() => void connectFigma()}>{figmaBusy ? "Подключаем…" : "Подключить аккаунт Figma"}</button>}
+          </div>
         </div>}
-        <p className={styles.localOnly}>PNG/JPEG загружается в приватное хранилище только после проверки файла. Figma будет подключена отдельно.</p>
+        <p className={styles.localOnly}>Импортированный кадр хранится приватно, проходит ClamAV и привязывается к выбранной странице.</p>
       </aside>
 
       <div className={styles.review}>

@@ -414,6 +414,23 @@ export default function ReviewPage() {
     }
   }
 
+  async function downloadReport() {
+    if (!review) return;
+    try {
+      const report = await api<unknown>(`/reviews/${review.id}/report`);
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `buildpath-review-${review.id}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setMessage("Отчёт JSON сохранён. Он содержит текущий статус страниц, ТЗ и замечаний.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Не удалось выгрузить отчёт.");
+    }
+  }
+
   async function logout() {
     try { await api<void>("/auth/logout", { method: "POST" }); } finally { router.replace("/login"); }
   }
@@ -471,6 +488,7 @@ export default function ReviewPage() {
         </div>
         <div className={styles.controls}>
           <span className={styles.readOnly}>Только просмотр · страница сайта не изменяется</span>
+          {review && <button className={styles.captureButton} onClick={() => void downloadReport()}>Скачать отчёт JSON</button>}
           <button className={styles.captureButton} disabled={!selectedPage?.designAssetId || captureBusy || selectedCapture?.status === "queued"} onClick={() => void captureSelectedPage()}>{captureBusy || selectedCapture?.status === "queued" ? "Снимок готовится…" : selectedCapture?.status === "captured" ? "Обновить снимок" : "Сделать снимок"}</button>
           {selectedCapture?.visualDiff?.status === "ready" && <button className={styles.captureButton} onClick={() => setShowDiff((value) => !value)}>{showDiff ? "Обычный снимок" : "Показать зоны отличий"}</button>}
           {mode !== "side" && <label className={styles.opacity}>Смешивание<input type="range" min="10" max="90" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} /></label>}

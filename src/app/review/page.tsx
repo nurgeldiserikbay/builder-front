@@ -13,6 +13,7 @@ type Page = { id: string; route: string; label: string; status: string; designAs
 type Design = { name: string; url: string };
 type Capture = { captureId: string; status: "queued" | "captured" | "failed"; screenshotUrl: string | null; sha256: string | null; viewport: Page["viewport"]; safeErrorCode: string | null; capturedAt: string | null; visualDiff: { status: "ready" | "failed"; changedPercent?: number; changedPixels?: number; totalPixels?: number; regions?: { x: number; y: number; width: number; height: number; changedPercent: number }[]; diffOverlayUrl: string | null; safeErrorCode?: string } | null };
 type CompareMode = "side" | "overlay" | "wipe";
+type FindingPoint = { x: number; y: number; left: number; top: number };
 type Finding = { id: string; pageId: string | null; category: string; severity: string; status: string; confidence: string; summary: string; coordinates: { x: number; y: number } | null; evidence: unknown; createdAt: string; updatedAt: string };
 
 const statusText: Record<string, string> = {
@@ -38,7 +39,9 @@ export default function ReviewPage() {
   const [findingCategory, setFindingCategory] = useState("design");
   const [findingSeverity, setFindingSeverity] = useState("medium");
   const [findingSummary, setFindingSummary] = useState("");
+  const [findingPoint, setFindingPoint] = useState<FindingPoint | null>(null);
   const [findingBusy, setFindingBusy] = useState(false);
+  const [findingStatusBusy, setFindingStatusBusy] = useState<string | null>(null);
   const [captureBusy, setCaptureBusy] = useState(false);
   const [mode, setMode] = useState<CompareMode>("side");
   const [showDiff, setShowDiff] = useState(false);
@@ -144,6 +147,8 @@ export default function ReviewPage() {
       .catch((error: unknown) => { if (active) setMessage(error instanceof Error ? error.message : "Не удалось загрузить замечания."); });
     return () => { active = false; };
   }, [review?.id, selectedPage?.id]);
+
+  useEffect(() => { setFindingPoint(null); }, [selectedPageId]);
 
   const previewUrl = selectedPage ? resolvePreviewUrl(selectedPage.route, siteUrl) : siteUrl;
 
@@ -310,17 +315,34 @@ export default function ReviewPage() {
           category: findingCategory,
           severity: findingSeverity,
           summary: findingSummary.trim(),
-          coordinate: null,
+          coordinate: findingPoint ? { x: findingPoint.x, y: findingPoint.y } : null,
         }),
       });
       setFindings((current) => [created, ...current.filter((item) => item.id !== created.id)]);
       setPages((current) => current.map((page) => page.id === selectedPage.id ? { ...page, findingCount: page.findingCount + 1 } : page));
       setFindingSummary("");
-      setMessage("Замечание сохранено с привязкой к снимку страницы.");
+      setFindingPoint(null);
+      setMessage("Замечание сохранено с привязкой к снимку страницы" + (findingPoint ? " и отмеченной точкой." : "."));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Не удалось сохранить замечание.");
     } finally {
       setFindingBusy(false);
+    }
+  }
+
+  async function updateFindingStatus(findingId: string, status: string) {
+    if (!review) return;
+    setFindingStatusBusy(findingId);
+    try {
+      const updated = await api<Finding>(`/reviews/${review.id}/findings/${findingId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+      setFindings((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Не удалось обновить статус замечания.");
+    } finally {
+      setFindingStatusBusy(null);
     }
   }
 
@@ -388,10 +410,10 @@ export default function ReviewPage() {
         {!selectedPage ? <div className={styles.previewEmpty}>{review ? "Ожидаем результаты обнаружения страниц." : "Здесь появится выбранная страница и её макет."}</div>
           : mode === "side" ? <div className={styles.compareSide}>
             <PreviewPanel title={selectedDesign ? "Макет · " + selectedDesign.name : "Макет не выбран"} designUrl={selectedDesign?.url} />
-            <SitePanel title={showDiff ? "Пиксельные отличия · " + selectedPage.label : selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={(showDiff ? selectedCapture?.visualDiff?.diffOverlayUrl : selectedCapture?.screenshotUrl) ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} />
+            <SitePanel title={showDiff ? "Пиксельные отличия · " + selectedPage.label : selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={(showDiff ? selectedCapture?.visualDiff?.diffOverlayUrl : selectedCapture?.screenshotUrl) ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} point={findingPoint} onPoint={selectedCapture?.status === "captured" ? setFindingPoint : undefined} />
           </div>
           : <div className={styles.compareLayer}>
-            <SitePanel title={selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={selectedCapture?.screenshotUrl ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} />
+            <SitePanel title={selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={selectedCapture?.screenshotUrl ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} point={findingPoint} onPoint={selectedCapture?.status === "captured" ? setFindingPoint : undefined} />
             {selectedDesign && <div className={mode === "overlay" ? styles.overlay : styles.wipe} style={mode === "overlay" ? { opacity: opacity / 100 } : { clipPath: "inset(0 " + (100 - opacity) + "% 0 0)" }}><PreviewPanel title="" designUrl={selectedDesign.url} /></div>}
             {!selectedDesign && <div className={styles.layerHint}>Загрузите PNG/JPEG макета слева, чтобы включить наложение.</div>}
           </div>}
@@ -410,6 +432,7 @@ export default function ReviewPage() {
         {selectedCapture?.status === "captured" && <section className={styles.findings}>
           <h3>Замечания по этой странице</h3>
           <form onSubmit={(event) => void saveFinding(event)}>
+            <small className={styles.pointHint}>{findingPoint ? `Точка отмечена: ${(findingPoint.x * 100).toFixed(0)}%, ${(findingPoint.y * 100).toFixed(0)}%` : "Чтобы привязать замечание к месту, нажмите на снимок сайта."}</small>
             <input value={findingSummary} onChange={(event) => setFindingSummary(event.target.value)} maxLength={500} placeholder="Опишите, что нужно проверить или исправить" aria-label="Текст замечания" required />
             <div>
               <label>Категория<select value={findingCategory} onChange={(event) => setFindingCategory(event.target.value)}><option value="design">Макет</option><option value="requirement">Требование</option><option value="backend">Backend/API</option><option value="accessibility">Доступность</option><option value="performance">Производительность</option><option value="seo">SEO</option><option value="security">Безопасность</option></select></label>
@@ -417,7 +440,13 @@ export default function ReviewPage() {
               <button type="submit" disabled={findingBusy || !findingSummary.trim()}>{findingBusy ? "Сохраняем…" : "Добавить замечание"}</button>
             </div>
           </form>
-          {findings.length > 0 && <ul>{findings.slice(0, 8).map((finding) => <li key={finding.id}><span className={styles.findingBadge}>{finding.severity}</span><span>{finding.summary}</span><small>{finding.category} · {finding.status}</small></li>)}</ul>}
+          {findings.length > 0 && <ul>{findings.slice(0, 8).map((finding) => <li key={finding.id}>
+            <span className={styles.findingBadge}>{finding.severity}</span><span>{finding.summary}</span>
+            <small>{finding.category}{finding.coordinates ? ` · точка ${Math.round(finding.coordinates.x * 100)}%, ${Math.round(finding.coordinates.y * 100)}%` : ""}</small>
+            <select aria-label={`Статус замечания: ${finding.summary}`} value={finding.status} disabled={findingStatusBusy === finding.id} onChange={(event) => void updateFindingStatus(finding.id, event.target.value)}>
+              <option value="open">Открыто</option><option value="accepted">Принято</option><option value="dismissed">Отклонено</option><option value="fixed">Исправлено</option><option value="unknown">Не проверено</option>
+            </select>
+          </li>)}</ul>}
         </section>}
         <div className={styles.notReady}>
           <strong>Автоматическая оценка пока не подключена</strong>
@@ -440,11 +469,55 @@ function PreviewPanel({ title, designUrl }: { title: string; designUrl?: string 
   </section>;
 }
 
-function SitePanel({ title, url, screenshotUrl, blocked, onBlocked }: { title: string; url: string; screenshotUrl?: string; blocked: boolean; onBlocked: () => void }) {
+function SitePanel({ title, url, screenshotUrl, blocked, onBlocked, point, onPoint }: {
+  title: string;
+  url: string;
+  screenshotUrl?: string;
+  blocked: boolean;
+  onBlocked: () => void;
+  point?: FindingPoint | null;
+  onPoint?: (point: FindingPoint) => void;
+}) {
+  function setPointFromImage(image: HTMLImageElement, clientX: number, clientY: number) {
+    if (!onPoint) return;
+    const rect = image.getBoundingClientRect();
+    const imageRatio = image.naturalWidth / image.naturalHeight;
+    const boxRatio = rect.width / rect.height;
+    const renderedWidth = imageRatio > boxRatio ? rect.width : rect.height * imageRatio;
+    const renderedHeight = imageRatio > boxRatio ? rect.width / imageRatio : rect.height;
+    const offsetX = (rect.width - renderedWidth) / 2;
+    const offsetY = (rect.height - renderedHeight) / 2;
+    const localX = clientX - rect.left - offsetX;
+    const localY = clientY - rect.top - offsetY;
+    if (localX < 0 || localY < 0 || localX > renderedWidth || localY > renderedHeight) return;
+    onPoint({
+      x: localX / renderedWidth,
+      y: localY / renderedHeight,
+      left: offsetX + localX,
+      top: offsetY + localY,
+    });
+  }
   return <section className={styles.previewPanel}>
     <div className={styles.panelTitle}>{title}</div>
-    {screenshotUrl ? <img className={styles.designImage} src={screenshotUrl} alt="Снимок выбранной страницы сайта" />
-      : blocked ? <div className={styles.noDesign}><strong>Сайт запрещает встроенный просмотр</strong><small>Откройте его в новой вкладке, чтобы сравнить вручную.</small><a href={url} target="_blank" rel="noreferrer">Открыть сайт ↗</a></div>
-        : <iframe className={styles.siteFrame} title={title} src={url} sandbox="allow-scripts allow-forms allow-popups" referrerPolicy="no-referrer" onError={onBlocked} />}
+    {screenshotUrl ? <div className={styles.captureImageFrame}>
+      <img
+        className={styles.captureScreenshot}
+        src={screenshotUrl}
+        alt="Снимок выбранной страницы сайта. Нажмите, чтобы отметить точку замечания."
+        role={onPoint ? "button" : undefined}
+        tabIndex={onPoint ? 0 : undefined}
+        onClick={(event) => setPointFromImage(event.currentTarget, event.clientX, event.clientY)}
+        onKeyDown={(event) => {
+          if ((event.key === "Enter" || event.key === " ") && onPoint) {
+            event.preventDefault();
+            const rect = event.currentTarget.getBoundingClientRect();
+            setPointFromImage(event.currentTarget, rect.left + rect.width / 2, rect.top + rect.height / 2);
+          }
+        }}
+        style={onPoint ? { cursor: "crosshair" } : undefined}
+      />
+      {point && <span className={styles.capturePoint} style={{ left: point.left, top: point.top }} aria-hidden="true" />}
+    </div> : blocked ? <div className={styles.noDesign}><strong>Сайт запрещает встроенный просмотр</strong><small>Откройте его в новой вкладке, чтобы сравнить вручную.</small><a href={url} target="_blank" rel="noreferrer">Открыть сайт ↗</a></div>
+      : <iframe className={styles.siteFrame} title={title} src={url} sandbox="allow-scripts allow-forms allow-popups" referrerPolicy="no-referrer" onError={onBlocked} />}
   </section>;
 }

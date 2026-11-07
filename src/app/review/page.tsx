@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import styles from "./review.module.css";
@@ -76,6 +76,11 @@ export default function ReviewPage() {
   const [mode, setMode] = useState<CompareMode>("side");
   const [showDiff, setShowDiff] = useState(false);
   const [opacity, setOpacity] = useState(50);
+  const [compareZoom, setCompareZoom] = useState(100);
+  const [syncCompareScroll, setSyncCompareScroll] = useState(true);
+  const designViewportRef = useRef<HTMLDivElement>(null);
+  const siteViewportRef = useRef<HTMLDivElement>(null);
+  const compareScrollLock = useRef(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -154,6 +159,13 @@ export default function ReviewPage() {
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? null;
   const selectedDesign = selectedPage ? designs[selectedPage.id] : undefined;
   const selectedCapture = selectedPage ? captures[selectedPage.id] : undefined;
+
+  function syncCompareViewport(source: HTMLDivElement, target: HTMLDivElement | null) {
+    if (!syncCompareScroll || !target || compareScrollLock.current) return;
+    compareScrollLock.current = true;
+    target.scrollTop = source.scrollTop;
+    requestAnimationFrame(() => { compareScrollLock.current = false; });
+  }
   useEffect(() => {
     if (!review?.id || !selectedPage || !selectedCapture?.captureId) return;
     let active = true;
@@ -610,6 +622,11 @@ export default function ReviewPage() {
           <button className={styles.captureButton} disabled={!selectedPage?.designAssetId || captureBusy || selectedCapture?.status === "queued"} onClick={() => void captureSelectedPage()}>{captureBusy || selectedCapture?.status === "queued" ? "Снимок готовится…" : selectedCapture?.status === "captured" ? "Обновить снимок" : "Сделать снимок"}</button>
           {selectedCapture?.visualDiff?.status === "ready" && <button className={styles.captureButton} onClick={() => setShowDiff((value) => !value)}>{showDiff ? "Обычный снимок" : "Показать зоны отличий"}</button>}
           {mode !== "side" && <label className={styles.opacity}>Смешивание<input type="range" min="10" max="90" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} /></label>}
+          {mode === "side" && selectedDesign && selectedCapture?.status === "captured" && <div className={styles.compareZoomControls}>
+            <label>Масштаб <input type="range" min="75" max="200" step="25" value={compareZoom} onChange={(event) => { setCompareZoom(Number(event.target.value)); setFindingPoint(null); }} /> {compareZoom}%</label>
+            <label className={styles.syncToggle}><input type="checkbox" checked={syncCompareScroll} onChange={(event) => setSyncCompareScroll(event.target.checked)} /> Синхр. прокрутка</label>
+            <button type="button" onClick={() => { setCompareZoom(100); setFindingPoint(null); }}>100%</button>
+          </div>}
         </div>
         {reportData && <section className={styles.reportSummary} aria-live="polite">
           <div className={styles.reportHeading}>
@@ -650,8 +667,12 @@ export default function ReviewPage() {
         </section>}
         {!selectedPage ? <div className={styles.previewEmpty}>{review ? "Ожидаем результаты обнаружения страниц." : "Здесь появится выбранная страница и её макет."}</div>
           : mode === "side" ? <div className={styles.compareSide}>
-            <PreviewPanel title={selectedDesign ? "Макет · " + selectedDesign.name : "Макет не выбран"} designUrl={selectedDesign?.url} />
-            <SitePanel title={showDiff ? "Пиксельные отличия · " + selectedPage.label : selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={(showDiff ? selectedCapture?.visualDiff?.diffOverlayUrl : selectedCapture?.screenshotUrl) ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} point={findingPoint} onPoint={selectedCapture?.status === "captured" ? setFindingPoint : undefined} />
+            <PreviewPanel title={selectedDesign ? "Макет · " + selectedDesign.name : "Макет не выбран"} designUrl={selectedDesign?.url}
+              zoom={compareZoom / 100} viewportRef={designViewportRef}
+              onViewportScroll={(source) => { setFindingPoint(null); syncCompareViewport(source, siteViewportRef.current); }} />
+            <SitePanel title={showDiff ? "Пиксельные отличия · " + selectedPage.label : selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={(showDiff ? selectedCapture?.visualDiff?.diffOverlayUrl : selectedCapture?.screenshotUrl) ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} point={findingPoint} onPoint={selectedCapture?.status === "captured" ? setFindingPoint : undefined}
+              zoom={compareZoom / 100} viewportRef={siteViewportRef}
+              onViewportScroll={(source) => { setFindingPoint(null); syncCompareViewport(source, designViewportRef.current); }} />
           </div>
           : <div className={styles.compareLayer}>
             <SitePanel title={selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={selectedCapture?.screenshotUrl ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} point={findingPoint} onPoint={selectedCapture?.status === "captured" ? setFindingPoint : undefined} />
@@ -720,15 +741,22 @@ function resolvePreviewUrl(route: string, base: string) {
   try { return new URL(route, base).toString(); } catch { return base; }
 }
 
-function PreviewPanel({ title, designUrl }: { title: string; designUrl?: string }) {
+function PreviewPanel({ title, designUrl, zoom = 1, viewportRef, onViewportScroll }: {
+  title: string;
+  designUrl?: string;
+  zoom?: number;
+  viewportRef?: { current: HTMLDivElement | null };
+  onViewportScroll?: (element: HTMLDivElement) => void;
+}) {
   return <section className={styles.previewPanel}>
     <div className={styles.panelTitle}>{title}</div>
-    {designUrl ? <img className={styles.designImage} src={designUrl} alt="Локально выбранный макет страницы" />
-      : <div className={styles.noDesign}><span>◫</span><strong>Добавьте макет страницы</strong><small>PNG или JPEG · приватный макет</small></div>}
+    {designUrl ? <div className={styles.compareViewport} ref={viewportRef} onScroll={(event) => onViewportScroll?.(event.currentTarget)}>
+      <img className={styles.designImage} src={designUrl} alt="Локально выбранный макет страницы" style={{ transform: `scale(${zoom})` }} />
+    </div> : <div className={styles.noDesign}><span>◫</span><strong>Добавьте макет страницы</strong><small>PNG или JPEG · приватный макет</small></div>}
   </section>;
 }
 
-function SitePanel({ title, url, screenshotUrl, blocked, onBlocked, point, onPoint }: {
+function SitePanel({ title, url, screenshotUrl, blocked, onBlocked, point, onPoint, zoom = 1, viewportRef, onViewportScroll }: {
   title: string;
   url: string;
   screenshotUrl?: string;
@@ -736,10 +764,14 @@ function SitePanel({ title, url, screenshotUrl, blocked, onBlocked, point, onPoi
   onBlocked: () => void;
   point?: FindingPoint | null;
   onPoint?: (point: FindingPoint) => void;
+  zoom?: number;
+  viewportRef?: { current: HTMLDivElement | null };
+  onViewportScroll?: (element: HTMLDivElement) => void;
 }) {
   function setPointFromImage(image: HTMLImageElement, clientX: number, clientY: number) {
     if (!onPoint) return;
     const rect = image.getBoundingClientRect();
+    const frameRect = image.closest("[data-capture-frame]")?.getBoundingClientRect() ?? rect;
     const imageRatio = image.naturalWidth / image.naturalHeight;
     const boxRatio = rect.width / rect.height;
     const renderedWidth = imageRatio > boxRatio ? rect.width : rect.height * imageRatio;
@@ -752,29 +784,31 @@ function SitePanel({ title, url, screenshotUrl, blocked, onBlocked, point, onPoi
     onPoint({
       x: localX / renderedWidth,
       y: localY / renderedHeight,
-      left: offsetX + localX,
-      top: offsetY + localY,
+      left: rect.left - frameRect.left + offsetX + localX,
+      top: rect.top - frameRect.top + offsetY + localY,
     });
   }
   return <section className={styles.previewPanel}>
     <div className={styles.panelTitle}>{title}</div>
-    {screenshotUrl ? <div className={styles.captureImageFrame}>
-      <img
-        className={styles.captureScreenshot}
-        src={screenshotUrl}
-        alt="Снимок выбранной страницы сайта. Нажмите, чтобы отметить точку замечания."
-        role={onPoint ? "button" : undefined}
-        tabIndex={onPoint ? 0 : undefined}
-        onClick={(event) => setPointFromImage(event.currentTarget, event.clientX, event.clientY)}
-        onKeyDown={(event) => {
-          if ((event.key === "Enter" || event.key === " ") && onPoint) {
-            event.preventDefault();
-            const rect = event.currentTarget.getBoundingClientRect();
-            setPointFromImage(event.currentTarget, rect.left + rect.width / 2, rect.top + rect.height / 2);
-          }
-        }}
-        style={onPoint ? { cursor: "crosshair" } : undefined}
-      />
+    {screenshotUrl ? <div className={styles.captureImageFrame} data-capture-frame>
+      <div className={styles.compareViewport} ref={viewportRef} onScroll={(event) => onViewportScroll?.(event.currentTarget)}>
+        <img
+          className={styles.captureScreenshot}
+          src={screenshotUrl}
+          alt="Снимок выбранной страницы сайта. Нажмите, чтобы отметить точку замечания."
+          role={onPoint ? "button" : undefined}
+          tabIndex={onPoint ? 0 : undefined}
+          onClick={(event) => setPointFromImage(event.currentTarget, event.clientX, event.clientY)}
+          onKeyDown={(event) => {
+            if ((event.key === "Enter" || event.key === " ") && onPoint) {
+              event.preventDefault();
+              const rect = event.currentTarget.getBoundingClientRect();
+              setPointFromImage(event.currentTarget, rect.left + rect.width / 2, rect.top + rect.height / 2);
+            }
+          }}
+          style={{ transform: `scale(${zoom})`, ...(onPoint ? { cursor: "crosshair" } : {}) }}
+        />
+      </div>
       {point && <span className={styles.capturePoint} style={{ left: point.left, top: point.top }} aria-hidden="true" />}
     </div> : blocked ? <div className={styles.noDesign}><strong>Сайт запрещает встроенный просмотр</strong><small>Откройте его в новой вкладке, чтобы сравнить вручную.</small><a href={url} target="_blank" rel="noreferrer">Открыть сайт ↗</a></div>
       : <iframe className={styles.siteFrame} title={title} src={url} sandbox="allow-scripts allow-forms allow-popups" referrerPolicy="no-referrer" onError={onBlocked} />}

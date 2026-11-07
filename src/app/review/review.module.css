@@ -277,4 +277,6 @@
 .apiCheck summary{cursor:pointer;font-size:9px;font-weight:700}
 .apiCheck pre{max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0 0;padding:9px;border-radius:6px;background:#17251f;color:#e4ede5;font:9px/1.5 ui-monospace,monospace}
 @media(max-width:700px){.apiCheck{padding:11px}.apiCheckHeading{flex-direction:column}.apiCheckForm{grid-template-columns:1fr 1fr}.apiCheckEndpoint,.apiCheckToken{grid-column:1/-1}.apiCheckForm>button{grid-column:1/-1}.apiCheckResultHeading{flex-direction:column}.apiCheckResultHeading button{align-self:flex-start}}
-\n@media(max-width:700px){.reportCoverageHeading{align-items:flex-start;flex-direction:column}.reportCoverage ul{grid-template-columns:repeat(2,minmax(0,1fr))}}\n@media(max-width:420px){.reportCoverage ul{grid-template-columns:1fr}}\n
+
+@media(max-width:700px){.reportCoverageHeading{align-items:flex-start;flex-direction:column}.reportCoverage ul{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){.reportCoverage ul{grid-template-columns:1fr}}

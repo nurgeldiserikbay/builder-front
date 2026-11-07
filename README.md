@@ -8,7 +8,7 @@ The app includes a product landing page, account registration/login/email verifi
 
 The review screen can export a JSON report and print a PDF summary. Figma OAuth and page-by-page frame import are available; OAuth requires the backend Figma app configuration described in `builder-back`. For captured pages, the comparison workspace supports synchronized zoom and scroll as well as side-by-side, overlay, and wipe modes. It includes a per-page manual requirements checklist, annotated findings, a browser-local GET/HEAD API probe with expected status and optional JSON-path checks, report signals, and a bounded DOM quality audit from fresh captures. API probe results can be downloaded as sanitized JSON metadata; credentials and response bodies are not persisted. Requirement status is recorded by a reviewer and is not automatically inferred.
 
-AI visual interpretation and automatic requirement evaluation are not connected yet. Pixel differences and DOM audit signals are deterministic evidence aids; they do not prove that a page meets its design, requirements, or backend contract. The review workspace labels checks without evidence as unverified.
+On-demand AI visual analysis is available when the backend is configured with `AI_REVIEW_OPENAI_API_KEY` and `AI_REVIEW_OPENAI_MODEL`. The reviewer explicitly starts it for a captured page with a verified mapped design; the private screenshot and design are sent to OpenAI, and one result is saved per capture. The interface shows confidence and evidence and labels findings as suggestions. It does not mark requirements passed or verify backend/API behavior. Pixel differences and DOM audit signals remain deterministic evidence aids; checks without evidence stay unverified.
 
 ## Local development
 

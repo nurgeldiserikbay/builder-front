@@ -13,7 +13,8 @@ type Review = { id: string; projectId: string; title: string; mode: string; stat
 type FigmaConnectionStatus = { connected: boolean; figmaUserId: string | null; expiresAt: string | null; connectedAt: string | null };
 type Page = { id: string; route: string; label: string; status: string; designAssetId: string | null; viewport: { width: number; height: number; deviceScale: number }; findingCount: number };
 type Design = { name: string; url: string };
-type Capture = { captureId: string; status: "queued" | "captured" | "failed"; screenshotUrl: string | null; sha256: string | null; viewport: Page["viewport"]; safeErrorCode: string | null; capturedAt: string | null; visualDiff: { status: "ready" | "failed"; changedPercent?: number; changedPixels?: number; totalPixels?: number; regions?: { x: number; y: number; width: number; height: number; changedPercent: number }[]; diffOverlayUrl: string | null; safeErrorCode?: string } | null };
+type AiDesignAnalysis = { status: "complete"; provider: "openai"; model: string; createdAt: string; summary: string; limitation: string; findings: Array<{ category: "design" | "accessibility" | "requirement"; severity: "critical" | "high" | "medium" | "low" | "info"; confidence: "low" | "medium" | "high"; summary: string; details: string; evidence: string }> };
+type Capture = { captureId: string; status: "queued" | "captured" | "failed"; screenshotUrl: string | null; sha256: string | null; viewport: Page["viewport"]; safeErrorCode: string | null; capturedAt: string | null; aiAnalysis: AiDesignAnalysis | null; visualDiff: { status: "ready" | "failed"; changedPercent?: number; changedPixels?: number; totalPixels?: number; regions?: { x: number; y: number; width: number; height: number; changedPercent: number }[]; diffOverlayUrl: string | null; safeErrorCode?: string } | null };
 type CompareMode = "side" | "overlay" | "wipe";
 type FindingPoint = { x: number; y: number; left: number; top: number };
 type Requirement = { id: string; pageId: string | null; category: string; title: string; details: string | null; status: "pending" | "satisfied" | "failed" | "blocked" | "unknown"; verificationNote: string | null; evidenceCaptureId: string | null; createdAt: string; updatedAt: string };
@@ -33,7 +34,7 @@ type ReviewReport = {
   };
   pages: Array<{
     id: string; route: string; title: string | null; status: string; designMapped: boolean;
-    latestCapture: { status: "queued" | "captured" | "failed"; capturedAt: string | null; visualDiff: { status: "ready" | "failed"; changedPercent: number | null } | null; qualityAudit: { checkedAt: string | null; pageTitlePresent: boolean; languagePresent: boolean; h1Count: number; imagesMissingAlt: number; linksMissingName: number; buttonsMissingName: number; formControlsMissingLabel: number } | null } | null;
+    latestCapture: { status: "queued" | "captured" | "failed"; capturedAt: string | null; aiAnalysis: AiDesignAnalysis | null; visualDiff: { status: "ready" | "failed"; changedPercent: number | null } | null; qualityAudit: { checkedAt: string | null; pageTitlePresent: boolean; languagePresent: boolean; h1Count: number; imagesMissingAlt: number; linksMissingName: number; buttonsMissingName: number; formControlsMissingLabel: number } | null } | null;
     requirements: Array<{ id: string; category: string; title: string; status: string; verificationNote: string | null; evidenceCaptureId: string | null }>;
     findings: Array<{ id: string; category: string; severity: string; status: string; summary: string; createdAt: string }>;
     apiChecks: Array<{ id: string; requirementId: string | null; method: "GET" | "HEAD"; endpoint: string; expectedStatus: number; actualStatus: number | null; durationMs: number; passed: boolean; jsonPath: string | null; jsonMatches: boolean | null; safeErrorCode: string | null; checkedAt: string }>;
@@ -78,6 +79,7 @@ export default function ReviewPage() {
   const [findingBusy, setFindingBusy] = useState(false);
   const [findingStatusBusy, setFindingStatusBusy] = useState<string | null>(null);
   const [captureBusy, setCaptureBusy] = useState(false);
+  const [aiAnalysisBusy, setAiAnalysisBusy] = useState(false);
   const [mode, setMode] = useState<CompareMode>("side");
   const [showDiff, setShowDiff] = useState(false);
   const [opacity, setOpacity] = useState(50);
@@ -249,6 +251,33 @@ export default function ReviewPage() {
     if (!selectedPage) return "Предпросмотр сайта";
     return selectedPage.label + " · " + selectedPage.route;
   }, [selectedPage]);
+
+  async function analyzeSelectedCapture() {
+    if (!review || !selectedCapture || selectedCapture.status !== "captured" || !selectedDesign || !selectedPage) return;
+    setAiAnalysisBusy(true);
+    setMessage("");
+    try {
+      const result = await api<{ analysis: AiDesignAnalysis; reused: boolean }>(
+        `/reviews/${review.id}/captures/${selectedCapture.captureId}/ai-analysis`,
+        { method: "POST" },
+      );
+      setCaptures((current) => ({
+        ...current,
+        [selectedPage.id]: { ...current[selectedPage.id], aiAnalysis: result.analysis },
+      }));
+      setMessage(result.reused ? "Показан сохранённый ИИ-разбор." : "ИИ-разбор готов. Проверьте каждое замечание вручную.");
+      void loadReport(review.id);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "";
+      setMessage(detail.includes("AI_REVIEW_NOT_CONFIGURED")
+        ? "ИИ-анализ не настроен на сервере. Добавьте AI_REVIEW_OPENAI_API_KEY и AI_REVIEW_OPENAI_MODEL."
+        : detail.includes("AI_REVIEW_IN_PROGRESS")
+          ? "Разбор этой страницы уже выполняется."
+          : detail || "Не удалось выполнить ИИ-разбор.");
+    } finally {
+      setAiAnalysisBusy(false);
+    }
+  }
 
   async function startScan(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -713,6 +742,14 @@ export default function ReviewPage() {
                 })()}</ul>
                 {page.latestCapture.qualityAudit.checkedAt && <small>Проверено {new Date(page.latestCapture.qualityAudit.checkedAt).toLocaleString("ru-RU")}</small>}
               </details>}
+              {page.latestCapture?.aiAnalysis && <details className={styles.reportPageChecks}>
+                <summary>ИИ-анализ · {page.latestCapture.aiAnalysis.findings.length} предложений</summary>
+                <p>{page.latestCapture.aiAnalysis.summary}</p>
+                <ul>{page.latestCapture.aiAnalysis.findings.map((item, index) => <li key={index}>
+                  <strong>{item.summary} · {item.confidence}</strong><span>{item.details}</span><small>Доказательство: {item.evidence}</small>
+                </li>)}</ul>
+                <small>{page.latestCapture.aiAnalysis.limitation}</small>
+              </details>}
               {page.requirements.some((item) => item.category === "backend") && <details className={styles.reportPageChecks}>
                 <summary>Backend-ТЗ · {page.requirements.filter((item) => item.category === "backend" && page.apiChecks.some((check) => check.requirementId === item.id)).length}/{page.requirements.filter((item) => item.category === "backend").length} с API-проверкой</summary>
                 <ul>{page.requirements.filter((item) => item.category === "backend").map((requirement) => {
@@ -786,6 +823,22 @@ export default function ReviewPage() {
             <small>{item.evidenceCaptureId ? "Есть снимок-доказательство" : "Пока без доказательства"}</small>
           </li>)}</ul>}
         </section>}
+        {selectedCapture?.status === "captured" && selectedDesign && <section className={styles.findings}>
+          <h3>ИИ-сверка макета и сайта</h3>
+          <p>При запуске сохранённый снимок и выбранный макет будут отправлены в настроенный OpenAI сервис; запрос может тарифицироваться провайдером. Результат — предложения для проверки, а не подтверждение соответствия.</p>
+          <button type="button" onClick={() => void analyzeSelectedCapture()} disabled={aiAnalysisBusy}>
+            {aiAnalysisBusy ? "Анализируем…" : selectedCapture.aiAnalysis ? "Показать сохранённый разбор" : "Сравнить с помощью ИИ"}
+          </button>
+          {selectedCapture.aiAnalysis && <div className={styles.reportSignals}>
+            <p>{selectedCapture.aiAnalysis.summary}</p>
+            {selectedCapture.aiAnalysis.findings.length === 0 ? <p>ИИ не нашёл конкретных расхождений. Это не гарантирует полное соответствие макету.</p> :
+              <ul>{selectedCapture.aiAnalysis.findings.map((item, index) => <li key={index} data-level={item.severity}>
+                <div><strong>{item.summary}</strong><small>{item.category} · уверенность: {item.confidence}</small></div>
+                <p>{item.details}</p><small>Доказательство: {item.evidence}</small>
+              </li>)}</ul>}
+            <small>{selectedCapture.aiAnalysis.limitation} · {selectedCapture.aiAnalysis.model} · {new Date(selectedCapture.aiAnalysis.createdAt).toLocaleString("ru-RU")}</small>
+          </div>}
+        </section>}
         {selectedCapture?.status === "captured" && <section className={styles.findings}>
           <h3>Замечания по этой странице</h3>
           <form onSubmit={(event) => void saveFinding(event)}>
@@ -806,8 +859,8 @@ export default function ReviewPage() {
           </li>)}</ul>}
         </section>}
         <div className={styles.notReady}>
-          <strong>Автоматическая оценка пока не подключена</strong>
-          <p>Сейчас доступны захват страницы и пиксельная маска отличий от макета. Она помогает найти визуальные расхождения, но не оценивает требования, backend/API или смысловое соответствие дизайну.</p>
+          <strong>ИИ-разбор доступен для сохранённого снимка с привязанным макетом</strong>
+          <p>Пиксельное сравнение и DOM-аудит остаются отдельными техническими сигналами. ИИ-замечания не проверяют backend/API и требуют подтверждения ревьюером.</p>
         </div>
       </div>
     </section>

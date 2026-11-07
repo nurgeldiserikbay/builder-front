@@ -161,6 +161,15 @@
 .reportPagesTitle{margin-top:13px}
 .reportPageList{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:270px;overflow:auto}
 .reportPageList li{display:grid;grid-template-columns:minmax(140px,1fr) repeat(4,auto);align-items:center;gap:8px;padding:8px;border-radius:7px;background:#fff;font-size:9px}
+.reportPageChecks{grid-column:1/-1;min-width:0;padding-top:3px;color:#59685e}
+.reportPageChecks>summary{cursor:pointer;color:#3f634c;font-weight:700}
+.reportPageChecks ul{list-style:none;margin:7px 0 0;padding:0;display:grid;gap:5px}
+.reportPageChecks li{display:grid;grid-template-columns:auto minmax(120px,1fr);gap:4px 8px;padding:7px;border:1px solid #e4ebe2;border-radius:6px;background:#f9fbf8}
+.reportPageChecks li>strong{align-self:start}
+.reportPageChecks li>span,.reportPageChecks li>code,.reportPageChecks li>small{grid-column:1/-1;overflow-wrap:anywhere}
+.reportPageChecks li>span{color:#516258}
+.reportPageChecks li>code{padding:4px;border-radius:4px;background:#eef2ed;color:#3e5144;font-size:8px}
+.reportPageChecks li>small{color:#748078;font-size:8px}
 .reportPageList li>div{display:grid;gap:3px;min-width:0}
 .reportPageList li>div strong,.reportPageList li>div small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .reportPageList li>div strong{color:#435348;font-size:10px}

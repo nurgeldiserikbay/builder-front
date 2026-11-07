@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import styles from "./review.module.css";
+import ApiCheckPanel from "./api-check-panel";
 
 type User = { id: string; email: string; name: string | null };
 type Workspace = { id: string; name: string; role: string };
@@ -691,6 +692,7 @@ export default function ReviewPage() {
             </li>)}</ol>
           </details>}
         </>}
+        {selectedPage && <ApiCheckPanel />}
         {selectedPage && <section className={styles.requirements}>
           <h3>Требования для этой страницы</h3>
           <p>Добавьте пункты ТЗ по одному на строку. Статус «Выполнено» можно поставить только со снимком-доказательством.</p>

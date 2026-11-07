@@ -6,7 +6,7 @@ Mobile-first Next.js web application and Telegram Mini App.
 
 The app includes a product landing page, account registration/login/email verification, and a connected review workspace at `/review`. The review workspace creates projects and review runs through the backend API, displays discovered pages and worker status, uploads PNG/JPEG page designs to private object storage after checksum/signature/malware checks, and supports page-by-page comparison with the live site or a stored Chromium capture in side-by-side, overlay, and wipe modes.
 
-The review screen can export a JSON report and print a PDF summary. Figma OAuth and page-by-page frame import are available; OAuth requires the backend Figma app configuration described in `builder-back`. For captured pages, the comparison workspace supports synchronized zoom and scroll as well as side-by-side, overlay, and wipe modes. Automated requirement/backend checks and AI visual analysis are not connected yet; the interface labels those features as unavailable.
+The review screen can export a JSON report and print a PDF summary. Figma OAuth and page-by-page frame import are available; OAuth requires the backend Figma app configuration described in `builder-back`. For captured pages, the comparison workspace supports synchronized zoom and scroll as well as side-by-side, overlay, and wipe modes. The review screen also includes a browser-local GET/HEAD API probe with expected status and optional JSON-path checks; results can be downloaded as sanitized JSON metadata, while credentials and response bodies are not persisted. Automated requirement evaluation and AI visual analysis are not connected yet.
 
 ## Local development
 

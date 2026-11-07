@@ -659,6 +659,25 @@ export default function ReviewPage() {
             <div><strong>{checkedBackendRequirements}/{backendCoverage.length}</strong><span>backend-ТЗ с API-проверкой</span></div>
             <div><strong>{reportData.summary.visualDiff.averageChangedPercent === null ? "—" : `${reportData.summary.visualDiff.averageChangedPercent}%`}</strong><span>среднее отличие</span></div>
           </div>
+          <section className={styles.reportSignals} aria-label="Автоматические сигналы проверки">
+            <div className={styles.reportSignalsHeading}>
+              <div><h4>Что требует внимания</h4><p>Правила подсвечивают пробелы в данных и результатах. Это не ИИ-оценка макета.</p></div>
+              <div className={styles.reportSignalCounts}>
+                <span data-level="high">{reportData.summary.analysis.bySeverity.high ?? 0} важных</span>
+                <span data-level="medium">{reportData.summary.analysis.bySeverity.medium ?? 0} требуют проверки</span>
+              </div>
+            </div>
+            {reportData.signals.length === 0 ? <p className={styles.reportSignalsEmpty}>По текущим данным автоматические сигналы не найдены.</p> :
+              <ul>{reportData.signals.slice(0, 40).map((signal) => {
+                const page = reportData.pages.find((item) => item.id === signal.pageId);
+                return <li key={signal.id} data-level={signal.severity}>
+                  <div><strong>{signal.title}</strong><small>{page?.title || page?.route || "Страница"}</small></div>
+                  <p>{signal.details}</p>
+                  <button type="button" onClick={() => setSelectedPageId(signal.pageId)}>Открыть страницу</button>
+                </li>;
+              })}</ul>}
+            {reportData.signals.length > 40 && <small className={styles.reportSignalsMore}>Показаны первые 40 из {reportData.signals.length} сигналов. Все сигналы сохранены в JSON-отчёте.</small>}
+          </section>
           <div className={styles.reportColumns}>
             <section><h4>Статусы требований</h4>
               {Object.keys(reportData.summary.requirements.byStatus).length === 0 ? <p>Требования ещё не добавлены.</p> :

@@ -147,6 +147,18 @@
 .reportHeading h3{margin:0 0 4px;font-size:14px;color:#294a37}
 .reportHeading small{font-size:10px;color:#768178}
 .reportHeading>button{border:0;background:transparent;color:#66736a;font-size:20px;cursor:pointer}
+.reportCoverage{margin:12px 0;padding:12px;border:1px solid #e4ebe2;border-radius:9px;background:#f8fbf7}
+.reportCoverageHeading{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:9px}
+.reportCoverageHeading h4{margin:0;color:#405647;font-size:11px}
+.reportCoverageHeading p{margin:0;color:#748078;font-size:9px;line-height:1.4}
+.reportCoverage ul{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:0;padding:0;list-style:none}
+.reportCoverage li{min-width:0;padding:9px;border:1px solid #e8ede6;border-radius:7px;background:#fff}
+.reportCoverageLabel{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.reportCoverageLabel strong{font-size:10px;color:#405647}
+.reportCoverageLabel span{font-size:9px;font-weight:700;color:#2d6749;white-space:nowrap}
+.reportCoverageTrack{height:5px;margin:7px 0 5px;overflow:hidden;border-radius:999px;background:#e9eee8}
+.reportCoverageTrack i{display:block;height:100%;border-radius:inherit;background:#64a978;transition:width .25s ease}
+.reportCoverage li small{font-size:8px;color:#748078}
 .reportMetrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:13px 0}
 .reportMetrics>div{display:grid;gap:3px;padding:10px;border-radius:8px;background:#f1f5ef}
 .reportMetrics strong{font-size:20px;color:#2d6749}
@@ -265,3 +277,4 @@
 .apiCheck summary{cursor:pointer;font-size:9px;font-weight:700}
 .apiCheck pre{max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0 0;padding:9px;border-radius:6px;background:#17251f;color:#e4ede5;font:9px/1.5 ui-monospace,monospace}
 @media(max-width:700px){.apiCheck{padding:11px}.apiCheckHeading{flex-direction:column}.apiCheckForm{grid-template-columns:1fr 1fr}.apiCheckEndpoint,.apiCheckToken{grid-column:1/-1}.apiCheckForm>button{grid-column:1/-1}.apiCheckResultHeading{flex-direction:column}.apiCheckResultHeading button{align-self:flex-start}}
+\n@media(max-width:700px){.reportCoverageHeading{align-items:flex-start;flex-direction:column}.reportCoverage ul{grid-template-columns:repeat(2,minmax(0,1fr))}}\n@media(max-width:420px){.reportCoverage ul{grid-template-columns:1fr}}\n

@@ -171,6 +171,12 @@ export default function ReviewPage() {
     })),
   ) : [];
   const checkedBackendRequirements = backendCoverage.filter((item) => item.check !== null).length;
+  const reviewCoverage = reportData ? [
+    { label: "Рабочий сайт", done: reportData.summary.pages.captured, total: reportData.summary.pages.total, detail: "страниц со снимком" },
+    { label: "ТЗ", done: reportData.summary.requirements.byStatus.satisfied ?? 0, total: reportData.summary.requirements.total, detail: "пунктов подтверждено" },
+    { label: "Макет", done: Math.min(reportData.summary.visualDiff.compared, reportData.summary.pages.mapped), total: reportData.summary.pages.mapped, detail: "страниц сравнено с макетом" },
+    { label: "Backend", done: checkedBackendRequirements, total: backendCoverage.length, detail: "backend-пунктов проверено API" },
+  ] : [];
 
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? null;
   const selectedDesign = selectedPage ? designs[selectedPage.id] : undefined;
@@ -690,6 +696,20 @@ export default function ReviewPage() {
             <div><strong>{reportData.summary.visualDiff.averageChangedPercent === null ? "—" : `${reportData.summary.visualDiff.averageChangedPercent}%`}</strong><span>среднее отличие</span></div>
             <div><strong>{reportData.summary.aiReview.analyzedCaptures}</strong><span>ИИ-разборов</span></div>
           </div>
+          <section className={styles.reportCoverage} aria-label="Покрытие проверки">
+            <div className={styles.reportCoverageHeading}>
+              <h4>Покрытие проверки</h4>
+              <p>Показывает, какие части проекта уже проверены по собранным данным.</p>
+            </div>
+            <ul>{reviewCoverage.map((item) => {
+              const percentage = item.total > 0 ? Math.min(100, Math.round((item.done / item.total) * 100)) : 0;
+              return <li key={item.label}>
+                <div className={styles.reportCoverageLabel}><strong>{item.label}</strong><span>{item.total > 0 ? `${item.done}/${item.total} · ${percentage}%` : "Нет данных"}</span></div>
+                <div className={styles.reportCoverageTrack} role="progressbar" aria-label={item.label} aria-valuemin={0} aria-valuemax={item.total} aria-valuenow={Math.min(item.done, item.total)}><i style={{ width: `${percentage}%` }} /></div>
+                <small>{item.detail}</small>
+              </li>;
+            })}</ul>
+          </section>
           {reportData.summary.aiReview.analyzedCaptures > 0 && <p className={styles.captureInfo}>ИИ-предложений: {reportData.summary.aiReview.totalSuggestions} · высокая уверенность: {reportData.summary.aiReview.byConfidence.high ?? 0} · средняя: {reportData.summary.aiReview.byConfidence.medium ?? 0} · низкая: {reportData.summary.aiReview.byConfidence.low ?? 0}</p>}
           <section className={styles.reportSignals} aria-label="Автоматические сигналы проверки">
             <div className={styles.reportSignalsHeading}>

@@ -13,7 +13,7 @@ type Review = { id: string; projectId: string; title: string; mode: string; stat
 type FigmaConnectionStatus = { connected: boolean; figmaUserId: string | null; expiresAt: string | null; connectedAt: string | null };
 type Page = { id: string; route: string; label: string; status: string; designAssetId: string | null; viewport: { width: number; height: number; deviceScale: number }; findingCount: number };
 type Design = { name: string; url: string };
-type AiDesignAnalysis = { status: "complete"; provider: "openai"; model: string; createdAt: string; summary: string; limitation: string; findings: Array<{ category: "design" | "accessibility" | "requirement"; severity: "critical" | "high" | "medium" | "low" | "info"; confidence: "low" | "medium" | "high"; summary: string; details: string; evidence: string }> };
+type AiDesignAnalysis = { status: "complete"; provider: "openai"; model: string; createdAt: string; summary: string; limitation: string; findings: Array<{ category: "design"; severity: "critical" | "high" | "medium" | "low" | "info"; confidence: "low" | "medium" | "high"; summary: string; details: string; evidence: string }> };
 type Capture = { captureId: string; status: "queued" | "captured" | "failed"; screenshotUrl: string | null; sha256: string | null; viewport: Page["viewport"]; safeErrorCode: string | null; capturedAt: string | null; aiAnalysis: AiDesignAnalysis | null; visualDiff: { status: "ready" | "failed"; changedPercent?: number; changedPixels?: number; totalPixels?: number; regions?: { x: number; y: number; width: number; height: number; changedPercent: number }[]; diffOverlayUrl: string | null; safeErrorCode?: string } | null };
 type CompareMode = "side" | "overlay" | "wipe";
 type FindingPoint = { x: number; y: number; left: number; top: number };
@@ -266,7 +266,7 @@ export default function ReviewPage() {
         [selectedPage.id]: { ...current[selectedPage.id], aiAnalysis: result.analysis },
       }));
       setMessage(result.reused ? "Показан сохранённый ИИ-разбор." : "ИИ-разбор готов. Проверьте каждое замечание вручную.");
-      void loadReport(review.id);
+      void loadReport();
     } catch (error) {
       const detail = error instanceof Error ? error.message : "";
       setMessage(detail.includes("AI_REVIEW_NOT_CONFIGURED")

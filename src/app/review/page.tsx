@@ -692,7 +692,7 @@ export default function ReviewPage() {
             </li>)}</ol>
           </details>}
         </>}
-        {selectedPage && <ApiCheckPanel />}
+        {selectedPage && <ApiCheckPanel reviewId={review?.id ?? ""} pageId={selectedPage.id} />}
         {selectedPage && <section className={styles.requirements}>
           <h3>Требования для этой страницы</h3>
           <p>Добавьте пункты ТЗ по одному на строку. Статус «Выполнено» можно поставить только со снимком-доказательством.</p>

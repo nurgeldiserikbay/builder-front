@@ -20,7 +20,8 @@ type ApiCheckResult = {
   safeErrorCode: "REQUEST_FAILED" | "REQUEST_TIMEOUT" | null;
 };
 
-type SavedApiCheck = { id: string; method: "GET" | "HEAD"; endpoint: string; expectedStatus: number; actualStatus: number | null; durationMs: number; passed: boolean; checkedAt: string; createdAt: string };
+type SavedApiCheck = { id: string; requirementId: string | null; method: "GET" | "HEAD"; endpoint: string; expectedStatus: number; actualStatus: number | null; durationMs: number; passed: boolean; checkedAt: string; createdAt: string };
+type BackendRequirement = { id: string; category: string; title: string; status: string };
 
 async function readPreview(response: Response, limit = 64 * 1024): Promise<{ text: string; truncated: boolean }> {
   if (!response.body) return { text: "", truncated: false };
@@ -76,6 +77,8 @@ export default function ApiCheckPanel({ reviewId, pageId }: { reviewId: string; 
   const [result, setResult] = useState<ApiCheckResult | null>(null);
   const [error, setError] = useState("");
   const [history, setHistory] = useState<SavedApiCheck[]>([]);
+  const [requirements, setRequirements] = useState<BackendRequirement[]>([]);
+  const [requirementId, setRequirementId] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [historyError, setHistoryError] = useState("");
@@ -85,9 +88,16 @@ export default function ApiCheckPanel({ reviewId, pageId }: { reviewId: string; 
     setHistory([]);
     setHistoryError("");
     if (!reviewId || !pageId) return;
-    api<SavedApiCheck[]>("/reviews/" + reviewId + "/pages/" + pageId + "/api-checks")
-      .then((items) => { if (active) setHistory(items); })
-      .catch(() => { if (active) setHistoryError("Не удалось загрузить историю проверок."); });
+    Promise.all([
+      api<SavedApiCheck[]>("/reviews/" + reviewId + "/pages/" + pageId + "/api-checks"),
+      api<BackendRequirement[]>("/reviews/" + reviewId + "/pages/" + pageId + "/requirements"),
+    ])
+      .then(([items, allRequirements]) => {
+        if (!active) return;
+        setHistory(items);
+        setRequirements(allRequirements.filter((item) => item.category === "backend"));
+      })
+      .catch(() => { if (active) setHistoryError("Не удалось загрузить историю проверок или backend-требования."); });
     return () => { active = false; };
   }, [reviewId, pageId]);
 
@@ -102,6 +112,7 @@ export default function ApiCheckPanel({ reviewId, pageId }: { reviewId: string; 
           method: result.method, endpoint: result.endpoint, expectedStatus: result.expectedStatus,
           actualStatus: result.actualStatus, durationMs: result.durationMs, jsonPath: result.jsonPath || null,
           jsonMatches: result.jsonMatches, safeErrorCode: result.safeErrorCode, checkedAt: result.checkedAt,
+          requirementId: requirementId || null,
         }),
       });
       setHistory((current) => [item, ...current].slice(0, 50));
@@ -224,6 +235,7 @@ export default function ApiCheckPanel({ reviewId, pageId }: { reviewId: string; 
       jsonPath: result.jsonPath || null,
       jsonMatches: result.jsonMatches,
       safeErrorCode: result.safeErrorCode,
+      requirementId: requirementId || null,
     };
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -241,6 +253,12 @@ export default function ApiCheckPanel({ reviewId, pageId }: { reviewId: string; 
     </div>
     <form className={styles.apiCheckForm} onSubmit={(event) => void runCheck(event)}>
       <label className={styles.apiCheckEndpoint}>URL API<input type="url" required maxLength={2048} value={endpoint} onChange={(event) => setEndpoint(event.target.value)} placeholder="https://api.example.com/v1/health" autoComplete="url" /></label>
+      {requirements.length > 0 && <label className={styles.apiCheckEndpoint}>Пункт backend-ТЗ
+        <select value={requirementId} onChange={(event) => setRequirementId(event.target.value)}>
+          <option value="">Не привязывать к пункту</option>
+          {requirements.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+        </select>
+      </label>}
       <label>Метод<select value={method} onChange={(event) => setMethod(event.target.value as "GET" | "HEAD")}><option>GET</option><option>HEAD</option></select></label>
       <label>Ожидаемый статус<input type="number" min="100" max="599" step="1" value={expectedStatus} onChange={(event) => setExpectedStatus(event.target.value)} /></label>
       <label>JSON-путь <small>необязательно</small><input value={jsonPath} onChange={(event) => setJsonPath(event.target.value)} maxLength={160} placeholder="data.status" /></label>
@@ -256,7 +274,7 @@ export default function ApiCheckPanel({ reviewId, pageId }: { reviewId: string; 
       <ul>{history.map((item) => <li key={item.id} data-passed={item.passed}>
         <strong>{item.passed ? "Пройдено" : "Не пройдено"}</strong>
         <span>{item.method} {item.endpoint}</span>
-        <small>HTTP {item.actualStatus ?? "—"} / ожидался {item.expectedStatus} · {item.durationMs} мс · {new Date(item.checkedAt).toLocaleString()}</small>
+        <small>{item.requirementId ? "Пункт: " + (requirements.find((req) => req.id === item.requirementId)?.title ?? "backend-ТЗ") + " · " : ""}HTTP {item.actualStatus ?? "—"} / ожидался {item.expectedStatus} · {item.durationMs} мс · {new Date(item.checkedAt).toLocaleString()}</small>
       </li>)}</ul>
     </details>}
     {result && <div className={result.passed ? styles.apiCheckPassed : styles.apiCheckFailed} aria-live="polite">

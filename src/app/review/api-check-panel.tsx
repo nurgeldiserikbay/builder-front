@@ -75,6 +75,39 @@ export default function ApiCheckPanel({ reviewId, pageId }: { reviewId: string; 
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ApiCheckResult | null>(null);
   const [error, setError] = useState("");
+  const [history, setHistory] = useState<SavedApiCheck[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    if (!reviewId || !pageId) return;
+    api<SavedApiCheck[]>("/reviews/" + reviewId + "/pages/" + pageId + "/api-checks")
+      .then((items) => { if (active) setHistory(items); })
+      .catch(() => { if (active) setHistoryError("Не удалось загрузить историю проверок."); });
+    return () => { active = false; };
+  }, [reviewId, pageId]);
+
+  async function saveResult() {
+    if (!result || !reviewId || !pageId || saving || saved) return;
+    setSaving(true);
+    setError("");
+    try {
+      const item = await api<SavedApiCheck>("/reviews/" + reviewId + "/pages/" + pageId + "/api-checks", {
+        method: "POST",
+        body: JSON.stringify({
+          method: result.method, endpoint: result.endpoint, expectedStatus: result.expectedStatus,
+          actualStatus: result.actualStatus, durationMs: result.durationMs, jsonPath: result.jsonPath || null,
+          jsonMatches: result.jsonMatches, safeErrorCode: result.safeErrorCode, checkedAt: result.checkedAt,
+        }),
+      });
+      setHistory((current) => [item, ...current].slice(0, 50));
+      setSaved(true);
+    } catch {
+      setError("Не удалось сохранить безопасные метаданные проверки.");
+    } finally { setSaving(false); }
+  }
 
   async function runCheck(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

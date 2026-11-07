@@ -216,6 +216,14 @@
 .apiCheckError{background:#fff1ef;color:#9f3b32}
 .apiCheckPassed{background:#edf7ef;color:#315d39}
 .apiCheckFailed{background:#fff4e8;color:#8c5c20}
+.apiCheckActions{display:flex;flex-wrap:wrap;gap:6px}
+.apiCheckHistory{padding:9px 10px;border:1px solid #e1e9e1;border-radius:8px;background:#fff}
+.apiCheckHistory ul{display:grid;gap:6px;margin:8px 0 0;padding:0;list-style:none}
+.apiCheckHistory li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 8px;padding:7px;border-radius:6px;background:#f7f9f7;font-size:9px}
+.apiCheckHistory li[data-passed="true"] strong{color:#367043}
+.apiCheckHistory li[data-passed="false"] strong{color:#a44c35}
+.apiCheckHistory li span{overflow-wrap:anywhere;color:#5c6c60}
+.apiCheckHistory li small{grid-column:1/-1;color:#829086;font-size:8px}
 .apiCheckResultHeading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .apiCheckResultHeading>div{min-width:0;display:grid;gap:4px}
 .apiCheckResultHeading strong{font-size:10px}

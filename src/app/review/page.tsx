@@ -21,6 +21,7 @@ type Finding = { id: string; pageId: string | null; category: string; severity: 
 type ReviewReport = {
   schemaVersion: number;
   generatedAt: string;
+  signals: Array<{ id: string; code: string; severity: "high" | "medium" | "info"; pageId: string; requirementId: string | null; title: string; details: string }>;
   review: { id: string; title: string; mode: string; status: string; siteOrigin: string | null; createdAt: string };
   summary: {
     pages: { total: number; mapped: number; captured: number };
@@ -28,6 +29,7 @@ type ReviewReport = {
     requirements: { total: number; byStatus: Record<string, number> };
     findings: { total: number; byStatus: Record<string, number> };
     apiChecks: { totalRecent: number; passedRecent: number };
+    analysis: { source: "rules_v1"; totalSignals: number; bySeverity: Record<string, number> };
   };
   pages: Array<{
     id: string; route: string; title: string | null; status: string; designMapped: boolean;

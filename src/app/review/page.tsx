@@ -33,7 +33,7 @@ type ReviewReport = {
   };
   pages: Array<{
     id: string; route: string; title: string | null; status: string; designMapped: boolean;
-    latestCapture: { status: "queued" | "captured" | "failed"; capturedAt: string | null; visualDiff: { status: "ready" | "failed"; changedPercent: number | null } | null } | null;
+    latestCapture: { status: "queued" | "captured" | "failed"; capturedAt: string | null; visualDiff: { status: "ready" | "failed"; changedPercent: number | null } | null; qualityAudit: { checkedAt: string | null; pageTitlePresent: boolean; languagePresent: boolean; h1Count: number; imagesMissingAlt: number; linksMissingName: number; buttonsMissingName: number; formControlsMissingLabel: number } | null } | null;
     requirements: Array<{ id: string; category: string; title: string; status: string; verificationNote: string | null; evidenceCaptureId: string | null }>;
     findings: Array<{ id: string; category: string; severity: string; status: string; summary: string; createdAt: string }>;
     apiChecks: Array<{ id: string; requirementId: string | null; method: "GET" | "HEAD"; endpoint: string; expectedStatus: number; actualStatus: number | null; durationMs: number; passed: boolean; jsonPath: string | null; jsonMatches: boolean | null; safeErrorCode: string | null; checkedAt: string }>;

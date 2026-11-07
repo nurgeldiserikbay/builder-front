@@ -159,6 +159,14 @@ export default function ReviewPage() {
     return () => { cancelled = true; clearTimeout(timer); };
   }, [review?.id, review?.status]);
 
+  const backendCoverage = reportData ? reportData.pages.flatMap((page) =>
+    page.requirements.filter((requirement) => requirement.category === "backend").map((requirement) => ({
+      requirement,
+      check: page.apiChecks.find((item) => item.requirementId === requirement.id) ?? null,
+    })),
+  ) : [];
+  const checkedBackendRequirements = backendCoverage.filter((item) => item.check !== null).length;
+
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? null;
   const selectedDesign = selectedPage ? designs[selectedPage.id] : undefined;
   const selectedCapture = selectedPage ? captures[selectedPage.id] : undefined;
@@ -646,6 +654,7 @@ export default function ReviewPage() {
             <div><strong>{reportData.summary.requirements.total}</strong><span>пунктов ТЗ</span></div>
             <div><strong>{reportData.summary.findings.total}</strong><span>замечаний</span></div>
             <div><strong>{reportData.summary.apiChecks.passedRecent}/{reportData.summary.apiChecks.totalRecent}</strong><span>API-проверок пройдено</span></div>
+            <div><strong>{checkedBackendRequirements}/{backendCoverage.length}</strong><span>backend-ТЗ с API-проверкой</span></div>
             <div><strong>{reportData.summary.visualDiff.averageChangedPercent === null ? "—" : `${reportData.summary.visualDiff.averageChangedPercent}%`}</strong><span>среднее отличие</span></div>
           </div>
           <div className={styles.reportColumns}>

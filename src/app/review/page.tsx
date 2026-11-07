@@ -30,6 +30,7 @@ type ReviewReport = {
     requirements: { total: number; byStatus: Record<string, number> };
     findings: { total: number; byStatus: Record<string, number> };
     apiChecks: { totalRecent: number; passedRecent: number };
+    aiReview: { analyzedCaptures: number; totalSuggestions: number; byConfidence: Record<string, number> };
     analysis: { source: "rules_v1"; totalSignals: number; bySeverity: Record<string, number> };
   };
   pages: Array<{
@@ -687,7 +688,9 @@ export default function ReviewPage() {
             <div><strong>{reportData.summary.apiChecks.passedRecent}/{reportData.summary.apiChecks.totalRecent}</strong><span>API-проверок пройдено</span></div>
             <div><strong>{checkedBackendRequirements}/{backendCoverage.length}</strong><span>backend-ТЗ с API-проверкой</span></div>
             <div><strong>{reportData.summary.visualDiff.averageChangedPercent === null ? "—" : `${reportData.summary.visualDiff.averageChangedPercent}%`}</strong><span>среднее отличие</span></div>
+            <div><strong>{reportData.summary.aiReview.analyzedCaptures}</strong><span>ИИ-разборов</span></div>
           </div>
+          {reportData.summary.aiReview.analyzedCaptures > 0 && <p className={styles.captureInfo}>ИИ-предложений: {reportData.summary.aiReview.totalSuggestions} · высокая уверенность: {reportData.summary.aiReview.byConfidence.high ?? 0} · средняя: {reportData.summary.aiReview.byConfidence.medium ?? 0} · низкая: {reportData.summary.aiReview.byConfidence.low ?? 0}</p>}
           <section className={styles.reportSignals} aria-label="Автоматические сигналы проверки">
             <div className={styles.reportSignalsHeading}>
               <div><h4>Что требует внимания</h4><p>Правила подсвечивают пробелы в данных и результатах. Это не ИИ-оценка макета.</p></div>

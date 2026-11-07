@@ -27,12 +27,14 @@ type ReviewReport = {
     visualDiff: { compared: number; averageChangedPercent: number | null };
     requirements: { total: number; byStatus: Record<string, number> };
     findings: { total: number; byStatus: Record<string, number> };
+    apiChecks: { totalRecent: number; passedRecent: number };
   };
   pages: Array<{
     id: string; route: string; title: string | null; status: string; designMapped: boolean;
     latestCapture: { status: "queued" | "captured" | "failed"; capturedAt: string | null; visualDiff: { status: "ready" | "failed"; changedPercent: number | null } | null } | null;
     requirements: Array<{ id: string; category: string; title: string; status: string; verificationNote: string | null; evidenceCaptureId: string | null }>;
     findings: Array<{ id: string; category: string; severity: string; status: string; summary: string; createdAt: string }>;
+    apiChecks: Array<{ id: string; requirementId: string | null; method: "GET" | "HEAD"; endpoint: string; expectedStatus: number; actualStatus: number | null; durationMs: number; passed: boolean; jsonPath: string | null; jsonMatches: boolean | null; safeErrorCode: string | null; checkedAt: string }>;
   }>;
   limitations: string[];
 };
@@ -643,6 +645,7 @@ export default function ReviewPage() {
             <div><strong>{reportData.summary.pages.captured}</strong><span>снимков готово</span></div>
             <div><strong>{reportData.summary.requirements.total}</strong><span>пунктов ТЗ</span></div>
             <div><strong>{reportData.summary.findings.total}</strong><span>замечаний</span></div>
+            <div><strong>{reportData.summary.apiChecks.passedRecent}/{reportData.summary.apiChecks.totalRecent}</strong><span>API-проверок пройдено</span></div>
             <div><strong>{reportData.summary.visualDiff.averageChangedPercent === null ? "—" : `${reportData.summary.visualDiff.averageChangedPercent}%`}</strong><span>среднее отличие</span></div>
           </div>
           <div className={styles.reportColumns}>
@@ -662,7 +665,19 @@ export default function ReviewPage() {
               <span className={page.designMapped ? styles.reportGood : styles.reportPending}>{page.designMapped ? "Макет есть" : "Нет макета"}</span>
               <span className={page.latestCapture?.status === "captured" ? styles.reportGood : styles.reportPending}>{page.latestCapture?.status === "captured" ? "Снимок готов" : page.latestCapture?.status === "queued" ? "Снимок в очереди" : page.latestCapture?.status === "failed" ? "Снимок с ошибкой" : "Нет снимка"}</span>
               <span className={page.latestCapture?.visualDiff?.status === "ready" ? styles.reportGood : styles.reportPending}>{page.latestCapture?.visualDiff?.status === "ready" ? page.latestCapture.visualDiff.changedPercent === null ? "Сравнение готово" : `Отличие ${page.latestCapture.visualDiff.changedPercent}%` : page.latestCapture?.visualDiff?.status === "failed" ? "Сравнение недоступно" : "Нет сравнения"}</span>
-              <small>{page.requirements.length} требований · {page.findings.length} замечаний</small>
+              <small>{page.requirements.length} требований · {page.findings.length} замечаний · {page.apiChecks.length} API-проверок</small>
+              {page.apiChecks.length > 0 && <details className={styles.reportPageChecks}>
+                <summary>Проверки Backend / API</summary>
+                <ul>{page.apiChecks.map((check) => {
+                  const requirement = page.requirements.find((item) => item.id === check.requirementId);
+                  return <li key={check.id}>
+                    <strong className={check.passed ? styles.reportGood : styles.reportPending}>{check.passed ? "Пройдена" : "Не пройдена"}</strong>
+                    <span>{requirement ? "ТЗ: " + requirement.title : "Без привязки к пункту ТЗ"}</span>
+                    <code>{check.method} {check.endpoint}</code>
+                    <small>HTTP {check.actualStatus ?? "—"} / ожидался {check.expectedStatus} · {check.durationMs} мс · {new Date(check.checkedAt).toLocaleString("ru-RU")}</small>
+                  </li>;
+                })}</ul>
+              </details>}
             </li>)}</ul>
           <details className={styles.reportLimitations}><summary>Границы этой проверки</summary><ul>{reportData.limitations.map((item) => <li key={item}>{item}</li>)}</ul></details>
         </section>}

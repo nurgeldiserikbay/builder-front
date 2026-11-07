@@ -675,6 +675,19 @@ export default function ReviewPage() {
               <span className={page.latestCapture?.status === "captured" ? styles.reportGood : styles.reportPending}>{page.latestCapture?.status === "captured" ? "Снимок готов" : page.latestCapture?.status === "queued" ? "Снимок в очереди" : page.latestCapture?.status === "failed" ? "Снимок с ошибкой" : "Нет снимка"}</span>
               <span className={page.latestCapture?.visualDiff?.status === "ready" ? styles.reportGood : styles.reportPending}>{page.latestCapture?.visualDiff?.status === "ready" ? page.latestCapture.visualDiff.changedPercent === null ? "Сравнение готово" : `Отличие ${page.latestCapture.visualDiff.changedPercent}%` : page.latestCapture?.visualDiff?.status === "failed" ? "Сравнение недоступно" : "Нет сравнения"}</span>
               <small>{page.requirements.length} требований · {page.findings.length} замечаний · {page.apiChecks.length} API-проверок</small>
+              {page.requirements.some((item) => item.category === "backend") && <details className={styles.reportPageChecks}>
+                <summary>Backend-ТЗ · {page.requirements.filter((item) => item.category === "backend" && page.apiChecks.some((check) => check.requirementId === item.id)).length}/{page.requirements.filter((item) => item.category === "backend").length} с API-проверкой</summary>
+                <ul>{page.requirements.filter((item) => item.category === "backend").map((requirement) => {
+                  const latestCheck = page.apiChecks.find((check) => check.requirementId === requirement.id);
+                  const labels: Record<string, string> = { pending: "Ожидает проверки", satisfied: "Выполнено", failed: "Не выполнено", blocked: "Заблокировано", unknown: "Неизвестно" };
+                  return <li key={requirement.id}>
+                    <strong className={requirement.status === "satisfied" ? styles.reportGood : requirement.status === "failed" ? styles.reportBad : styles.reportPending}>{labels[requirement.status] ?? requirement.status}</strong>
+                    <span>{requirement.title}</span>
+                    <small>{latestCheck ? latestCheck.passed ? "Последняя API-проверка пройдена" : "Последняя API-проверка не пройдена" : "API-проверка не привязана"}</small>
+                    {requirement.verificationNote && <small>Комментарий: {requirement.verificationNote}</small>}
+                  </li>;
+                })}</ul>
+              </details>}
               {page.apiChecks.length > 0 && <details className={styles.reportPageChecks}>
                 <summary>Проверки Backend / API</summary>
                 <ul>{page.apiChecks.map((check) => {

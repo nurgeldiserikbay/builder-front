@@ -196,3 +196,33 @@
 .figmaImport>button{min-height:30px;padding:6px 9px;border:0;border-radius:7px;background:#315f45;color:#fff;font:inherit;font-size:10px;font-weight:700;cursor:pointer}
 .figmaImport>button:disabled{opacity:.55;cursor:wait}
 .figmaImport>.figmaDisconnect{border:1px solid #dce4dc;background:#fff;color:#65736a}
+
+.apiCheck{margin-top:16px;padding:14px;border:1px solid #dce6dc;border-radius:11px;background:linear-gradient(145deg,#fbfdfb,#f4f8f3);color:#405647}
+.apiCheckHeading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.apiCheckHeading h3{margin:0;font-size:12px;color:#344b39}
+.apiCheckHeading p{margin:4px 0 0;font-size:9px;line-height:1.5;color:#77847a}
+.apiCheckHeading>span{padding:5px 7px;border-radius:6px;background:#e6f0e6;color:#46724f;font-size:8px;font-weight:800;letter-spacing:.04em;white-space:nowrap}
+.apiCheckForm{margin-top:12px;display:grid;grid-template-columns:minmax(220px,2fr) repeat(2,minmax(95px,.65fr));gap:9px}
+.apiCheckForm label{min-width:0;display:grid;align-content:start;gap:5px;color:#637368;font-size:9px;font-weight:700}
+.apiCheckForm label small{font-size:8px;font-weight:400;color:#89938b}
+.apiCheckForm input,.apiCheckForm select{width:100%;height:32px;min-width:0;padding:0 9px;border:1px solid #dce4dc;border-radius:7px;background:#fff;color:#38483d;font:inherit;font-size:10px;outline:none}
+.apiCheckForm input:focus,.apiCheckForm select:focus{border-color:#75a27a;box-shadow:0 0 0 2px #75a27a22}
+.apiCheckEndpoint{grid-column:span 2}
+.apiCheckToken{grid-column:span 2}
+.apiCheckForm>button{align-self:end;min-height:32px;padding:0 12px;border:0;border-radius:7px;background:#2d6749;color:#fff;font:inherit;font-size:10px;font-weight:700;cursor:pointer}
+.apiCheckForm>button:disabled{opacity:.6;cursor:wait}
+.apiCheckPrivacy{margin:10px 0 0;font-size:9px;line-height:1.5;color:#77847a}
+.apiCheckError,.apiCheckPassed,.apiCheckFailed{margin:10px 0 0;padding:10px;border-radius:8px;font-size:10px;line-height:1.5}
+.apiCheckError{background:#fff1ef;color:#9f3b32}
+.apiCheckPassed{background:#edf7ef;color:#315d39}
+.apiCheckFailed{background:#fff4e8;color:#8c5c20}
+.apiCheckResultHeading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.apiCheckResultHeading>div{min-width:0;display:grid;gap:4px}
+.apiCheckResultHeading strong{font-size:10px}
+.apiCheckResultHeading small{font-size:8px;overflow-wrap:anywhere;color:#6f7e72}
+.apiCheckResultHeading p{margin:0}
+.apiCheckResultHeading button{flex:0 0 auto;padding:6px 8px;border:1px solid currentColor;border-radius:6px;background:transparent;color:inherit;font:inherit;font-size:9px;font-weight:700;cursor:pointer}
+.apiCheck details{margin-top:8px}
+.apiCheck summary{cursor:pointer;font-size:9px;font-weight:700}
+.apiCheck pre{max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0 0;padding:9px;border-radius:6px;background:#17251f;color:#e4ede5;font:9px/1.5 ui-monospace,monospace}
+@media(max-width:700px){.apiCheck{padding:11px}.apiCheckHeading{flex-direction:column}.apiCheckForm{grid-template-columns:1fr 1fr}.apiCheckEndpoint,.apiCheckToken{grid-column:1/-1}.apiCheckForm>button{grid-column:1/-1}.apiCheckResultHeading{flex-direction:column}.apiCheckResultHeading button{align-self:flex-start}}

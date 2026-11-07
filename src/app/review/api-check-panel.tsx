@@ -248,10 +248,22 @@ export default function ApiCheckPanel({ reviewId, pageId }: { reviewId: string; 
     </form>
     <p className={styles.apiCheckPrivacy}>Токен, ответ и URL с параметрами не сохраняются и не передаются BuildPath. Для чтения ответа API должен разрешить CORS для адреса этого сайта. Ответ ограничен 64 КБ.</p>
     {error && <p className={styles.apiCheckError} role="alert">{error}</p>}
+    {historyError && <p className={styles.apiCheckError}>{historyError}</p>}
+    {history.length > 0 && <details className={styles.apiCheckHistory} open>
+      <summary>История этой страницы ({history.length} последних)</summary>
+      <ul>{history.map((item) => <li key={item.id} data-passed={item.passed}>
+        <strong>{item.passed ? "Пройдено" : "Не пройдено"}</strong>
+        <span>{item.method} {item.endpoint}</span>
+        <small>HTTP {item.actualStatus ?? "—"} / ожидался {item.expectedStatus} · {item.durationMs} мс · {new Date(item.checkedAt).toLocaleString()}</small>
+      </li>)}</ul>
+    </details>}
     {result && <div className={result.passed ? styles.apiCheckPassed : styles.apiCheckFailed} aria-live="polite">
       <div className={styles.apiCheckResultHeading}>
         <div><strong>{result.passed ? "Проверка пройдена" : "Проверка не пройдена"}</strong><small>{result.method} {result.endpoint} · HTTP {result.actualStatus ?? "—"} · {result.durationMs} мс</small><p>{result.message}</p></div>
-        <button type="button" onClick={downloadResult}>Скачать JSON</button>
+        <div className={styles.apiCheckActions}>
+          <button type="button" onClick={downloadResult}>Скачать JSON</button>
+          <button type="button" onClick={() => void saveResult()} disabled={saving || saved || !reviewId}>{saved ? "Сохранено в отчёт" : saving ? "Сохраняем…" : "Сохранить в отчёт"}</button>
+        </div>
       </div>
       {result.responsePreview && <details><summary>Фрагмент ответа {result.responseTruncated ? "(обрезан)" : ""}</summary><pre>{result.responsePreview}</pre></details>}
     </div>}

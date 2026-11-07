@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 import styles from "./review.module.css";
 
 type ApiCheckResult = {
@@ -16,7 +17,10 @@ type ApiCheckResult = {
   responseTruncated: boolean;
   jsonPath: string;
   jsonMatches: boolean | null;
+  safeErrorCode: "REQUEST_FAILED" | "REQUEST_TIMEOUT" | null;
 };
+
+type SavedApiCheck = { id: string; method: "GET" | "HEAD"; endpoint: string; expectedStatus: number; actualStatus: number | null; durationMs: number; passed: boolean; checkedAt: string; createdAt: string };
 
 async function readPreview(response: Response, limit = 64 * 1024): Promise<{ text: string; truncated: boolean }> {
   if (!response.body) return { text: "", truncated: false };
@@ -61,7 +65,7 @@ function readJsonPath(value: unknown, path: string): unknown {
   }, value);
 }
 
-export default function ApiCheckPanel() {
+export default function ApiCheckPanel({ reviewId, pageId }: { reviewId: string; pageId: string }) {
   const [endpoint, setEndpoint] = useState("");
   const [method, setMethod] = useState<"GET" | "HEAD">("GET");
   const [expectedStatus, setExpectedStatus] = useState("200");

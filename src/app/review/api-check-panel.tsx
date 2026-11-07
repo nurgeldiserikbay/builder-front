@@ -113,6 +113,7 @@ export default function ApiCheckPanel({ reviewId, pageId }: { reviewId: string; 
     event.preventDefault();
     setError("");
     setResult(null);
+    setSaved(false);
 
     let target: URL;
     try {
@@ -186,12 +187,21 @@ export default function ApiCheckPanel({ reviewId, pageId }: { reviewId: string; 
         responseTruncated: preview.truncated,
         jsonPath: jsonPath.trim(),
         jsonMatches,
+        safeErrorCode: null,
       });
     } catch (cause) {
       const timedOut = cause instanceof DOMException && cause.name === "AbortError";
+      const checkedAt = new Date().toISOString();
+      const durationMs = Math.min(12_000, Math.round(performance.now() - startedAt));
       setError(timedOut
         ? "Запрос превысил лимит 12 секунд."
         : "Браузер не получил доступ к API. Проверьте адрес и CORS-разрешение для этого сайта.");
+      setResult({
+        passed: false, endpoint: safeEndpoint, method, expectedStatus: expected, actualStatus: null,
+        durationMs, checkedAt, message: timedOut ? "Запрос превысил лимит 12 секунд." : "Браузер не получил доступ к API.",
+        responsePreview: "", responseTruncated: false, jsonPath: jsonPath.trim(), jsonMatches: null,
+        safeErrorCode: timedOut ? "REQUEST_TIMEOUT" : "REQUEST_FAILED",
+      });
     } finally {
       window.clearTimeout(timeout);
       setBusy(false);
@@ -211,6 +221,7 @@ export default function ApiCheckPanel({ reviewId, pageId }: { reviewId: string; 
       passed: result.passed,
       jsonPath: result.jsonPath || null,
       jsonMatches: result.jsonMatches,
+      safeErrorCode: result.safeErrorCode,
     };
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);

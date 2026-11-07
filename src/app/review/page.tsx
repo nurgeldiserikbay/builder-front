@@ -455,7 +455,7 @@ export default function ReviewPage() {
       setCaptures((current) => ({
         ...current,
         [selectedPage.id]: {
-          captureId: queued.captureId, status: "queued", screenshotUrl: null, sha256: null, visualDiff: null,
+          captureId: queued.captureId, status: "queued", screenshotUrl: null, sha256: null, visualDiff: null, aiAnalysis: null,
           viewport: selectedPage.viewport, safeErrorCode: null, capturedAt: null,
         },
       }));

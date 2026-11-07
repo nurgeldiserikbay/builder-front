@@ -696,6 +696,23 @@ export default function ReviewPage() {
               <span className={page.latestCapture?.status === "captured" ? styles.reportGood : styles.reportPending}>{page.latestCapture?.status === "captured" ? "Снимок готов" : page.latestCapture?.status === "queued" ? "Снимок в очереди" : page.latestCapture?.status === "failed" ? "Снимок с ошибкой" : "Нет снимка"}</span>
               <span className={page.latestCapture?.visualDiff?.status === "ready" ? styles.reportGood : styles.reportPending}>{page.latestCapture?.visualDiff?.status === "ready" ? page.latestCapture.visualDiff.changedPercent === null ? "Сравнение готово" : `Отличие ${page.latestCapture.visualDiff.changedPercent}%` : page.latestCapture?.visualDiff?.status === "failed" ? "Сравнение недоступно" : "Нет сравнения"}</span>
               <small>{page.requirements.length} требований · {page.findings.length} замечаний · {page.apiChecks.length} API-проверок</small>
+              {page.latestCapture?.qualityAudit && <details className={styles.reportPageChecks}>
+                <summary>Проверка доступности и структуры страницы</summary>
+                <ul>{(() => {
+                  const audit = page.latestCapture!.qualityAudit!;
+                  const checks = [
+                    ["Заголовок вкладки", audit.pageTitlePresent ? "Есть" : "Не найдено"],
+                    ["Язык документа", audit.languagePresent ? "Указан" : "Не указан"],
+                    ["Заголовок H1", audit.h1Count > 0 ? "Найдено: " + audit.h1Count : "Не найден"],
+                    ["Изображения без alt", String(audit.imagesMissingAlt)],
+                    ["Ссылки без подписи", String(audit.linksMissingName)],
+                    ["Кнопки без подписи", String(audit.buttonsMissingName)],
+                    ["Поля формы без подписи", String(audit.formControlsMissingLabel)],
+                  ];
+                  return checks.map(([label, value], index) => <li key={index}><span>{label}</span><strong>{value}</strong></li>);
+                })()}</ul>
+                {page.latestCapture.qualityAudit.checkedAt && <small>Проверено {new Date(page.latestCapture.qualityAudit.checkedAt).toLocaleString("ru-RU")}</small>}
+              </details>}
               {page.requirements.some((item) => item.category === "backend") && <details className={styles.reportPageChecks}>
                 <summary>Backend-ТЗ · {page.requirements.filter((item) => item.category === "backend" && page.apiChecks.some((check) => check.requirementId === item.id)).length}/{page.requirements.filter((item) => item.category === "backend").length} с API-проверкой</summary>
                 <ul>{page.requirements.filter((item) => item.category === "backend").map((requirement) => {

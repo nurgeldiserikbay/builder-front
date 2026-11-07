@@ -86,6 +86,8 @@ export default function ApiCheckPanel({ reviewId, pageId }: { reviewId: string; 
   useEffect(() => {
     let active = true;
     setHistory([]);
+    setRequirements([]);
+    setRequirementId("");
     setHistoryError("");
     if (!reviewId || !pageId) return;
     Promise.all([

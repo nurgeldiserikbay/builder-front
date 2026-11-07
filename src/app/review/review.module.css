@@ -216,6 +216,8 @@
   .reportHeading h3,.reportColumns h4,.reportPagesTitle{color:#111}
   .reportMetrics>div,.reportColumns section,.reportPageList li{background:#fff;border:1px solid #ddd;break-inside:avoid}
   .reportPageList{max-height:none;overflow:visible}
+  .reportSignals ul{max-height:none;overflow:visible}
+  .reportSignals li{break-inside:avoid}
   .reportPageList li{grid-template-columns:minmax(140px,1fr) repeat(4,auto);font-size:9pt}
   .reportLimitations{break-inside:avoid}
 }

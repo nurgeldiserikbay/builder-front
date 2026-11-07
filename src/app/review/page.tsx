@@ -49,6 +49,99 @@ type ReviewReport = {
   limitations: string[];
 };
 
+function escapeReportHtml(value: unknown): string {
+  const entities: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;",
+  };
+  return String(value ?? "").replace(/[&<>"']/g, (character) => entities[character] ?? character);
+}
+
+function buildStaticHtmlReport(report: ReviewReport): string {
+  const escape = escapeReportHtml;
+  const labels: Record<string, string> = {
+    pending: "Ожидает проверки",
+    satisfied: "Подтверждено",
+    failed: "Не выполнено",
+    blocked: "Заблокировано",
+    unknown: "Не проверено",
+    open: "Открыто",
+    in_progress: "В работе",
+    resolved: "Решено",
+    dismissed: "Отклонено",
+  };
+  const statusLabel = (value: string) => labels[value] ?? value;
+  const coverageRows: Array<{ label: string; checked: number; total: number }> = [
+    { label: "Рабочий сайт", checked: report.summary.coverage.site.checked, total: report.summary.coverage.site.total },
+    { label: "ТЗ подтверждено", checked: report.summary.coverage.requirements.satisfied, total: report.summary.coverage.requirements.total },
+    { label: "Сравнено с макетом", checked: report.summary.coverage.design.compared, total: report.summary.coverage.design.total },
+    { label: "Backend проверен API", checked: report.summary.coverage.backend.checked, total: report.summary.coverage.backend.total },
+  ];
+  const coverageHtml = coverageRows.map((item) => {
+    const percent = item.total > 0 ? Math.min(100, Math.round(item.checked / item.total * 100)) : 0;
+    const count = item.total > 0 ? item.checked + "/" + item.total + " · " + percent + "%" : "Нет данных";
+    return "<article class=\"coverage-card\"><div><strong>" + escape(item.label) + "</strong><b>" + escape(count) + "</b></div><div class=\"track\"><i style=\"width:" + percent + "%\"></i></div></article>";
+  }).join("");
+  const requirementStatusHtml = Object.entries(report.summary.requirements.byStatus).map(([status, count]) =>
+    "<li><span>" + escape(statusLabel(status)) + "</span><strong>" + count + "</strong></li>",
+  ).join("");
+  const signalHtml = report.signals.map((signal) =>
+    "<li><div><strong>" + escape(signal.title) + "</strong><span class=\"badge\">" + escape(statusLabel(signal.severity)) + "</span></div><p>" + escape(signal.details) + "</p></li>",
+  ).join("");
+  const pageHtml = report.pages.map((page, index) => {
+    const requirements = page.requirements.map((requirement) =>
+      "<li><span>" + escape(requirement.title) + "</span><strong>" + escape(statusLabel(requirement.status)) + "</strong></li>",
+    ).join("");
+    const findings = page.findings.map((finding) =>
+      "<li><span>" + escape(finding.summary) + "</span><strong>" + escape(finding.severity) + " · " + escape(statusLabel(finding.status)) + "</strong></li>",
+    ).join("");
+    const apiChecks = page.apiChecks.map((check) =>
+      "<li><code>" + escape(check.method) + " " + escape(check.endpoint) + "</code><strong>" + (check.passed ? "Пройдено" : "Не пройдено") + (check.actualStatus === null ? "" : " · HTTP " + check.actualStatus) + "</strong></li>",
+    ).join("");
+    const captureStatus = page.latestCapture ? statusLabel(page.latestCapture.status) : "Нет снимка";
+    const diff = page.latestCapture?.visualDiff?.changedPercent === null || page.latestCapture?.visualDiff?.changedPercent === undefined
+      ? "Нет данных"
+      : page.latestCapture.visualDiff.changedPercent + "%";
+    const quality = page.latestCapture?.qualityAudit
+      ? "H1: " + page.latestCapture.qualityAudit.h1Count + ", изображения без alt: " + page.latestCapture.qualityAudit.imagesMissingAlt + ", ссылки без названия: " + page.latestCapture.qualityAudit.linksMissingName + ", кнопки без названия: " + page.latestCapture.qualityAudit.buttonsMissingName + ", поля без подписи: " + page.latestCapture.qualityAudit.formControlsMissingLabel
+      : "Аудит пока не запускался";
+    return "<section class=\"page-card\"><h3>" + (index + 1) + ". " + escape(page.title || page.route) + "</h3><p class=\"muted\">" + escape(page.route) + " · снимок: " + escape(captureStatus) + " · отличие: " + escape(diff) + " · макет: " + (page.designMapped ? "привязан" : "не привязан") + "</p><p>" + escape(quality) + "</p>" +
+      (requirements ? "<h4>Требования</h4><ul class=\"rows\">" + requirements + "</ul>" : "") +
+      (findings ? "<h4>Замечания</h4><ul class=\"rows\">" + findings + "</ul>" : "") +
+      (apiChecks ? "<h4>API-проверки</h4><ul class=\"rows\">" + apiChecks + "</ul>" : "") +
+      "</section>";
+  }).join("");
+  const limitationsHtml = report.limitations.map((limitation) => "<li>" + escape(limitation) + "</li>").join("");
+  const generatedAt = new Date(report.generatedAt);
+  const dateLabel = Number.isNaN(generatedAt.getTime()) ? report.generatedAt : generatedAt.toLocaleString("ru-RU");
+  const pageTitle = escape(report.review.title) + " — BuildPath";
+  return [
+    "<!doctype html>",
+    "<html lang=\"ru\">",
+    "<head>",
+    "<meta charset=\"utf-8\">",
+    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
+    "<title>" + pageTitle + "</title>",
+    "<style>",
+    "body{margin:0;background:#f4f7f3;color:#24352b;font:15px/1.55 Arial,sans-serif}main{max-width:1040px;margin:0 auto;padding:32px 20px 56px}header,.panel,.page-card{background:#fff;border:1px solid #e0e8df;border-radius:14px;padding:20px;margin:0 0 16px}h1{margin:0 0 5px;font-size:26px}h2{font-size:18px;margin:0 0 12px}h3{font-size:16px;margin:0 0 4px}h4{font-size:13px;margin:16px 0 5px;color:#405647}.muted{color:#6f7e72;font-size:13px}.coverage{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.coverage-card{padding:12px;border:1px solid #e5ece4;border-radius:10px}.coverage-card>div:first-child{display:flex;justify-content:space-between;gap:8px;font-size:12px}.coverage-card b{white-space:nowrap;color:#2d6749}.track{height:6px;margin-top:9px;background:#e9eee8;border-radius:99px;overflow:hidden}.track i{display:block;height:100%;background:#64a978;border-radius:99px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stats article{padding:12px;border-radius:9px;background:#f1f5ef}.stats strong{display:block;color:#2d6749;font-size:20px}.rows{list-style:none;padding:0;margin:6px 0}.rows li{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #edf1ec;font-size:13px}.rows strong{color:#405647;text-align:right}.rows code{overflow-wrap:anywhere}.signal-list{padding-left:20px}.signal-list li{margin:8px 0}.signal-list li>div{display:flex;justify-content:space-between;gap:10px}.signal-list p{margin:3px 0;color:#657268;font-size:13px}.badge{padding:2px 7px;border-radius:99px;background:#fff4df;color:#775a22;font-size:11px;white-space:nowrap}.page-card{break-inside:avoid}.page-card h3{overflow-wrap:anywhere}.footnote{font-size:12px;color:#68776b} @media(max-width:700px){main{padding:14px 10px 32px}.coverage{grid-template-columns:repeat(2,minmax(0,1fr))}.stats{grid-template-columns:repeat(2,1fr)}} @media(max-width:420px){.coverage{grid-template-columns:1fr}.rows li{align-items:flex-start;flex-direction:column}.rows strong{text-align:left}} @media print{body{background:#fff}main{max-width:none;padding:0}.panel,.page-card,header{box-shadow:none;break-inside:avoid}}",
+    "</style>",
+    "</head>",
+    "<body><main>",
+    "<header><h1>" + escape(report.review.title) + "</h1><div class=\"muted\">Сформировано " + escape(dateLabel) + " · состояние: " + escape(statusLabel(report.review.status)) + (report.review.siteOrigin ? " · сайт: " + escape(report.review.siteOrigin) : "") + "</div></header>",
+    "<section class=\"panel\"><h2>Покрытие проверки</h2><p class=\"muted\">Индикаторы показывают объём собранных доказательств, а не автоматическую оценку качества продукта.</p><div class=\"coverage\">" + coverageHtml + "</div></section>",
+    "<section class=\"panel\"><h2>Сводка</h2><div class=\"stats\"><article><strong>" + report.summary.pages.total + "</strong>страниц</article><article><strong>" + report.summary.visualDiff.compared + "</strong>визуальных сравнений</article><article><strong>" + report.summary.findings.total + "</strong>замечаний</article><article><strong>" + report.summary.apiChecks.passedRecent + "/" + report.summary.apiChecks.totalRecent + "</strong>API-проверок пройдено</article><article><strong>" + report.summary.aiReview.analyzedCaptures + "</strong>ИИ-разборов</article><article><strong>" + report.summary.aiReview.totalSuggestions + "</strong>ИИ-предложений</article><article><strong>" + (report.summary.visualDiff.averageChangedPercent === null ? "—" : report.summary.visualDiff.averageChangedPercent + "%") + "</strong>среднее отличие</article><article><strong>" + report.summary.analysis.totalSignals + "</strong>сигналов правил</article></div></section>",
+    "<section class=\"panel\"><h2>Статусы требований</h2>" + (requirementStatusHtml ? "<ul class=\"rows\">" + requirementStatusHtml + "</ul>" : "<p class=\"muted\">Требования ещё не добавлены.</p>") + "</section>",
+    "<section class=\"panel\"><h2>Что требует внимания</h2>" + (signalHtml ? "<ul class=\"signal-list\">" + signalHtml + "</ul>" : "<p class=\"muted\">Автоматические сигналы не найдены.</p>") + "</section>",
+    "<section><h2>Страницы</h2>" + (pageHtml || "<p class=\"muted\">Страницы не найдены.</p>") + "</section>",
+    "<section class=\"panel\"><h2>Ограничения отчёта</h2><ul>" + limitationsHtml + "</ul><p class=\"footnote\">Пиксельные отличия, API-проверки и ИИ-рекомендации являются отдельными свидетельствами. ИИ-результаты не подтверждают требования автоматически. Сформировано BuildPath, версия схемы " + report.schemaVersion + ".</p></section>",
+    "</main></body>",
+    "</html>",
+  ].join("\n");
+}
+
 const statusText: Record<string, string> = {
   draft: "Черновик", queued: "В очереди", discovering: "Ищем страницы",
   ready: "Страницы найдены", failed: "Сканирование завершилось с ошибкой",
@@ -600,6 +693,19 @@ export default function ReviewPage() {
     setMessage("JSON-отчёт сохранён. Его можно приложить к задаче или передать разработчику.");
   }
 
+  async function downloadHtmlReport() {
+    const report = await loadReport();
+    if (!report) return;
+    const blob = new Blob([buildStaticHtmlReport(report)], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `buildpath-review-${report.review.id}.html`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setMessage("HTML-отчёт сохранён. Его можно открыть в браузере или передать команде.");
+  }
+
   async function logout() {
     try { await api<void>("/auth/logout", { method: "POST" }); } finally { router.replace("/login"); }
   }
@@ -680,6 +786,7 @@ export default function ReviewPage() {
           <div className={styles.reportHeading}>
             <div><h3>Сводка проверки</h3><small>{reportData.review.title} · сформировано {new Date(reportData.generatedAt).toLocaleString("ru-RU")}</small></div>
             <div className={styles.reportActions}>
+              <button className={styles.reportPrint} onClick={downloadHtmlReport} disabled={reportBusy}>Скачать HTML</button>
               <button className={styles.reportPrint} onClick={() => window.print()}>Печать / PDF</button>
               <button className={styles.reportClose} onClick={() => setReportData(null)} aria-label="Скрыть сводку">×</button>
             </div>

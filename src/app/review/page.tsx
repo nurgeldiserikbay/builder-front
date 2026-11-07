@@ -25,6 +25,12 @@ type ReviewReport = {
   signals: Array<{ id: string; code: string; severity: "high" | "medium" | "info"; pageId: string; requirementId: string | null; title: string; details: string }>;
   review: { id: string; title: string; mode: string; status: string; siteOrigin: string | null; createdAt: string };
   summary: {
+    coverage: {
+      site: { checked: number; total: number };
+      requirements: { satisfied: number; total: number };
+      design: { compared: number; total: number };
+      backend: { checked: number; total: number };
+    };
     pages: { total: number; mapped: number; captured: number };
     visualDiff: { compared: number; averageChangedPercent: number | null };
     requirements: { total: number; byStatus: Record<string, number> };
@@ -164,18 +170,11 @@ export default function ReviewPage() {
     return () => { cancelled = true; clearTimeout(timer); };
   }, [review?.id, review?.status]);
 
-  const backendCoverage = reportData ? reportData.pages.flatMap((page) =>
-    page.requirements.filter((requirement) => requirement.category === "backend").map((requirement) => ({
-      requirement,
-      check: page.apiChecks.find((item) => item.requirementId === requirement.id) ?? null,
-    })),
-  ) : [];
-  const checkedBackendRequirements = backendCoverage.filter((item) => item.check !== null).length;
   const reviewCoverage = reportData ? [
-    { label: "Рабочий сайт", done: reportData.summary.pages.captured, total: reportData.summary.pages.total, detail: "страниц со снимком" },
-    { label: "ТЗ", done: reportData.summary.requirements.byStatus.satisfied ?? 0, total: reportData.summary.requirements.total, detail: "пунктов подтверждено" },
-    { label: "Макет", done: Math.min(reportData.summary.visualDiff.compared, reportData.summary.pages.mapped), total: reportData.summary.pages.mapped, detail: "страниц сравнено с макетом" },
-    { label: "Backend", done: checkedBackendRequirements, total: backendCoverage.length, detail: "backend-пунктов проверено API" },
+    { label: "Рабочий сайт", done: reportData.summary.coverage.site.checked, total: reportData.summary.coverage.site.total, detail: "страниц со снимком" },
+    { label: "ТЗ", done: reportData.summary.coverage.requirements.satisfied, total: reportData.summary.coverage.requirements.total, detail: "пунктов подтверждено" },
+    { label: "Макет", done: reportData.summary.coverage.design.compared, total: reportData.summary.coverage.design.total, detail: "страниц сравнено с макетом" },
+    { label: "Backend", done: reportData.summary.coverage.backend.checked, total: reportData.summary.coverage.backend.total, detail: "backend-пунктов проверено API" },
   ] : [];
 
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? null;
@@ -692,7 +691,7 @@ export default function ReviewPage() {
             <div><strong>{reportData.summary.requirements.total}</strong><span>пунктов ТЗ</span></div>
             <div><strong>{reportData.summary.findings.total}</strong><span>замечаний</span></div>
             <div><strong>{reportData.summary.apiChecks.passedRecent}/{reportData.summary.apiChecks.totalRecent}</strong><span>API-проверок пройдено</span></div>
-            <div><strong>{checkedBackendRequirements}/{backendCoverage.length}</strong><span>backend-ТЗ с API-проверкой</span></div>
+            <div><strong>{reportData.summary.coverage.backend.checked}/{reportData.summary.coverage.backend.total}</strong><span>backend-ТЗ с API-проверкой</span></div>
             <div><strong>{reportData.summary.visualDiff.averageChangedPercent === null ? "—" : `${reportData.summary.visualDiff.averageChangedPercent}%`}</strong><span>среднее отличие</span></div>
             <div><strong>{reportData.summary.aiReview.analyzedCaptures}</strong><span>ИИ-разборов</span></div>
           </div>

@@ -19,11 +19,28 @@ type CompareMode = "side" | "overlay" | "wipe";
 type FindingPoint = { x: number; y: number; left: number; top: number };
 type Requirement = { id: string; pageId: string | null; category: string; title: string; details: string | null; status: "pending" | "satisfied" | "failed" | "blocked" | "unknown"; verificationNote: string | null; evidenceCaptureId: string | null; createdAt: string; updatedAt: string };
 type Finding = { id: string; pageId: string | null; category: string; severity: string; status: string; confidence: string; summary: string; coordinates: { x: number; y: number } | null; evidence: unknown; createdAt: string; updatedAt: string };
+type QualityGate = {
+  status: "not_configured" | "invalid_configuration" | "not_assessed" | "blocked" | "passed";
+  profile: { key: string; name: string; version: number } | null;
+  evaluatedAt: string;
+  requirementCoverage: { status: "not_applicable" | "passed" | "blocked"; actualPercent: number | null; minimumPercent: number | null };
+  apiChecks: { checked: number; failed: number };
+  categories: Array<{
+    id: "security" | "accessibility" | "performance" | "seo";
+    enabled: boolean; required: boolean; status: "disabled" | "not_assessed" | "blocked" | "passed";
+    evidence: { checked: number; total: number };
+    issues: { critical: number; high: number; medium: number; low: number };
+    reasons: string[];
+  }>;
+  blockingReasons: string[];
+};
+
 type ReviewReport = {
   schemaVersion: number;
   generatedAt: string;
   signals: Array<{ id: string; code: string; severity: "high" | "medium" | "info"; pageId: string; requirementId: string | null; title: string; details: string }>;
   review: { id: string; title: string; mode: string; status: string; siteOrigin: string | null; createdAt: string };
+  qualityGate: QualityGate;
   summary: {
     coverage: {
       site: { checked: number; total: number };
@@ -48,6 +65,25 @@ type ReviewReport = {
   }>;
   limitations: string[];
 };
+
+function formatQualityGateReason(reason: string): string {
+  const labels: Record<string, string> = {
+    profile_snapshot_invalid: "Снимок профиля повреждён.",
+    profile_policy_invalid: "Политика профиля имеет неподдерживаемый формат.",
+    requirements_coverage_below_minimum: "Покрытие требований ниже заданного порога.",
+    backend_api_check_failed: "Не пройдены пользовательские API-проверки.",
+    assessment_not_supported: "Полная проверка этой категории пока не поддерживается.",
+    evidence_incomplete: "Не все страницы имеют необходимые результаты проверки.",
+    critical_finding_limit_exceeded: "Превышен лимит критических замечаний.",
+    high_finding_limit_exceeded: "Превышен лимит замечаний высокого уровня.",
+  };
+  const categoryLabels: Record<string, string> = { security: "Безопасность", accessibility: "Доступность", performance: "Производительность", seo: "SEO" };
+  const separator = reason.indexOf(":");
+  if (separator < 0) return labels[reason] ?? reason;
+  const category = reason.slice(0, separator);
+  const code = reason.slice(separator + 1);
+  return (categoryLabels[category] ?? category) + ": " + (labels[code] ?? code);
+}
 
 function escapeReportHtml(value: unknown): string {
   const entities: Record<string, string> = {
@@ -114,6 +150,43 @@ function buildStaticHtmlReport(report: ReviewReport): string {
       (apiChecks ? "<h4>API-проверки</h4><ul class=\"rows\">" + apiChecks + "</ul>" : "") +
       "</section>";
   }).join("");
+  const gateStatusLabels: Record<QualityGate["status"], string> = {
+    not_configured: "Профиль не настроен", invalid_configuration: "Профиль повреждён",
+    not_assessed: "Нет достаточных данных", blocked: "Проверка заблокирована", passed: "Проверки пройдены",
+  };
+  const gateCategoryLabels: Record<QualityGate["categories"][number]["id"], string> = {
+    security: "Безопасность", accessibility: "Доступность", performance: "Производительность", seo: "SEO",
+  };
+  const gateCategoryStatus: Record<QualityGate["categories"][number]["status"], string> = {
+    disabled: "Выключено", not_assessed: "Нет данных", blocked: "Блокировка", passed: "Проверено",
+  };
+  const gateReasonLabel = (reason: string) => {
+    const labels: Record<string, string> = {
+      profile_snapshot_invalid: "Некорректный снимок профиля.",
+      profile_policy_invalid: "Политика профиля имеет неподдерживаемый формат.",
+      requirements_coverage_below_minimum: "Покрытие требований ниже заданного порога.",
+      backend_api_check_failed: "Не пройдены пользовательские API-проверки.",
+      assessment_not_supported: "В текущем анализаторе нет полной проверки этой категории.",
+      evidence_incomplete: "Не все страницы имеют необходимые результаты проверки.",
+      critical_finding_limit_exceeded: "Превышен лимит открытых критических замечаний.",
+      high_finding_limit_exceeded: "Превышен лимит открытых замечаний высокого уровня.",
+    };
+    const [category, code] = reason.includes(":") ? reason.split(":", 2) : ["", reason];
+    return (category ? (gateCategoryLabels[category as keyof typeof gateCategoryLabels] ?? category) + ": " : "") + (labels[code] ?? code);
+  };
+  const gateRowsHtml = report.qualityGate.categories.map((category) =>
+    "<li><span>" + escape(gateCategoryLabels[category.id]) + " · " + escape(gateCategoryStatus[category.status]) + "</span><strong>" + escape(category.evidence.checked + "/" + category.evidence.total + " страниц") + " · critical " + category.issues.critical + " · high " + category.issues.high + " · medium " + category.issues.medium + "</strong></li>",
+  ).join("");
+  const gateReasonsHtml = report.qualityGate.blockingReasons.map((reason) => "<li>" + escape(gateReasonLabel(reason)) + "</li>").join("");
+  const gateProfileLabel = report.qualityGate.profile
+    ? escape(report.qualityGate.profile.name) + " · v" + report.qualityGate.profile.version
+    : "Нет активного профиля для этого review";
+  const qualityGateHtml = "<section class=\"panel quality-gate\" data-status=\"" + escape(report.qualityGate.status) + "\"><h2>Quality gate: " + escape(gateStatusLabels[report.qualityGate.status]) + "</h2><p class=\"muted\">Профиль: " + gateProfileLabel + "</p>" +
+    (report.qualityGate.requirementCoverage.actualPercent === null ? "" : "<p>Покрытие требований: " + report.qualityGate.requirementCoverage.actualPercent + "% · минимум " + report.qualityGate.requirementCoverage.minimumPercent + "%</p>") +
+    "<p>API-проверки: " + report.qualityGate.apiChecks.failed + " ошибок из " + report.qualityGate.apiChecks.checked + " проверок</p>" +
+    (gateRowsHtml ? "<ul class=\"rows\">" + gateRowsHtml + "</ul>" : "") +
+    (gateReasonsHtml ? "<ul class=\"signal-list\">" + gateReasonsHtml + "</ul>" : "") +
+    "<p class=\"muted\">Это оценка имеющихся данных отчёта, а не разрешение на публикацию. Полные security и performance проверки пока не выполняются.</p></section>";
   const limitationsHtml = report.limitations.map((limitation) => "<li>" + escape(limitation) + "</li>").join("");
   const generatedAt = new Date(report.generatedAt);
   const dateLabel = Number.isNaN(generatedAt.getTime()) ? report.generatedAt : generatedAt.toLocaleString("ru-RU");
@@ -127,11 +200,13 @@ function buildStaticHtmlReport(report: ReviewReport): string {
     "<title>" + pageTitle + "</title>",
     "<style>",
     "body{margin:0;background:#f4f7f3;color:#24352b;font:15px/1.55 Arial,sans-serif}main{max-width:1040px;margin:0 auto;padding:32px 20px 56px}header,.panel,.page-card{background:#fff;border:1px solid #e0e8df;border-radius:14px;padding:20px;margin:0 0 16px}h1{margin:0 0 5px;font-size:26px}h2{font-size:18px;margin:0 0 12px}h3{font-size:16px;margin:0 0 4px}h4{font-size:13px;margin:16px 0 5px;color:#405647}.muted{color:#6f7e72;font-size:13px}.coverage{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.coverage-card{padding:12px;border:1px solid #e5ece4;border-radius:10px}.coverage-card>div:first-child{display:flex;justify-content:space-between;gap:8px;font-size:12px}.coverage-card b{white-space:nowrap;color:#2d6749}.track{height:6px;margin-top:9px;background:#e9eee8;border-radius:99px;overflow:hidden}.track i{display:block;height:100%;background:#64a978;border-radius:99px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stats article{padding:12px;border-radius:9px;background:#f1f5ef}.stats strong{display:block;color:#2d6749;font-size:20px}.rows{list-style:none;padding:0;margin:6px 0}.rows li{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #edf1ec;font-size:13px}.rows strong{color:#405647;text-align:right}.rows code{overflow-wrap:anywhere}.signal-list{padding-left:20px}.signal-list li{margin:8px 0}.signal-list li>div{display:flex;justify-content:space-between;gap:10px}.signal-list p{margin:3px 0;color:#657268;font-size:13px}.badge{padding:2px 7px;border-radius:99px;background:#fff4df;color:#775a22;font-size:11px;white-space:nowrap}.page-card{break-inside:avoid}.page-card h3{overflow-wrap:anywhere}.footnote{font-size:12px;color:#68776b} @media(max-width:700px){main{padding:14px 10px 32px}.coverage{grid-template-columns:repeat(2,minmax(0,1fr))}.stats{grid-template-columns:repeat(2,1fr)}} @media(max-width:420px){.coverage{grid-template-columns:1fr}.rows li{align-items:flex-start;flex-direction:column}.rows strong{text-align:left}} @media print{body{background:#fff}main{max-width:none;padding:0}.panel,.page-card,header{box-shadow:none;break-inside:avoid}}",
+    ".quality-gate[data-status=blocked],.quality-gate[data-status=invalid_configuration]{border-color:#e3b7ae;background:#fffafa}.quality-gate[data-status=passed]{border-color:#b7d9c0;background:#fbfefb}.quality-gate[data-status=not_assessed]{background:#fffdf5}",
     "</style>",
     "</head>",
     "<body><main>",
     "<header><h1>" + escape(report.review.title) + "</h1><div class=\"muted\">Сформировано " + escape(dateLabel) + " · состояние: " + escape(statusLabel(report.review.status)) + (report.review.siteOrigin ? " · сайт: " + escape(report.review.siteOrigin) : "") + "</div></header>",
     "<section class=\"panel\"><h2>Покрытие проверки</h2><p class=\"muted\">Индикаторы показывают объём собранных доказательств, а не автоматическую оценку качества продукта.</p><div class=\"coverage\">" + coverageHtml + "</div></section>",
+    qualityGateHtml,
     "<section class=\"panel\"><h2>Сводка</h2><div class=\"stats\"><article><strong>" + report.summary.pages.total + "</strong>страниц</article><article><strong>" + report.summary.visualDiff.compared + "</strong>визуальных сравнений</article><article><strong>" + report.summary.findings.total + "</strong>замечаний</article><article><strong>" + report.summary.apiChecks.passedRecent + "/" + report.summary.apiChecks.totalRecent + "</strong>API-проверок пройдено</article><article><strong>" + report.summary.aiReview.analyzedCaptures + "</strong>ИИ-разборов</article><article><strong>" + report.summary.aiReview.totalSuggestions + "</strong>ИИ-предложений</article><article><strong>" + (report.summary.visualDiff.averageChangedPercent === null ? "—" : report.summary.visualDiff.averageChangedPercent + "%") + "</strong>среднее отличие</article><article><strong>" + report.summary.analysis.totalSignals + "</strong>сигналов правил</article></div></section>",
     "<section class=\"panel\"><h2>Статусы требований</h2>" + (requirementStatusHtml ? "<ul class=\"rows\">" + requirementStatusHtml + "</ul>" : "<p class=\"muted\">Требования ещё не добавлены.</p>") + "</section>",
     "<section class=\"panel\"><h2>Что требует внимания</h2>" + (signalHtml ? "<ul class=\"signal-list\">" + signalHtml + "</ul>" : "<p class=\"muted\">Автоматические сигналы не найдены.</p>") + "</section>",
@@ -815,6 +890,20 @@ export default function ReviewPage() {
                 <small>{item.detail}</small>
               </li>;
             })}</ul>
+          </section>
+          <section className={styles.reportQualityGate} data-status={reportData.qualityGate.status} aria-label="Quality gate">
+            <div className={styles.reportQualityHeading}>
+              <div><h4>Quality gate: {({ not_configured: "профиль не настроен", invalid_configuration: "ошибка профиля", not_assessed: "недостаточно данных", blocked: "есть блокирующие условия", passed: "проверки пройдены" } as Record<QualityGate["status"], string>)[reportData.qualityGate.status]}</h4>
+                <p>{reportData.qualityGate.profile ? `${reportData.qualityGate.profile.name} · версия ${reportData.qualityGate.profile.version}` : "Для этой проверки не был выбран активный профиль."}</p></div>
+              <span>{reportData.qualityGate.requirementCoverage.actualPercent === null ? "ТЗ: нет данных" : `ТЗ: ${reportData.qualityGate.requirementCoverage.actualPercent}% / ${reportData.qualityGate.requirementCoverage.minimumPercent}%`} · API: {reportData.qualityGate.apiChecks.failed} ошибок из {reportData.qualityGate.apiChecks.checked}</span>
+            </div>
+            {reportData.qualityGate.categories.length > 0 && <ul>{reportData.qualityGate.categories.map((category) =>
+              <li key={category.id} data-status={category.status}>
+                <div><strong>{({ security: "Безопасность", accessibility: "Доступность", performance: "Производительность", seo: "SEO" } as Record<QualityGate["categories"][number]["id"], string>)[category.id]}</strong><small>{category.required ? "Обязательная" : "Необязательная"} · {category.evidence.checked}/{category.evidence.total} страниц · замечания critical {category.issues.critical}, high {category.issues.high}, medium {category.issues.medium}</small></div>
+                <span>{({ disabled: "Выключено", not_assessed: "Нет данных", blocked: "Блок", passed: "Проверено" } as Record<QualityGate["categories"][number]["status"], string>)[category.status]}</span>
+              </li>)}</ul>}
+            {reportData.qualityGate.blockingReasons.length > 0 && <div className={styles.reportQualityReasons}><strong>Причины</strong><ul>{reportData.qualityGate.blockingReasons.map((reason) => <li key={reason}>{formatQualityGateReason(reason)}</li>)}</ul></div>}
+            <small>Оценка использует только доступные данные. Полные security/performance проверки и публикационная блокировка пока не реализованы.</small>
           </section>
           {reportData.summary.aiReview.analyzedCaptures > 0 && <p className={styles.captureInfo}>ИИ-предложений: {reportData.summary.aiReview.totalSuggestions} · высокая уверенность: {reportData.summary.aiReview.byConfidence.high ?? 0} · средняя: {reportData.summary.aiReview.byConfidence.medium ?? 0} · низкая: {reportData.summary.aiReview.byConfidence.low ?? 0}</p>}
           <section className={styles.reportSignals} aria-label="Автоматические сигналы проверки">

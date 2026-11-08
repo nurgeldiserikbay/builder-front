@@ -280,3 +280,23 @@
 
 @media(max-width:700px){.reportCoverageHeading{align-items:flex-start;flex-direction:column}.reportCoverage ul{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.reportCoverage ul{grid-template-columns:1fr}}
+
+.reportQualityGate{margin:16px 0;padding:16px;border:1px solid #e3ebe4;border-radius:12px;background:#fff}
+.reportQualityGate[data-status=blocked],.reportQualityGate[data-status=invalid_configuration]{border-color:#e3b7ae;background:#fffafa}
+.reportQualityGate[data-status=passed]{border-color:#b7d9c0;background:#fbfefb}
+.reportQualityHeading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:11px}
+.reportQualityHeading h4{margin:0 0 4px;font-size:14px}
+.reportQualityHeading p{margin:0;color:#6b776f;font-size:11px}
+.reportQualityHeading>span{font-size:11px;font-weight:700;color:#255b42;white-space:nowrap}
+.reportQualityGate>ul{list-style:none;padding:0;margin:8px 0}
+.reportQualityGate>ul>li{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #e3ebe4;padding:9px 0}
+.reportQualityGate>ul>li div{display:grid;gap:3px}
+.reportQualityGate>ul>li strong{font-size:11px}
+.reportQualityGate>ul>li small,.reportQualityGate>small{font-size:10px;color:#6b776f;line-height:1.5}
+.reportQualityGate>ul>li>span{font-size:10px;font-weight:700}
+.reportQualityGate>ul>li[data-status=blocked]>span{color:#a33f2c}
+.reportQualityGate>ul>li[data-status=passed]>span{color:#255b42}
+.reportQualityReasons{padding:10px 12px;background:#fff4ee;color:#8e3d2e;border-radius:8px;font-size:11px}
+.reportQualityReasons ul{margin:6px 0 0;padding-left:18px}
+.reportQualityGate>small{display:block;margin-top:8px}
+@media(max-width:600px){.reportQualityHeading{flex-direction:column}.reportQualityHeading>span{white-space:normal}.reportQualityGate>ul>li{align-items:flex-start;flex-direction:column}}

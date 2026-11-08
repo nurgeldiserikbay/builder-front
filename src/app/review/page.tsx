@@ -58,7 +58,7 @@ type ReviewReport = {
   };
   pages: Array<{
     id: string; route: string; title: string | null; status: string; designMapped: boolean;
-    latestCapture: { status: "queued" | "captured" | "failed"; capturedAt: string | null; aiAnalysis: AiDesignAnalysis | null; visualDiff: { status: "ready" | "failed"; changedPercent: number | null } | null; qualityAudit: { checkedAt: string | null; pageTitlePresent: boolean; languagePresent: boolean; h1Count: number; imagesMissingAlt: number; linksMissingName: number; buttonsMissingName: number; formControlsMissingLabel: number } | null } | null;
+    latestCapture: { status: "queued" | "captured" | "failed"; capturedAt: string | null; aiAnalysis: AiDesignAnalysis | null; visualDiff: { status: "ready" | "failed"; changedPercent: number | null } | null; qualityAudit: { checkedAt: string | null; pageTitlePresent: boolean; languagePresent: boolean; h1Count: number; imagesMissingAlt: number; linksMissingName: number; buttonsMissingName: number; formControlsMissingLabel: number; performance: { navigationMs: number | null; ttfbMs: number | null; transferBytes: number; resourceCount: number } | null; security: { isHttps: boolean; hsts: boolean | null; contentSecurityPolicy: boolean; xContentTypeOptions: boolean; referrerPolicy: boolean; permissionsPolicy: boolean; frameProtection: boolean } | null } | null } | null;
     requirements: Array<{ id: string; category: string; title: string; status: string; verificationNote: string | null; evidenceCaptureId: string | null }>;
     findings: Array<{ id: string; category: string; severity: string; status: string; summary: string; createdAt: string }>;
     apiChecks: Array<{ id: string; requirementId: string | null; method: "GET" | "HEAD"; endpoint: string; expectedStatus: number; actualStatus: number | null; durationMs: number; passed: boolean; jsonPath: string | null; jsonMatches: boolean | null; safeErrorCode: string | null; checkedAt: string }>;
@@ -142,7 +142,7 @@ function buildStaticHtmlReport(report: ReviewReport): string {
       ? "Нет данных"
       : page.latestCapture.visualDiff.changedPercent + "%";
     const quality = page.latestCapture?.qualityAudit
-      ? "H1: " + page.latestCapture.qualityAudit.h1Count + ", изображения без alt: " + page.latestCapture.qualityAudit.imagesMissingAlt + ", ссылки без названия: " + page.latestCapture.qualityAudit.linksMissingName + ", кнопки без названия: " + page.latestCapture.qualityAudit.buttonsMissingName + ", поля без подписи: " + page.latestCapture.qualityAudit.formControlsMissingLabel
+      ? "H1: " + page.latestCapture.qualityAudit.h1Count + ", изображения без alt: " + page.latestCapture.qualityAudit.imagesMissingAlt + ", ссылки без названия: " + page.latestCapture.qualityAudit.linksMissingName + ", кнопки без названия: " + page.latestCapture.qualityAudit.buttonsMissingName + ", поля без подписи: " + page.latestCapture.qualityAudit.formControlsMissingLabel + ", HTTPS: " + (page.latestCapture.qualityAudit.security ? (page.latestCapture.qualityAudit.security.isHttps ? "да" : "нет") : "нет данных") + ", загрузка: " + (page.latestCapture.qualityAudit.performance?.navigationMs ?? "нет данных") + " мс"
       : "Аудит пока не запускался";
     return "<section class=\"page-card\"><h3>" + (index + 1) + ". " + escape(page.title || page.route) + "</h3><p class=\"muted\">" + escape(page.route) + " · снимок: " + escape(captureStatus) + " · отличие: " + escape(diff) + " · макет: " + (page.designMapped ? "привязан" : "не привязан") + "</p><p>" + escape(quality) + "</p>" +
       (requirements ? "<h4>Требования</h4><ul class=\"rows\">" + requirements + "</ul>" : "") +
@@ -955,6 +955,13 @@ export default function ReviewPage() {
                     ["Ссылки без подписи", String(audit.linksMissingName)],
                     ["Кнопки без подписи", String(audit.buttonsMissingName)],
                     ["Поля формы без подписи", String(audit.formControlsMissingLabel)],
+                    ["HTTPS", audit.security ? (audit.security.isHttps ? "Да" : "Нет") : "Нет данных"],
+                    ["HSTS", audit.security?.hsts === null || !audit.security ? "Не применяется" : (audit.security.hsts ? "Есть" : "Не найдено")],
+                    ["Content-Security-Policy", audit.security ? (audit.security.contentSecurityPolicy ? "Есть" : "Не найдено") : "Нет данных"],
+                    ["Защита от встраивания во frame", audit.security ? (audit.security.frameProtection ? "Есть" : "Не найдена") : "Нет данных"],
+                    ["Время навигации", audit.performance?.navigationMs === null || !audit.performance ? "Нет данных" : audit.performance.navigationMs + " мс"],
+                    ["TTFB", audit.performance?.ttfbMs === null || !audit.performance ? "Нет данных" : audit.performance.ttfbMs + " мс"],
+                    ["Передача ресурсов", audit.performance ? Math.round(audit.performance.transferBytes / 1024) + " КБ · " + audit.performance.resourceCount + " ресурсов" : "Нет данных"],
                   ];
                   return checks.map(([label, value], index) => <li key={index}><span>{label}</span><strong>{value}</strong></li>);
                 })()}</ul>

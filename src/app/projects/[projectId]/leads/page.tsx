@@ -29,7 +29,7 @@ export default function LeadsPage() {
   const load = useCallback(async (after?: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/projects/${projectId}/leads${after ? `?cursor=${after}` : ""}`, { credentials: "include" });
-      if (response.status === 401) { router.replace("/login"); return; }
+      if (response.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return; }
       const payload = await response.json() as { data?: Lead[]; meta?: { nextCursor: string | null }; message?: string };
       if (!response.ok) throw new ApiError(response.status, payload.message ?? "REQUEST_FAILED");
       setLeads((current) => (after && current ? [...current, ...(payload.data ?? [])] : payload.data ?? []));

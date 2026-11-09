@@ -54,7 +54,7 @@ export default function StagePage() {
       setDirty(!next.current && type === "design" && next.stage.canEdit);
       return next;
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) { router.replace("/login"); return null; }
+      if (caught instanceof ApiError && caught.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return null; }
       setError(explainError(caught));
       return null;
     }

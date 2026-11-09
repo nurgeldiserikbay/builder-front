@@ -293,7 +293,7 @@ export default function ReviewPage() {
       })
       .catch((error: unknown) => {
         if (!active) return;
-        if (error instanceof ApiError && error.status === 401) router.replace("/login");
+        if (error instanceof ApiError && error.status === 401) router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`);
         else setMessage(error instanceof Error ? error.message : "Не удалось загрузить рабочее пространство.");
       })
       .finally(() => { if (active) setLoading(false); });
@@ -493,7 +493,7 @@ export default function ReviewPage() {
       setMessage("Ссылка прошла серверную проверку. Страницы будут добавляться по мере работы worker.");
     } catch (error) {
       setReview(null);
-      if (error instanceof ApiError && error.status === 401) router.replace("/login");
+      if (error instanceof ApiError && error.status === 401) router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`);
       else setMessage(error instanceof Error ? error.message : "Не удалось запустить проверку.");
     } finally {
       setBusy(false);
@@ -782,7 +782,7 @@ export default function ReviewPage() {
   }
 
   async function logout() {
-    try { await api<void>("/auth/logout", { method: "POST" }); } finally { router.replace("/login"); }
+    try { await api<void>("/auth/logout", { method: "POST" }); } finally { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); }
   }
 
   return <main className={styles.page}>

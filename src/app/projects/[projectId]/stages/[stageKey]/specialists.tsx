@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { explainError, type Suggestion } from "@/lib/journey";
+import { isPlanMessage, explainError, type Suggestion } from "@/lib/journey";
 import styles from "../../../journey.module.css";
 
 type Assignment = { id: string; email: string; name: string | null; role: "lead" | "consultant"; status: string; aiBudget: number | null; aiUsed: number; inviteExpired: boolean; readUntil: string | null };
@@ -52,7 +52,7 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
     <section className={styles.card} aria-label="Специалисты">
       <p className={styles.cardTitle}>Специалисты на этапе</p>
       <p className={styles.small} style={{ marginTop: 0 }}>Пригласите человека, который разбирается в этом этапе: он будет давать ИИ инструкции и доводить результат, а принимать будете вы.</p>
-      {error && <p className={`${styles.notice} ${styles.error}`}>{error}</p>}
+      {error && <p className={`${styles.notice} ${styles.error}`}>{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>Открыть тариф →</a></>}</p>}
       {link && (
         <div className={`${styles.notice} ${styles.success}`}>
           {link.emailSent ? "Приглашение отправлено на почту. " : ""}Отправьте эту ссылку специалисту — например, в Telegram или WhatsApp. Она действует 7 дней и сработает только для указанной почты.

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
-import { explainError, type CatalogType } from "@/lib/journey";
+import { isPlanMessage, explainError, type CatalogType } from "@/lib/journey";
 import styles from "./journey.module.css";
 
 type Workspace = { id: string; name: string; role: string };
@@ -77,10 +77,11 @@ export default function ProjectsPage() {
       <header className={styles.top}><div className={styles.topInner}>
         <a className={styles.brand} href="/"><span aria-hidden="true">B</span>BuildPath</a>
         <div className={styles.spacer} />
-        <a className={styles.back} href="/review">Сверка сайта</a>
+        <a className={styles.back} href="/account/plan">Тариф</a>
+        <a className={styles.back} href="/review" style={{ marginLeft: 12 }}>Сверка сайта</a>
       </div></header>
       <main className={styles.container}>
-        {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
+        {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>Открыть тариф →</a></>}</p>}
         {loading && <p className={styles.muted}>Загружаем ваши проекты…</p>}
 
         {!loading && !creating && (
@@ -89,12 +90,20 @@ export default function ProjectsPage() {
             <h1 className={styles.h1}>Продолжите с того места, где остановились</h1>
             <button className={`${styles.button} ${styles.block}`} onClick={() => { setCreating(true); setStep(1); }}>+ Новый проект</button>
             <div style={{ height: 18 }} />
-            {projects.map((project) => (
+            {projects.filter((project) => project.status !== "archived").map((project) => (
               <a key={project.id} className={styles.projectCard} href={`/projects/${project.id}`}>
                 <strong style={{ fontSize: 17 }}>{project.name}</strong>
                 <div className={styles.small}>{types.find((item) => item.key === project.projectType)?.title ?? "Проект"} · {projectStatus[project.status] ?? project.status}</div>
               </a>
             ))}
+            {projects.some((project) => project.status === "archived") && (
+              <details className={`${styles.card} ${styles.details}`} style={{ marginTop: 14 }}>
+                <summary>Архив ({projects.filter((project) => project.status === "archived").length})</summary>
+                {projects.filter((project) => project.status === "archived").map((project) => (
+                  <a key={project.id} className={styles.projectCard} href={`/projects/${project.id}`}><strong>{project.name}</strong></a>
+                ))}
+              </details>
+            )}
             {assignments.length > 0 && (
               <>
                 <h2 className={styles.h2} style={{ marginTop: 22 }}>Вы помогаете в проектах</h2>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
-import { download, explainError, statusTone, type Journey } from "@/lib/journey";
+import { download, explainError, isPlanMessage, statusTone, type Journey } from "@/lib/journey";
 import styles from "../journey.module.css";
 import PublishCard from "./publish-card";
 
@@ -40,7 +40,8 @@ export default function JourneyPage() {
     try { setResult(await api<ResultPackage>(`/projects/${projectId}/result`)); } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
   }
 
-  async function setStatus(action: "complete" | "resume") {
+  async function setStatus(action: "complete" | "resume" | "archive" | "unarchive") {
+    if (action === "archive" && !window.confirm("Отправить проект в архив? Он перестанет занимать место в тарифе. Специалисты потеряют доступ. Вернуть проект можно в любой момент.")) return;
     setBusy(true);
     setError("");
     try { setJourney(await api<Journey>(`/projects/${projectId}/${action}`, { method: "POST" })); } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
@@ -49,6 +50,7 @@ export default function JourneyPage() {
   const completed = journey?.project.status === "completed";
   const live = journey?.project.status === "live";
   const specialist = journey?.viewer.kind === "specialist";
+  const archived = journey?.project.status === "archived";
 
   return (
     <div className={styles.shell}>
@@ -57,7 +59,7 @@ export default function JourneyPage() {
         <span className={styles.topTitle}>{journey?.project.name ?? ""}</span>
       </div></header>
       <main className={styles.container}>
-        {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
+        {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>Открыть тариф →</a></>}</p>}
         {!journey && !error && <p className={styles.muted}>Загружаем проект…</p>}
         {journey && (
           <>
@@ -71,7 +73,12 @@ export default function JourneyPage() {
               <p className={`${styles.notice} ${styles.info}`}>Вы приглашены в этот проект как специалист. Вам видны только ваши этапы и то, что для них нужно. Принимает работу владелец проекта.</p>
             )}
 
-            {completed ? (
+            {archived ? (
+              <div className={`${styles.notice} ${styles.info}`}>
+                Проект в архиве: его можно смотреть и скачивать, но не менять. Он не занимает место в тарифе.
+                {journey.project.role === "owner" && <div style={{ marginTop: 10 }}><button className={styles.secondary} disabled={busy} onClick={() => setStatus("unarchive")}>Вернуть из архива</button></div>}
+              </div>
+            ) : completed ? (
               <div className={`${styles.notice} ${styles.success}`}>
                 Проект завершён. Скачайте результат ниже или продолжите проект, если хотите что-то изменить.
                 <div style={{ marginTop: 10 }}><button className={styles.secondary} disabled={busy} onClick={() => setStatus("resume")}>Продолжить проект</button></div>
@@ -87,7 +94,7 @@ export default function JourneyPage() {
 
             <p className={styles.small} style={{ margin: "0 0 14px" }} hidden={specialist}>
               {journey.ai.configured
-                ? `ИИ подключён: на каждом этапе он делает черновик, а вы говорите, что поменять. Осталось запросов сегодня: ${journey.ai.remainingToday}.`
+                ? `ИИ подключён: на каждом этапе он делает черновик, а вы говорите, что поменять.${journey.ai.month ? ` Запросов по тарифу «${journey.ai.month.planTitle}» в этом месяце: осталось ${journey.ai.month.left} из ${journey.ai.month.limit}.` : ""}`
                 : "ИИ пока не подключён: этапы заполняются вручную, а тексты и стиль можно получить по готовому шаблону."}
             </p>
 
@@ -142,7 +149,10 @@ export default function JourneyPage() {
                   <p className={styles.small} style={{ marginTop: 10 }}>Файл site.html можно загрузить на любой хостинг статических сайтов. Форма заявок работает только на сайте, опубликованном через BuildPath.</p>
                 </>
               )}
-              {!completed && !live && journey.project.role === "owner" && (
+              {!archived && !live && journey.project.role === "owner" && (
+                <button className={styles.ghost} style={{ marginTop: 12, marginLeft: 8 }} disabled={busy} onClick={() => setStatus("archive")}>Отправить в архив</button>
+              )}
+              {!completed && !live && !archived && journey.project.role === "owner" && (
                 <button className={styles.ghost} style={{ marginTop: 12 }} disabled={busy} onClick={() => setStatus("complete")}>Завершить проект на этом этапе</button>
               )}
             </section>

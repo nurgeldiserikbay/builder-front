@@ -45,7 +45,7 @@ export default function ProjectsPage() {
           if (!list.some((project) => project.projectType) && mine.length === 0) setCreating(true);
         }
       } catch (caught) {
-        if (caught instanceof ApiError && caught.status === 401) { router.replace("/login"); return; }
+        if (caught instanceof ApiError && caught.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return; }
         setError(explainError(caught));
       } finally {
         setLoading(false);

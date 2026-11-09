@@ -137,7 +137,7 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
             )}
             {state.channels.telegram.configured && !state.channels.telegram.linked && (
               <>
-                <span className={styles.small}>Подключите Telegram, чтобы заявки приходили сразу на телефон. Откроется бот @{state.channels.telegram.botUsername} — нажмите в нём «Start».</span>
+                <span className={styles.small}>Подключите Telegram, чтобы заявки приходили сразу на телефон, а этапы можно было вести прямо в чате с ботом. Откроется бот @{state.channels.telegram.botUsername} — нажмите в нём «Start».</span>
                 <div className={styles.row}>
                   <button className={styles.secondary} disabled={Boolean(busy)} onClick={() => void run("telegram", async () => {
                     const link = await api<{ deepLink: string }>("/me/telegram/link", { method: "POST" });

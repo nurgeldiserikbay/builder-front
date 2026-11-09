@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import TelegramBridge from './telegram-bridge';
 
 export const metadata: Metadata = {
   title: 'BuildPath — создайте сайт шаг за шагом',
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ru">
-      <body>{children}</body>
+      <body><TelegramBridge />{children}</body>
     </html>
   );
 }

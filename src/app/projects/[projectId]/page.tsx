@@ -27,7 +27,7 @@ export default function JourneyPage() {
     try {
       setJourney(await api<Journey>(`/projects/${projectId}/journey`));
     } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) { router.replace("/login"); return; }
+      if (caught instanceof ApiError && caught.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return; }
       setError(explainError(caught));
     }
   }, [projectId, router]);

@@ -1,4 +1,4 @@
-import { ApiError } from "./api";
+import { API_BASE_URL, ApiError, api } from "./api";
 
 export type StageStatus = "locked" | "ready" | "awaiting_lead" | "in_progress" | "in_review" | "changes_requested" | "approved" | "stale" | "imported" | "skipped" | "blocked";
 export type ArtifactType = "brief" | "offer" | "content" | "design" | "site";
@@ -36,7 +36,8 @@ export type FieldDefinition = {
 export type Brief = Record<string, string | null>;
 export type Offer = { services: Array<{ name: string; description: string | null; price: string | null }>; hours: string | null };
 export type SectionType = "hero" | "about" | "services" | "benefits" | "steps" | "faq" | "contacts" | "cta";
-export type Section = { key: string; type: SectionType; title: string; text: string; items: Array<{ title: string; text: string }>; buttonLabel: string | null };
+export type Section = { key: string; type: SectionType; title: string; text: string; items: Array<{ title: string; text: string }>; buttonLabel: string | null; imageId?: string | null };
+export type ProjectImage = { id: string; width: number; height: number; sizeBytes: number; alt: string; createdAt: string; inUse: boolean };
 export type Content = { sections: Section[]; seo: { title: string; description: string } };
 export type Design = { palette: string; font: string; corners: "rounded" | "sharp"; heroLayout: "centered" | "left" };
 export type SiteCheck = { id: string; status: "passed" | "warning" | "failed"; title: string; details: string; required: boolean };
@@ -121,6 +122,18 @@ const messages: Record<string, string> = {
   PLAN_LIMIT_PROJECTS: "По вашему тарифу больше нельзя создать проектов. Отправьте ненужные в архив или расширьте тариф.",
   PLAN_LIMIT_AI: "В этом месяце закончились запросы к ИИ по тарифу владельца проекта. Продолжайте вручную или расширьте тариф.",
   PLAN_LIMIT_SITES: "По вашему тарифу больше нельзя опубликовать сайтов. Снимите с публикации ненужный сайт или расширьте тариф.",
+  IMAGE_FILE_REQUIRED: "Выберите фото.",
+  IMAGE_TOO_LARGE: "Фото слишком большое. Выберите файл до 12 МБ.",
+  "File too large": "Фото слишком большое. Выберите файл до 12 МБ.",
+  IMAGE_TYPE_NOT_SUPPORTED: "Подходят фото в формате JPEG, PNG или WebP. Если фото с iPhone, сделайте снимок экрана или выберите «Наиболее совместимый» формат камеры.",
+  IMAGE_UNREADABLE: "Не удалось прочитать фото. Попробуйте другой файл.",
+  IMAGE_TOO_MANY_PIXELS: "Фото слишком большое по размеру. Выберите снимок поменьше.",
+  IMAGE_REJECTED_BY_SCAN: "Файл не прошёл проверку безопасности и не сохранён.",
+  IMAGE_SCAN_UNAVAILABLE: "Проверка файлов сейчас недоступна. Попробуйте загрузить фото позже.",
+  IMAGE_LIMIT_REACHED: "В проекте уже 30 фото. Удалите ненужные, чтобы добавить новые.",
+  IMAGE_IN_USE: "Это фото стоит на сайте. Сначала уберите его из блока.",
+  IMAGE_NOT_FOUND: "Фото не найдено — возможно, его уже удалили.",
+  IMAGE_ALT_TOO_LONG: "Описание фото слишком длинное — до 200 символов.",
   PLAN_NO_SPECIALISTS: "Приглашать специалистов можно на тарифах «Старт» и «Бизнес». Посмотрите тарифы.",
 };
 
@@ -172,4 +185,43 @@ export function download(name: string, mimeType: string, content: string) {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Photos of a project. The API serves them only with the session cookie, so they are fetched as blobs. */
+export const images = {
+  list: (projectId: string) => api<{ items: ProjectImage[]; limit: number }>(`/projects/${projectId}/images`),
+  upload: (projectId: string, file: Blob, alt: string) => {
+    const form = new FormData();
+    form.append("file", file, "photo.jpg");
+    form.append("alt", alt);
+    return api<ProjectImage>(`/projects/${projectId}/images`, { method: "POST", body: form });
+  },
+  setAlt: (projectId: string, imageId: string, alt: string) =>
+    api<{ items: ProjectImage[]; limit: number }>(`/projects/${projectId}/images/${imageId}/alt`, { method: "POST", body: JSON.stringify({ alt }) }),
+  remove: (projectId: string, imageId: string) => api<{ items: ProjectImage[]; limit: number }>(`/projects/${projectId}/images/${imageId}`, { method: "DELETE" }),
+  async objectUrl(projectId: string, imageId: string): Promise<string> {
+    const response = await fetch(`${API_BASE_URL}/projects/${projectId}/images/${imageId}`, { credentials: "include" });
+    if (!response.ok) throw new ApiError(response.status, "IMAGE_NOT_FOUND");
+    return URL.createObjectURL(await response.blob());
+  },
+};
+
+/**
+ * Shrinks a phone photo before upload (faster on mobile data). The server re-encodes anyway, so when the browser
+ * cannot decode the file (for example HEIC outside Safari) the original is sent and the server explains the format.
+ */
+export async function shrinkPhoto(file: File, maxEdge = 2000): Promise<Blob> {
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" } as ImageBitmapOptions);
+    const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.88));
+    return blob && blob.size > 0 ? blob : file;
+  } catch {
+    return file;
+  }
 }

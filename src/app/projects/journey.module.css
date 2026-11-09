@@ -90,3 +90,12 @@
 .projectCard{display:block;background:#fff;border:1px solid #e3e8e1;border-radius:16px;padding:16px;text-decoration:none;color:inherit;margin:0 0 10px}
 .srOnly{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media(min-width:720px){.typeGrid{grid-template-columns:1fr 1fr}.h1{font-size:34px}}
+.photoPanel{border:1px dashed #b9cfbe;border-radius:14px;padding:12px;margin:0 0 14px;background:#f8fbf8}
+.photoCurrent{display:grid;gap:10px}
+.photoThumb{display:block;width:100%;max-height:220px;object-fit:cover;border-radius:12px;background:#e7ece8;min-height:120px;margin-bottom:10px}
+.photoGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.photoCell{display:grid;gap:4px}
+.photoPick{padding:0;border:2px solid transparent;border-radius:10px;overflow:hidden;aspect-ratio:1;background:#e7ece8;cursor:pointer;min-height:44px}
+.photoPick:focus-visible,.photoPick:hover{border-color:#1f6b4a}
+.photoPick img{width:100%;height:100%;object-fit:cover;display:block}
+.photoDelete{background:none;border:0;color:#a12b2b;font-size:13px;min-height:32px;cursor:pointer}

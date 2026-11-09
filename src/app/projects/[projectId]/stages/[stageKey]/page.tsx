@@ -277,7 +277,7 @@ export default function StagePage() {
         </section>
       )}
       {stage.artifactType === "content" && draft !== null && (
-        <ContentEditor content={draft as Content} onChange={edit} sectionTypes={detail.options.sectionTypes} disabled={!stage.canEdit}
+        <ContentEditor projectId={projectId} content={draft as Content} onChange={edit} sectionTypes={detail.options.sectionTypes} disabled={!stage.canEdit}
           aiAvailable={aiUsable && Boolean(detail.current)} issueKeys={issueKeys}
           onAskAi={(targetKey, text) => run("ai", () => askAi({ instruction: text, targetKey }))}
           lockedKeys={stage.lockedKeys} onToggleLock={toggleLock} canLock={stage.canEdit && Boolean(detail.current)} />

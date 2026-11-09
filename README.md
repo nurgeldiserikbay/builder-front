@@ -4,6 +4,16 @@ Mobile-first Next.js web application and Telegram Mini App.
 
 ## Current scope
 
+### Step-by-step builder (`/projects`)
+
+After login the owner lands on `/projects`: a three-step wizard (site type → project name → where to start: from scratch or from ready material) creates a project with its stage route. `/projects/[projectId]` shows progress, the next action, every stage with a plain-language status, and a result package that can be downloaded at any stage (`project.md`, `project.json`, and `site.html` after the build is accepted).
+
+`/projects/[projectId]/stages/[stageKey]` is one template for every stage: why the stage exists, what it takes from earlier stages, the editor (form for the project brief and services, block editor for texts, style presets, build with checks), AI instructions (whole stage, one block, or saved as a stage/project rule), protection of manually edited parts from AI rewrites, pasting ready material, version history with provenance and restore, and a sticky bar that explains why the stage can or cannot be accepted yet. Previews render the backend's script-free HTML in a sandboxed iframe. Error codes from the API are translated into Russian explanations in `src/lib/journey.ts`.
+
+If the backend has no AI provider configured, the UI says so and offers manual editing and template drafts. Publication to hosting, specialists and Telegram are not available yet.
+
+### Site review (`/review`)
+
 The app includes a product landing page, account registration/login/email verification, and a connected review workspace at `/review`. The review workspace creates projects and review runs through the backend API, displays discovered pages and worker status, uploads PNG/JPEG page designs to private object storage after checksum/signature/malware checks, and supports page-by-page comparison with the live site or a stored Chromium capture in side-by-side, overlay, and wipe modes.
 
 The review screen can export a JSON report and print a PDF summary. Figma OAuth and page-by-page frame import are available; OAuth requires the backend Figma app configuration described in `builder-back`. For captured pages, the comparison workspace supports synchronized zoom and scroll as well as side-by-side, overlay, and wipe modes. It includes a per-page manual requirements checklist, annotated findings, a browser-local GET/HEAD API probe with expected status and optional JSON-path checks, report signals, and a bounded DOM quality audit from fresh captures. API probe results can be downloaded as sanitized JSON metadata; credentials and response bodies are not persisted. Requirement status is recorded by a reviewer and is not automatically inferred.

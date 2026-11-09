@@ -17,7 +17,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    api<User>("/me").then(() => router.replace("/review")).catch(() => undefined);
+    api<User>("/me").then(() => router.replace("/projects")).catch(() => undefined);
   }, [router]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -37,7 +37,7 @@ export default function LoginPage() {
           method: "POST",
           body: JSON.stringify({ email, password }),
         });
-        router.replace("/review");
+        router.replace("/projects");
       }
     } catch (error) {
       const text = error instanceof ApiError
@@ -54,7 +54,7 @@ export default function LoginPage() {
     <section className={styles.card}>
       <p className={styles.kicker}>РАБОЧЕЕ ПРОСТРАНСТВО</p>
       <h1>{mode === "login" ? "Войти в BuildPath" : "Создать аккаунт"}</h1>
-      <p className={styles.sub}>{mode === "login" ? "Войдите, чтобы создать проверку и сохранить её в проекте." : "После регистрации подтвердите email — так мы защитим ваши проекты."}</p>
+      <p className={styles.sub}>{mode === "login" ? "Войдите, чтобы продолжить работу над своими проектами." : "После регистрации подтвердите email — так мы защитим ваши проекты."}</p>
       <form onSubmit={submit}>
         {mode === "register" && <label>Имя<input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} /></label>}
         <label>Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} /></label>

@@ -33,7 +33,7 @@ export default function HomePage() {
           <span className="brand-mark" aria-hidden="true">B</span>
           <span>buildpath</span>
         </a>
-        <span className="top-note">Облачная мастерская сайтов</span>
+        <a className="top-cta" href="/projects">Мои проекты</a>
       </header>
 
       <section className="hero">
@@ -41,7 +41,8 @@ export default function HomePage() {
           <p className="eyebrow"><span className="status-dot" /> ОТ ИДЕИ ДО ГОТОВОГО САЙТА</p>
           <h1>Расскажите, что вам нужно. <em>Остальное разложим по шагам.</em></h1>
           <p className="hero-text">BuildPath помогает спланировать, создать и проверить сайт прямо в браузере. Не нужны ноутбук, редактор кода или технические знания.</p>
-          <div className="preview-state"><span className="state-icon" aria-hidden="true">✳</span><span><strong>Платформа собирается</strong><br />Уже доступны вход, рабочее пространство и проверка сайта. Подключите API, чтобы анализировать страницы своего проекта.</span></div>
+          <a className="hero-cta" href="/projects">Создать сайт по шагам →</a>
+          <div className="preview-state"><span className="state-icon" aria-hidden="true">✳</span><span><strong>Что уже работает</strong><br />Одностраничный сайт и сайт компании: цель, услуги, тексты с помощью ИИ, стиль, сборка с проверками и скачивание результата. Публикация в интернет и работа со специалистами — следующие шаги.</span></div>
         </div>
         <aside className="journey-card" aria-label="Этапы работы над сайтом">
           <div className="card-heading"><span>ВАШ ПУТЬ</span><span className="pill">С телефона</span></div>

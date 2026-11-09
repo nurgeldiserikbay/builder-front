@@ -8,6 +8,8 @@ main{max-width:1440px;margin:0 auto;padding:0 6.1%}
 .brand{display:inline-flex;align-items:center;gap:10px;font-family:ui-sans-serif,system-ui,sans-serif;font-size:20px;font-weight:800;letter-spacing:-.8px}
 .brand-mark{width:31px;height:31px;border-radius:10px;background:var(--green);color:white;display:grid;place-items:center;font-size:17px}
 .top-note{font-size:13px;color:var(--muted)}
+.top-cta{font-size:14px;font-weight:700;color:var(--green);border:1px solid #cfdccf;border-radius:10px;padding:10px 14px}
+.hero-cta{display:inline-flex;align-items:center;min-height:52px;padding:0 22px;border-radius:12px;background:var(--green);color:#fff;font-weight:750;font-size:16px;margin:0 0 22px}
 .hero{display:grid;grid-template-columns:1.12fr .88fr;gap:7%;align-items:center;padding:72px 0 78px}
 .eyebrow{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--green);margin:0 0 17px}
 .status-dot{display:inline-block;width:7px;height:7px;background:#79a77e;border-radius:50%;margin:0 7px 1px 0}

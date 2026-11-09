@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { Content, Design, FieldDefinition, Offer, Preset, Section, SectionType } from "@/lib/journey";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { explainError, images, shrinkPhoto, type Content, type Design, type FieldDefinition, type Offer, type Preset, type ProjectImage, type Section, type SectionType } from "@/lib/journey";
 import styles from "../../../journey.module.css";
 
 type LockProps = { lockedKeys: string[]; onToggleLock: (key: string, locked: boolean) => void; canLock: boolean };
@@ -90,11 +90,145 @@ function ListField({ field, items, onChange, disabled }: { field: FieldDefinitio
 const buttonTypes: SectionType[] = ["hero", "contacts", "cta"];
 const itemTypes: SectionType[] = ["services", "benefits", "steps", "faq"];
 
-export function ContentEditor({ content, onChange, sectionTypes, disabled, aiAvailable, onAskAi, issueKeys, ...lock }: LockProps & {
-  content: Content; onChange: (next: Content) => void; sectionTypes: Record<SectionType, string>; disabled: boolean; aiAvailable: boolean;
+const photoTypes: SectionType[] = ["hero", "about", "services", "benefits", "cta"];
+
+/** Loads processed photos with the session cookie and keeps object URLs for thumbnails. */
+function usePhotoLibrary(projectId: string) {
+  const [items, setItems] = useState<ProjectImage[] | null>(null);
+  const [limit, setLimit] = useState(30);
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const urlsRef = useRef(urls);
+  urlsRef.current = urls;
+  const apply = useCallback((library: { items: ProjectImage[]; limit: number }) => {
+    setItems(library.items);
+    setLimit(library.limit);
+    for (const item of library.items) {
+      if (urlsRef.current[item.id]) continue;
+      images.objectUrl(projectId, item.id).then((url) => setUrls((current) => ({ ...current, [item.id]: url }))).catch(() => undefined);
+    }
+  }, [projectId]);
+  const reload = useCallback(() => images.list(projectId).then(apply), [projectId, apply]);
+  useEffect(() => { reload().catch(() => setItems([])); }, [reload]);
+  useEffect(() => () => { for (const url of Object.values(urlsRef.current)) URL.revokeObjectURL(url); }, []);
+  return { items, limit, urls, apply, reload };
+}
+type PhotoLibrary = ReturnType<typeof usePhotoLibrary>;
+
+function PhotoControl({ projectId, library, imageId, onSelect, disabled, sectionLabel }: {
+  projectId: string; library: PhotoLibrary; imageId: string | null; onSelect: (id: string | null) => void; disabled: boolean; sectionLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState<{ blob: Blob; url: string } | null>(null);
+  const [alt, setAlt] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const current = imageId ? library.items?.find((item) => item.id === imageId) ?? null : null;
+  const [altDraft, setAltDraft] = useState(current?.alt ?? "");
+  useEffect(() => { setAltDraft(current?.alt ?? ""); }, [current?.alt]);
+  useEffect(() => () => { if (pending) URL.revokeObjectURL(pending.url); }, [pending]);
+
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    const blob = await shrinkPhoto(file);
+    setPending({ blob, url: URL.createObjectURL(blob) });
+    setAlt("");
+  };
+  const upload = async () => {
+    if (!pending || !alt.trim()) return;
+    setBusy(true); setError(null);
+    try {
+      const image = await images.upload(projectId, pending.blob, alt.trim());
+      await library.reload();
+      onSelect(image.id);
+      setPending(null); setOpen(false);
+    } catch (problem) { setError(explainError(problem)); } finally { setBusy(false); }
+  };
+  const saveAlt = async () => {
+    if (!current || altDraft.trim() === current.alt) return;
+    try { library.apply(await images.setAlt(projectId, current.id, altDraft.trim())); } catch (problem) { setError(explainError(problem)); }
+  };
+  const remove = async (id: string) => {
+    if (!window.confirm("Удалить фото из проекта? Вернуть его будет нельзя — только загрузить заново.")) return;
+    try { library.apply(await images.remove(projectId, id)); } catch (problem) { setError(explainError(problem)); }
+  };
+
+  if (imageId && !open) {
+    return (
+      <div className={styles.field}>
+        <span className={styles.label}>Фото</span>
+        {current ? (
+          <div className={styles.photoCurrent}>
+            {library.urls[current.id] ? <img src={library.urls[current.id]} alt={current.alt} className={styles.photoThumb} /> : <div className={styles.photoThumb} />}
+            <label className={styles.field} style={{ marginBottom: 0 }}><span className={styles.why}>Что на фото? Это описание слышат незрячие посетители и видят поисковики.</span>
+              <input className={styles.input} value={altDraft} maxLength={200} disabled={disabled} placeholder="Например: торт с ягодами на день рождения"
+                onChange={(event) => setAltDraft(event.target.value)} onBlur={saveAlt} /></label>
+          </div>
+        ) : <p className={`${styles.notice} ${styles.warn}`}>Это фото удалено из проекта. Уберите его или выберите другое.</p>}
+        {error && <p className={`${styles.notice} ${styles.warn}`} role="alert">{error}</p>}
+        {!disabled && (
+          <div className={styles.row}>
+            <button type="button" className={styles.secondary} onClick={() => setOpen(true)}>Заменить</button>
+            <button type="button" className={styles.danger} onClick={() => onSelect(null)}>Убрать фото из блока</button>
+          </div>
+        )}
+      </div>
+    );
+  }
+  if (disabled) return null;
+  if (!open) return <button type="button" className={styles.secondary} onClick={() => setOpen(true)}>+ Добавить фото</button>;
+  const others = (library.items ?? []).filter((item) => item.id !== imageId);
+  return (
+    <div className={styles.photoPanel} aria-label={`Фото для блока «${sectionLabel}»`}>
+      <p className={styles.why}>Лучше всего — ваши настоящие фото: работы, товар, место, команда. Фото подстроится под ширину экрана, а скрытые данные (например, место съёмки) удалятся.</p>
+      {pending ? (
+        <div>
+          <img src={pending.url} alt="" className={styles.photoThumb} />
+          <label className={styles.field}><span className={styles.label}>Что на фото?</span>
+            <span className={styles.why}>Коротко, 3–8 слов. Нужно для незрячих посетителей и поисковиков.</span>
+            <input className={styles.input} value={alt} maxLength={200} autoFocus placeholder="Например: мастер укладывает плитку в ванной" onChange={(event) => setAlt(event.target.value)} /></label>
+          <div className={styles.row}>
+            <button type="button" className={styles.button} disabled={busy || !alt.trim()} onClick={upload}>{busy ? "Загружаем…" : "Добавить фото"}</button>
+            <button type="button" className={styles.secondary} disabled={busy} onClick={() => setPending(null)}>Другое фото</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/*" hidden onChange={(event) => { void pick(event.target.files?.[0]); event.target.value = ""; }} />
+          <div className={styles.row}>
+            <button type="button" className={styles.button} disabled={others.length >= library.limit} onClick={() => fileRef.current?.click()}>Загрузить с телефона</button>
+            <button type="button" className={styles.secondary} onClick={() => setOpen(false)}>Отмена</button>
+          </div>
+          {others.length >= library.limit && <p className={styles.why}>В проекте уже {library.limit} фото — удалите ненужные ниже.</p>}
+          {others.length > 0 && (
+            <>
+              <p className={styles.label} style={{ marginTop: 12 }}>Или выберите из загруженных</p>
+              <div className={styles.photoGrid}>
+                {others.map((item) => (
+                  <div key={item.id} className={styles.photoCell}>
+                    <button type="button" className={styles.photoPick} onClick={() => { onSelect(item.id); setOpen(false); }} aria-label={`Выбрать фото: ${item.alt || "без описания"}`}>
+                      {library.urls[item.id] ? <img src={library.urls[item.id]} alt="" /> : null}
+                    </button>
+                    {!item.inUse && <button type="button" className={styles.photoDelete} onClick={() => remove(item.id)} aria-label={`Удалить фото: ${item.alt || "без описания"}`}>Удалить</button>}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+      {error && <p className={`${styles.notice} ${styles.warn}`} role="alert">{error}</p>}
+    </div>
+  );
+}
+
+export function ContentEditor({ projectId, content, onChange, sectionTypes, disabled, aiAvailable, onAskAi, issueKeys, ...lock }: LockProps & {
+  projectId: string; content: Content; onChange: (next: Content) => void; sectionTypes: Record<SectionType, string>; disabled: boolean; aiAvailable: boolean;
   onAskAi: (targetKey: string, instruction: string) => Promise<void>; issueKeys: string[];
 }) {
   const [newType, setNewType] = useState<SectionType>("faq");
+  const library = usePhotoLibrary(projectId);
   const updateSection = (key: string, patch: Partial<Section>) => onChange({ ...content, sections: content.sections.map((section) => (section.key === key ? { ...section, ...patch } : section)) });
   const move = (index: number, delta: number) => {
     const sections = [...content.sections];
@@ -105,7 +239,7 @@ export function ContentEditor({ content, onChange, sectionTypes, disabled, aiAva
   const addSection = () => {
     let key: string = newType;
     for (let number = 2; content.sections.some((section) => section.key === key); number += 1) key = `${newType}-${number}`;
-    const section: Section = { key, type: newType, title: sectionTypes[newType], text: "", items: [], buttonLabel: null };
+    const section: Section = { key, type: newType, title: sectionTypes[newType], text: "", items: [], buttonLabel: null, imageId: null };
     const contactsIndex = content.sections.findIndex((item) => item.type === "contacts");
     const sections = [...content.sections];
     sections.splice(contactsIndex >= 0 ? contactsIndex : sections.length, 0, section);
@@ -149,6 +283,10 @@ export function ContentEditor({ content, onChange, sectionTypes, disabled, aiAva
             <label className={styles.field}><span className={styles.label}>Текст на кнопке</span>
               <span className={styles.why}>Кнопка ведёт к главному действию из паспорта проекта.</span>
               <input className={styles.input} value={section.buttonLabel ?? ""} maxLength={40} disabled={disabled} onChange={(event) => updateSection(section.key, { buttonLabel: event.target.value || null })} /></label>
+          )}
+          {(photoTypes.includes(section.type) || section.imageId) && (
+            <PhotoControl projectId={projectId} library={library} imageId={section.imageId ?? null} disabled={disabled} sectionLabel={sectionTypes[section.type]}
+              onSelect={(id) => updateSection(section.key, { imageId: id })} />
           )}
           {aiAvailable && !disabled && <AskAiInline onAsk={(instruction) => onAskAi(section.key, instruction)} />}
         </article>

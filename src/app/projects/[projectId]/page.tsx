@@ -48,6 +48,7 @@ export default function JourneyPage() {
 
   const completed = journey?.project.status === "completed";
   const live = journey?.project.status === "live";
+  const specialist = journey?.viewer.kind === "specialist";
 
   return (
     <div className={styles.shell}>
@@ -66,6 +67,9 @@ export default function JourneyPage() {
               <span style={{ width: `${journey.progress.percent}%` }} />
             </div>
             <p className={styles.small} style={{ margin: "0 0 18px" }}>Принято этапов: {journey.progress.accepted} из {journey.progress.total}</p>
+            {specialist && (
+              <p className={`${styles.notice} ${styles.info}`}>Вы приглашены в этот проект как специалист. Вам видны только ваши этапы и то, что для них нужно. Принимает работу владелец проекта.</p>
+            )}
 
             {completed ? (
               <div className={`${styles.notice} ${styles.success}`}>
@@ -81,13 +85,13 @@ export default function JourneyPage() {
               </section>
             )}
 
-            <p className={styles.small} style={{ margin: "0 0 14px" }}>
+            <p className={styles.small} style={{ margin: "0 0 14px" }} hidden={specialist}>
               {journey.ai.configured
                 ? `ИИ подключён: на каждом этапе он делает черновик, а вы говорите, что поменять. Осталось запросов сегодня: ${journey.ai.remainingToday}.`
                 : "ИИ пока не подключён: этапы заполняются вручную, а тексты и стиль можно получить по готовому шаблону."}
             </p>
 
-            <h2 className={styles.h2}>Этапы</h2>
+            <h2 className={styles.h2}>{specialist ? "Ваши этапы" : "Этапы"}</h2>
             <p className={styles.small} style={{ margin: "0 0 10px" }}>Каждый этап открывается, когда приняты те, от которых он зависит. Принятый этап можно изменить позже.</p>
             <ol className={styles.stageList}>
               {journey.stages.map((stage, index) => {
@@ -111,6 +115,7 @@ export default function JourneyPage() {
               })}
             </ol>
 
+            {!specialist && <>
             <div style={{ height: 22 }} />
             <PublishCard projectId={projectId} onChange={() => void load()} />
 
@@ -141,6 +146,7 @@ export default function JourneyPage() {
                 <button className={styles.ghost} style={{ marginTop: 12 }} disabled={busy} onClick={() => setStatus("complete")}>Завершить проект на этом этапе</button>
               )}
             </section>
+            </>}
           </>
         )}
       </main>

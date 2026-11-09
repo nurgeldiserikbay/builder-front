@@ -7,6 +7,7 @@ import { explainError, type CatalogType } from "@/lib/journey";
 import styles from "./journey.module.css";
 
 type Workspace = { id: string; name: string; role: string };
+type Assignment = { id: string; projectId: string; projectName: string; stageKey: string; stageTitle: string; stageStatus: string; role: string; roleTitle: string; status: string };
 type Project = { id: string; name: string; status: string; projectType: string | null; createdAt: string; updatedAt: string };
 
 const projectStatus: Record<string, string> = { draft: "Черновик", active: "В работе", paused: "На паузе", completed: "Завершён", archived: "В архиве", live: "Опубликован" };
@@ -15,6 +16,7 @@ export default function ProjectsPage() {
   const router = useRouter();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [types, setTypes] = useState<CatalogType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -28,17 +30,19 @@ export default function ProjectsPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [workspaces, catalog] = await Promise.all([
+        const [workspaces, catalog, mine] = await Promise.all([
           api<Workspace[]>("/workspaces"),
           api<{ version: string; projectTypes: CatalogType[] }>("/journey/catalog"),
+          api<Assignment[]>("/me/assignments"),
         ]);
         setTypes(catalog.projectTypes);
+        setAssignments(mine);
         const first = workspaces[0] ?? null;
         setWorkspace(first);
         if (first) {
           const list = await api<Project[]>(`/projects?workspaceId=${encodeURIComponent(first.id)}`);
           setProjects(list.filter((project) => project.projectType));
-          if (!list.some((project) => project.projectType)) setCreating(true);
+          if (!list.some((project) => project.projectType) && mine.length === 0) setCreating(true);
         }
       } catch (caught) {
         if (caught instanceof ApiError && caught.status === 401) { router.replace("/login"); return; }
@@ -91,6 +95,18 @@ export default function ProjectsPage() {
                 <div className={styles.small}>{types.find((item) => item.key === project.projectType)?.title ?? "Проект"} · {projectStatus[project.status] ?? project.status}</div>
               </a>
             ))}
+            {assignments.length > 0 && (
+              <>
+                <h2 className={styles.h2} style={{ marginTop: 22 }}>Вы помогаете в проектах</h2>
+                <p className={styles.small} style={{ margin: "0 0 10px" }}>Сюда попадают этапы, на которые вас пригласили как специалиста.</p>
+                {assignments.map((item) => (
+                  <a key={item.id} className={styles.projectCard} href={`/projects/${item.projectId}/stages/${item.stageKey}`}>
+                    <strong style={{ fontSize: 17 }}>{item.projectName}</strong>
+                    <div className={styles.small}>Этап «{item.stageTitle}» · {item.roleTitle}{item.status === "completed" ? " · этап принят" : item.stageStatus === "in_review" ? " · на приёмке" : item.stageStatus === "changes_requested" ? " · нужны правки" : ""}</div>
+                  </a>
+                ))}
+              </>
+            )}
           </>
         )}
 

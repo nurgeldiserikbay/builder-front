@@ -13,7 +13,13 @@ export type JourneyStage = {
   inputs: Array<{ key: string; title: string; satisfied: boolean }>; currentVersionNumber: number | null; acceptedVersionNumber: number | null;
 };
 
+export type ViewerInfo = {
+  kind: "member" | "specialist"; role: string;
+  assignments: Array<{ stageKey: string; role: "lead" | "consultant"; status: string; aiBudget: number | null; aiUsed: number; readUntil: string | null }>;
+};
+
 export type Journey = {
+  viewer: ViewerInfo;
   project: { id: string; name: string; status: string; role: string; projectType: string; typeTitle: string; resultExplanation: string; startStageKey: string | null };
   progress: { accepted: number; total: number; percent: number };
   nextAction: { stageKey: string | null; title: string; text: string };
@@ -37,8 +43,13 @@ export type SiteCheck = { id: string; status: "passed" | "warning" | "failed"; t
 
 export type Preset = { id: string; label: string; hint: string; background?: string; surface?: string; text?: string; accent?: string; stack?: string };
 
+export type Suggestion = { id: string; text: string; targetKey: string | null; status: "proposed" | "applied" | "dismissed"; createdAt: string; author: string | null };
+
 export type StageDetail = {
+  viewer: ViewerInfo;
+  suggestions: Suggestion[];
   stage: {
+    canSubmit: boolean; canRequestChanges: boolean; canInvite: boolean; canSuggest: boolean; reviewNote: string | null;
     key: string; title: string; purpose: string; outcome: string; artifactType: ArtifactType; status: StageStatus; statusLabel: string; statusExplanation: string;
     acceptance: string[]; acceptExplanation: string; importHint: string | null; fields: FieldDefinition[] | null; lockedKeys: string[]; acceptedVersionId: string | null;
     canEdit: boolean; canAccept: boolean; canReopen: boolean; canImport: boolean; inputsReady: boolean;
@@ -49,7 +60,7 @@ export type StageDetail = {
   versions: Array<{ id: string; versionNumber: number; origin: string; note: string | null; createdAt: string; accepted: boolean;
     provenance: { provider: string; model: string | null; instruction: string | null; targetKey: string | null; rulesApplied: number } | null }>;
   rules: Array<{ id: string; kind: "stage_rule" | "project_rule"; status: "active" | "disabled"; text: string; createdAt: string }>;
-  ai: { level: string; whatItDoes: string; instructionExamples: string[]; describeHint: string | null; configured: boolean; remainingToday: number; templateAvailable: boolean };
+  ai: { level: string; whatItDoes: string; instructionExamples: string[]; describeHint: string | null; configured: boolean; remainingToday: number; templateAvailable: boolean; budget: { limit: number | null; used: number } | null };
   options: { palettes: Preset[]; fonts: Preset[]; corners: Preset[]; heroLayouts: Preset[]; sectionTypes: Record<SectionType, string> };
 };
 
@@ -85,6 +96,26 @@ const messages: Record<string, string> = {
   TELEGRAM_NOT_CONFIGURED: "Telegram-бот пока не настроен на платформе.",
   TELEGRAM_NOT_LINKED: "Telegram не подключён.",
   LEAD_NOT_FOUND: "Заявка уже удалена.",
+  AI_BUDGET_EXHAUSTED: "Лимит запросов к ИИ, который выделил владелец проекта, закончился. Попросите владельца увеличить его или продолжайте вручную.",
+  STAGE_IN_REVIEW: "Этап на приёмке у владельца. Пока он проверяет, менять его нельзя.",
+  STAGE_NOT_SUBMITTABLE: "Этот этап сейчас нельзя отправить на приёмку.",
+  OWNER_ACCEPTS_DIRECTLY: "Вы владелец — просто примите этап.",
+  STAGE_NOT_IN_REVIEW: "Этап уже не на приёмке.",
+  PROJECT_RULE_FORBIDDEN: "Правила для всего проекта задаёт владелец. Сохраните правило для этого этапа.",
+  SUGGEST_FORBIDDEN: "Предлагать правки может консультант этапа.",
+  SUGGESTION_NOT_FOUND: "Предложение уже обработано.",
+  LEAD_ALREADY_ASSIGNED: "На этом этапе уже есть ведущий. Отзовите его приглашение, чтобы пригласить другого.",
+  ALREADY_INVITED: "Этот человек уже приглашён на этап.",
+  ALREADY_PROJECT_MEMBER: "Этот человек уже участник проекта.",
+  CANNOT_INVITE_OWNER: "Нельзя пригласить самого себя.",
+  INVALID_EMAIL: "Проверьте адрес электронной почты.",
+  SPECIALISTS_FORBIDDEN: "Приглашать специалистов может владелец или менеджер проекта.",
+  INVITE_NOT_FOUND: "Приглашение не найдено. Проверьте ссылку.",
+  INVITE_EXPIRED: "Срок приглашения истёк. Попросите владельца проекта прислать новое.",
+  INVITE_NOT_AVAILABLE: "Приглашение уже использовано или отозвано.",
+  INVITE_EMAIL_MISMATCH: "Приглашение отправлено на другой адрес. Войдите в аккаунт с той почтой, на которую пришло приглашение.",
+  ASSIGNMENT_NOT_FOUND: "Приглашение уже отозвано.",
+  PREVIEW_NOT_AVAILABLE: "Предпросмотр недоступен для этого этапа.",
 };
 
 export function explainError(error: unknown): string {

@@ -7,6 +7,7 @@ import {
   explainError, originLabels, statusTone, type Content, type Design, type Journey, type Offer, type SiteCheck, type StageDetail,
 } from "@/lib/journey";
 import { ContentEditor, DesignPicker, FieldsForm } from "./editors";
+import { SpecialistsPanel, SuggestionsPanel } from "./specialists";
 import styles from "../../../journey.module.css";
 
 type SaveAs = "one_off" | "stage_rule" | "project_rule";
@@ -120,6 +121,25 @@ export default function StagePage() {
     });
   }
 
+  async function submit() {
+    if (!detail?.current) return;
+    await run("submit", async () => {
+      await api(`/projects/${projectId}/stages/${stageKey}/submit`, { method: "POST", body: JSON.stringify({ versionId: detail.current!.id }) });
+      await load();
+      setMessage("Отправлено владельцу на приёмку. Пока он проверяет, этап нельзя менять.");
+    });
+  }
+
+  async function requestChanges() {
+    const note = window.prompt("Что нужно доработать? Специалист увидит этот комментарий.");
+    if (!note || note.trim().length < 2) return;
+    await run("changes", async () => {
+      await api(`/projects/${projectId}/stages/${stageKey}/request-changes`, { method: "POST", body: JSON.stringify({ note: note.trim() }) });
+      await load();
+      setMessage("Этап возвращён на доработку с вашим комментарием.");
+    });
+  }
+
   async function reopen() {
     if (!window.confirm("Изменить принятый этап? Этапы, которые построены на нём, нужно будет проверить ещё раз.")) return;
     await run("reopen", async () => {
@@ -139,6 +159,13 @@ export default function StagePage() {
   const issueKeys = detail.issues.map((issue) => issue.key);
   const siteChecks = stage.artifactType === "site" ? ((detail.current?.content as { checks?: SiteCheck[] } | undefined)?.checks ?? []) : [];
   const failedRequired = siteChecks.filter((check) => check.required && check.status === "failed");
+  const specialist = detail.viewer.kind === "specialist";
+  const assignment = detail.viewer.assignments.find((item) => item.stageKey === stage.key) ?? null;
+  const submitBlocked = dirty || !stage.canSubmit || detail.issues.length > 0 || !stage.inputsReady;
+  const submitReason = dirty ? "Сначала сохраните изменения." : !detail.current ? "Сначала сделайте черновик."
+    : !stage.inputsReady ? "Предыдущие этапы ещё не приняты владельцем." : detail.issues.length > 0 ? "Заполните то, чего не хватает (список выше)." : "Владелец проверит результат и примет этап или вернёт с комментарием.";
+  const sectionTargets = stage.artifactType === "content" && detail.current
+    ? (detail.current.content as Content).sections.map((section) => ({ key: section.key, label: section.title || detail.options.sectionTypes[section.type] })) : [];
   const acceptBlocked = dirty || !stage.canAccept || detail.issues.length > 0 || failedRequired.length > 0;
   const acceptReason = dirty ? "Сначала сохраните изменения."
     : !stage.inputsReady ? "Сначала примите предыдущие этапы."
@@ -152,6 +179,22 @@ export default function StagePage() {
       <h1 className={styles.h1}>{stage.title}</h1>
       <span className={`${styles.chip} ${styles[tone]}`} title={stage.statusExplanation}>{stage.statusLabel}</span>
       <p className={styles.small} style={{ margin: "6px 0 14px" }}>{stage.statusExplanation}</p>
+
+      {specialist && assignment && (
+        <p className={`${styles.notice} ${styles.info}`}>
+          {assignment.status === "completed"
+            ? "Владелец принял этап. Менять его больше нельзя, смотреть можно ещё несколько дней."
+            : assignment.role === "lead"
+              ? `Вы ведущий этого этапа: направляйте ИИ, правьте результат и отправьте его владельцу на приёмку.${assignment.aiBudget !== null ? ` Запросов к ИИ: ${assignment.aiUsed} из ${assignment.aiBudget}.` : ""}`
+              : "Вы консультант этого этапа: смотрите результат и предлагайте правки — ведущий или владелец отправит их ИИ."}
+        </p>
+      )}
+      {stage.status === "changes_requested" && stage.reviewNote && (
+        <p className={`${styles.notice} ${styles.warn}`}><strong>Владелец просит доработать:</strong> {stage.reviewNote}</p>
+      )}
+      {stage.status === "in_review" && (
+        <p className={`${styles.notice} ${styles.info}`}>{stage.canRequestChanges ? "Специалист отправил этап вам на приёмку. Посмотрите результат и примите его или верните с комментарием." : "Этап на приёмке у владельца. Пока он проверяет, менять его нельзя."}</p>
+      )}
 
       <section className={styles.card} aria-label="Зачем этот этап">
         <p className={styles.cardTitle}>Зачем этот этап</p>
@@ -316,7 +359,7 @@ export default function StagePage() {
               )}
               <fieldset style={{ border: 0, padding: 0, margin: "8px 0 12px" }}>
                 <legend className={styles.label} style={{ marginBottom: 6 }}>Запомнить эту просьбу?</legend>
-                {([["one_off", "Нет, только сейчас"], ["stage_rule", "Да, для этого этапа"], ["project_rule", "Да, для всего проекта"]] as const).map(([value, label]) => (
+                {([["one_off", "Нет, только сейчас"], ["stage_rule", "Да, для этого этапа"], ...(specialist ? [] : [["project_rule", "Да, для всего проекта"]] as const)] as const).map(([value, label]) => (
                   <label key={value} style={{ display: "flex", gap: 8, alignItems: "center", minHeight: 36 }}>
                     <input type="radio" name="saveAs" checked={saveAs === value} onChange={() => setSaveAs(value)} /> {label}
                   </label>
@@ -325,13 +368,20 @@ export default function StagePage() {
               </fieldset>
               <button className={`${styles.button} ${styles.block}`} disabled={Boolean(busy) || instruction.trim().length < 2}
                 onClick={() => run("ai", async () => { await askAi({ instruction: instruction.trim(), saveAs }); setInstruction(""); setSaveAs("one_off"); })}>{busy === "ai" ? "ИИ работает…" : "Попросить ИИ"}</button>
-              <p className={styles.small}>Осталось запросов сегодня: {ai.remainingToday}</p>
+              <p className={styles.small}>{ai.budget && ai.budget.limit !== null ? `Ваших запросов к ИИ: ${ai.budget.used} из ${ai.budget.limit}` : `Осталось запросов сегодня: ${ai.remainingToday}`}</p>
             </>
           )}
           {!ai.configured && ai.templateAvailable && stage.inputsReady && (
             <button className={styles.ghost} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>Обновить черновик по шаблону</button>
           )}
         </section>
+      )}
+
+      <SuggestionsPanel projectId={projectId} stageKey={stageKey} suggestions={detail.suggestions} canSuggest={stage.canSuggest} canResolve={stage.canEdit}
+        aiReady={ai.configured && stage.inputsReady} targets={sectionTargets} onChanged={load} onError={setError} onMessage={setMessage} />
+
+      {stage.canInvite && stage.status !== "locked" && (
+        <SpecialistsPanel projectId={projectId} stageKey={stageKey} editable={!accepted} />
       )}
 
       {detail.rules.length > 0 && (
@@ -344,9 +394,9 @@ export default function StagePage() {
                 <div className={styles.row}>
                   <span className={styles.small}>{rule.kind === "project_rule" ? "Для всего проекта" : "Для этого этапа"} · {rule.status === "active" ? "действует" : "выключено"}</span>
                   <div className={styles.spacer} />
-                  <button className={styles.ghost} style={{ minHeight: 40 }} disabled={Boolean(busy)}
+                  {!specialist && <button className={styles.ghost} style={{ minHeight: 40 }} disabled={Boolean(busy)}
                     onClick={() => run("rule", async () => { await api(`/projects/${projectId}/rules/${rule.id}/status`, { method: "POST", body: JSON.stringify({ status: rule.status === "active" ? "disabled" : "active" }) }); await load(); })}>
-                    {rule.status === "active" ? "Выключить" : "Включить"}</button>
+                    {rule.status === "active" ? "Выключить" : "Включить"}</button>}
                 </div>
               </li>
             ))}
@@ -413,6 +463,21 @@ export default function StagePage() {
               <span className={styles.bottomText}>Есть несохранённые изменения.</span>
               <button className={styles.ghost} disabled={Boolean(busy)} onClick={() => void load()}>Отменить</button>
               <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("save", async () => { await saveDraft(); })}>{busy === "save" ? "Сохраняем…" : "Сохранить"}</button>
+            </>
+          ) : stage.status === "in_review" && !stage.canRequestChanges ? (
+            <span className={styles.bottomText}>На приёмке у владельца проекта.</span>
+          ) : stage.status === "in_review" ? (
+            <>
+              <span className={styles.bottomText}>{failedRequired.length > 0 ? "Есть непройденные проверки." : "Примите результат специалиста или верните его с комментарием."}</span>
+              <button className={styles.ghost} disabled={Boolean(busy)} onClick={requestChanges}>Вернуть на доработку</button>
+              <button className={styles.button} disabled={Boolean(busy) || acceptBlocked} onClick={accept}>{busy === "accept" ? "Принимаем…" : "Принять этап"}</button>
+            </>
+          ) : specialist && assignment?.role === "consultant" ? (
+            <span className={styles.bottomText}>Вы консультант: предлагайте правки выше. Принимает этап владелец.</span>
+          ) : specialist || (stage.canSubmit && !stage.canAccept) ? (
+            <>
+              <span className={styles.bottomText}>{submitReason}</span>
+              <button className={styles.button} disabled={Boolean(busy) || submitBlocked} onClick={submit}>{busy === "submit" ? "Отправляем…" : "Отправить на приёмку"}</button>
             </>
           ) : (
             <>

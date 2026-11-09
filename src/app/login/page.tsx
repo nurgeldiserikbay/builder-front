@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import styles from "./login.module.css";
 
+/** Only same-site relative paths are allowed as a post-login destination. */
+function safeNext(value: string | null): string {
+  return value && value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/\\") ? value : "/projects";
+}
+
 type User = { id: string; email: string; name: string | null; emailVerified: boolean };
 
 export default function LoginPage() {
@@ -16,9 +21,10 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
+  const next = typeof window === "undefined" ? "/projects" : safeNext(new URLSearchParams(window.location.search).get("next"));
   useEffect(() => {
-    api<User>("/me").then(() => router.replace("/projects")).catch(() => undefined);
-  }, [router]);
+    api<User>("/me").then(() => router.replace(next)).catch(() => undefined);
+  }, [router, next]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -37,7 +43,7 @@ export default function LoginPage() {
           method: "POST",
           body: JSON.stringify({ email, password }),
         });
-        router.replace("/projects");
+        router.replace(next);
       }
     } catch (error) {
       const text = error instanceof ApiError

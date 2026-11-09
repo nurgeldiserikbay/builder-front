@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { download, explainError, statusTone, type Journey } from "@/lib/journey";
 import styles from "../journey.module.css";
+import PublishCard from "./publish-card";
 
 type ResultPackage = { generatedAt: string; complete: boolean; openItems: string[]; siteReady: boolean; files: Array<{ name: string; mimeType: string; content: string }> };
 
@@ -46,6 +47,7 @@ export default function JourneyPage() {
   }
 
   const completed = journey?.project.status === "completed";
+  const live = journey?.project.status === "live";
 
   return (
     <div className={styles.shell}>
@@ -109,7 +111,10 @@ export default function JourneyPage() {
               })}
             </ol>
 
-            <section className={styles.card} style={{ marginTop: 22 }} aria-labelledby="result-title">
+            <div style={{ height: 22 }} />
+            <PublishCard projectId={projectId} onChange={() => void load()} />
+
+            <section className={styles.card} aria-labelledby="result-title">
               <p className={styles.kicker}>Результат</p>
               <h2 id="result-title" className={styles.h2}>Забрать результат можно на любом этапе</h2>
               <p style={{ margin: "0 0 12px" }}>{journey.project.resultExplanation} В файлы попадёт только то, что вы приняли.</p>
@@ -129,10 +134,10 @@ export default function JourneyPage() {
                       </button>
                     ))}
                   </div>
-                  <p className={styles.small} style={{ marginTop: 10 }}>Публикация сайта в интернет прямо из BuildPath появится позже. Сейчас файл site.html можно загрузить на любой хостинг статических сайтов.</p>
+                  <p className={styles.small} style={{ marginTop: 10 }}>Файл site.html можно загрузить на любой хостинг статических сайтов. Форма заявок работает только на сайте, опубликованном через BuildPath.</p>
                 </>
               )}
-              {!completed && journey.project.role === "owner" && (
+              {!completed && !live && journey.project.role === "owner" && (
                 <button className={styles.ghost} style={{ marginTop: 12 }} disabled={busy} onClick={() => setStatus("complete")}>Завершить проект на этом этапе</button>
               )}
             </section>

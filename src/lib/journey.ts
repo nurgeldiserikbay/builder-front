@@ -76,6 +76,15 @@ const messages: Record<string, string> = {
   PROJECT_NOT_FOUND: "Проект не найден или у вас нет к нему доступа.",
   STAGE_WRITE_FORBIDDEN: "У вас нет права менять этот этап.",
   STAGE_ACCEPT_FORBIDDEN: "Принимать этапы может только владелец или менеджер проекта.",
+  PUBLISH_CONFIRMATION_REQUIRED: "Подтвердите, что сайт можно показать всем в интернете.",
+  BUILD_NOT_ACCEPTED: "Сначала примите этап «Сборка и проверка» — опубликовать можно только принятую сборку.",
+  SLUG_TAKEN: "Этот адрес уже занят другим сайтом. Выберите другой.",
+  INVALID_SLUG: "Адрес можно составить из латинских букв, цифр и дефиса, от 3 до 40 символов.",
+  SITE_NOT_PUBLISHED: "Сайт сейчас не опубликован.",
+  PUBLICATION_FORBIDDEN: "Публиковать сайт может только владелец или менеджер проекта.",
+  TELEGRAM_NOT_CONFIGURED: "Telegram-бот пока не настроен на платформе.",
+  TELEGRAM_NOT_LINKED: "Telegram не подключён.",
+  LEAD_NOT_FOUND: "Заявка уже удалена.",
 };
 
 export function explainError(error: unknown): string {
@@ -88,6 +97,16 @@ export function explainError(error: unknown): string {
   if (code.startsWith("FIELD_INVALID")) return "Одно из полей заполнено неверно.";
   return `Что-то пошло не так (${code}). Попробуйте ещё раз.`;
 }
+
+export type Publication = {
+  publication: { slug: string; url: string; status: "live" | "unpublished"; publishedAt: string; unpublishedAt: string | null; publishedVersionNumber: number | null; notifyTelegram: boolean; notifyEmail: boolean } | null;
+  acceptedBuild: { versionId: string; versionNumber: number; hasForm: boolean } | null;
+  outdated: boolean; canManage: boolean; suggestedSlug: string; baseDomain: string; urlTemplate: string;
+  channels: { telegram: { configured: boolean; linked: boolean; username: string | null; botUsername: string | null }; email: { configured: boolean; address: string } };
+  leadsCount: number;
+};
+
+export type Lead = { id: string; name: string; contact: string; message: string | null; createdAt: string; telegramStatus: string; emailStatus: string };
 
 export const statusTone: Record<StageStatus, "done" | "active" | "attention" | "closed"> = {
   approved: "done", imported: "done", skipped: "done",

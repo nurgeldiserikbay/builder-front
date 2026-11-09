@@ -10,7 +10,9 @@ After login the owner lands on `/projects`: a three-step wizard (site type → p
 
 `/projects/[projectId]/stages/[stageKey]` is one template for every stage: why the stage exists, what it takes from earlier stages, the editor (form for the project brief and services, block editor for texts, style presets, build with checks), AI instructions (whole stage, one block, or saved as a stage/project rule), protection of manually edited parts from AI rewrites, pasting ready material, version history with provenance and restore, and a sticky bar that explains why the stage can or cannot be accepted yet. Previews render the backend's script-free HTML in a sandboxed iframe. Error codes from the API are translated into Russian explanations in `src/lib/journey.ts`.
 
-If the backend has no AI provider configured, the UI says so and offers manual editing and template drafts. Publication to hosting, specialists and Telegram are not available yet.
+If the backend has no AI provider configured, the UI says so and offers manual editing and template drafts.
+
+The project page has a publication card: choose a site address (suggested from the business name and checked for availability), confirm that the site may become public, publish, update to a newer accepted build, or take it offline. The same card sets where leads from the site form go: Telegram (connected through a one-time link to the BuildPath bot) and/or email. `/projects/[projectId]/leads` lists leads with one-tap call/write buttons, delivery status and deletion. Specialists and stage work through Telegram are not available yet.
 
 ### Site review (`/review`)
 

@@ -9,7 +9,7 @@ import styles from "./journey.module.css";
 type Workspace = { id: string; name: string; role: string };
 type Project = { id: string; name: string; status: string; projectType: string | null; createdAt: string; updatedAt: string };
 
-const projectStatus: Record<string, string> = { draft: "Черновик", active: "В работе", paused: "На паузе", completed: "Завершён", archived: "В архиве" };
+const projectStatus: Record<string, string> = { draft: "Черновик", active: "В работе", paused: "На паузе", completed: "Завершён", archived: "В архиве", live: "Опубликован" };
 
 export default function ProjectsPage() {
   const router = useRouter();

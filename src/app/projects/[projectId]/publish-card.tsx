@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { explainError, type Publication } from "@/lib/journey";
+import { isPlanMessage, explainError, type Publication } from "@/lib/journey";
 import styles from "../journey.module.css";
 
 export default function PublishCard({ projectId, onChange }: { projectId: string; onChange: () => void }) {
@@ -53,7 +53,7 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
     });
   }
 
-  if (!state) return error ? <p className={`${styles.notice} ${styles.error}`}>{error}</p> : null;
+  if (!state) return error ? <p className={`${styles.notice} ${styles.error}`}>{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>Открыть тариф →</a></>}</p> : null;
   const live = state.publication?.status === "live";
   const suffix = `.${state.baseDomain}`;
   const showChannels = Boolean(state.publication || state.acceptedBuild?.hasForm);
@@ -62,7 +62,7 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
     <section className={styles.card} aria-labelledby="publish-title">
       <p className={styles.kicker}>Публикация</p>
       <h2 id="publish-title" className={styles.h2}>{live ? "Сайт работает в интернете" : "Опубликовать сайт"}</h2>
-      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
+      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>Открыть тариф →</a></>}</p>}
       {message && <p className={`${styles.notice} ${styles.success}`} role="status">{message}</p>}
 
       {!state.acceptedBuild && !state.publication && (

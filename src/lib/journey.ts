@@ -24,7 +24,7 @@ export type Journey = {
   progress: { accepted: number; total: number; percent: number };
   nextAction: { stageKey: string | null; title: string; text: string };
   stages: JourneyStage[];
-  ai: { configured: boolean; provider: string | null; remainingToday: number };
+  ai: { configured: boolean; provider: string | null; remainingToday: number; month: { left: number; limit: number; planTitle: string } | null };
 };
 
 export type FieldDefinition = {
@@ -60,7 +60,7 @@ export type StageDetail = {
   versions: Array<{ id: string; versionNumber: number; origin: string; note: string | null; createdAt: string; accepted: boolean;
     provenance: { provider: string; model: string | null; instruction: string | null; targetKey: string | null; rulesApplied: number } | null }>;
   rules: Array<{ id: string; kind: "stage_rule" | "project_rule"; status: "active" | "disabled"; text: string; createdAt: string }>;
-  ai: { level: string; whatItDoes: string; instructionExamples: string[]; describeHint: string | null; configured: boolean; remainingToday: number; templateAvailable: boolean; budget: { limit: number | null; used: number } | null };
+  ai: { level: string; whatItDoes: string; instructionExamples: string[]; describeHint: string | null; configured: boolean; remainingToday: number; templateAvailable: boolean; budget: { limit: number | null; used: number } | null; month: { left: number; limit: number; planTitle: string } | null };
   options: { palettes: Preset[]; fonts: Preset[]; corners: Preset[]; heroLayouts: Preset[]; sectionTypes: Record<SectionType, string> };
 };
 
@@ -116,7 +116,18 @@ const messages: Record<string, string> = {
   INVITE_EMAIL_MISMATCH: "Приглашение отправлено на другой адрес. Войдите в аккаунт с той почтой, на которую пришло приглашение.",
   ASSIGNMENT_NOT_FOUND: "Приглашение уже отозвано.",
   PREVIEW_NOT_AVAILABLE: "Предпросмотр недоступен для этого этапа.",
+  UNPUBLISH_BEFORE_ARCHIVE: "Сначала снимите сайт с публикации — опубликованный проект нельзя отправить в архив.",
+  PROJECT_STATUS_FORBIDDEN: "Это может сделать только владелец проекта.",
+  PLAN_LIMIT_PROJECTS: "По вашему тарифу больше нельзя создать проектов. Отправьте ненужные в архив или расширьте тариф.",
+  PLAN_LIMIT_AI: "В этом месяце закончились запросы к ИИ по тарифу владельца проекта. Продолжайте вручную или расширьте тариф.",
+  PLAN_LIMIT_SITES: "По вашему тарифу больше нельзя опубликовать сайтов. Снимите с публикации ненужный сайт или расширьте тариф.",
+  PLAN_NO_SPECIALISTS: "Приглашать специалистов можно на тарифах «Старт» и «Бизнес». Посмотрите тарифы.",
 };
+
+/** True when an error message is about plan limits; pages then show a link to the plan page. */
+export function isPlanMessage(text: string): boolean {
+  return /тариф/i.test(text);
+}
 
 export function explainError(error: unknown): string {
   if (!(error instanceof ApiError)) return "Не удалось связаться с сервером. Проверьте интернет и попробуйте ещё раз.";

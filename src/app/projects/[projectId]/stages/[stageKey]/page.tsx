@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import {
-  explainError, originLabels, statusTone, type Content, type Design, type Journey, type Offer, type SiteCheck, type StageDetail,
+  explainError, isPlanMessage, originLabels, statusTone, type Content, type Design, type Journey, type Offer, type SiteCheck, type StageDetail,
 } from "@/lib/journey";
 import { ContentEditor, DesignPicker, FieldsForm } from "./editors";
 import { SpecialistsPanel, SuggestionsPanel } from "./specialists";
@@ -149,7 +149,7 @@ export default function StagePage() {
     });
   }
 
-  if (error && !detail) return <Shell projectId={projectId} title=""><p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p></Shell>;
+  if (error && !detail) return <Shell projectId={projectId} title=""><p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>Открыть тариф →</a></>}</p></Shell>;
   if (!detail) return <Shell projectId={projectId} title=""><p className={styles.muted}>Загружаем этап…</p></Shell>;
 
   const { stage, ai } = detail;
@@ -202,7 +202,7 @@ export default function StagePage() {
         <p className={styles.small} style={{ margin: 0 }}><strong>Результат:</strong> {stage.outcome}</p>
       </section>
 
-      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
+      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>Открыть тариф →</a></>}</p>}
       {message && (
         <p className={`${styles.notice} ${styles.success}`} role="status">{message}
           {nextStageKey && accepted && <><br /><a className={styles.back} href={`/projects/${projectId}/stages/${nextStageKey}`}>Перейти к следующему этапу →</a></>}
@@ -368,7 +368,7 @@ export default function StagePage() {
               </fieldset>
               <button className={`${styles.button} ${styles.block}`} disabled={Boolean(busy) || instruction.trim().length < 2}
                 onClick={() => run("ai", async () => { await askAi({ instruction: instruction.trim(), saveAs }); setInstruction(""); setSaveAs("one_off"); })}>{busy === "ai" ? "ИИ работает…" : "Попросить ИИ"}</button>
-              <p className={styles.small}>{ai.budget && ai.budget.limit !== null ? `Ваших запросов к ИИ: ${ai.budget.used} из ${ai.budget.limit}` : `Осталось запросов сегодня: ${ai.remainingToday}`}</p>
+              <p className={styles.small}>{ai.budget && ai.budget.limit !== null ? `Ваших запросов к ИИ: ${ai.budget.used} из ${ai.budget.limit}` : ai.month ? `Запросов к ИИ в этом месяце осталось: ${ai.month.left} из ${ai.month.limit}` : `Осталось запросов сегодня: ${ai.remainingToday}`}</p>
             </>
           )}
           {!ai.configured && ai.templateAvailable && stage.inputsReady && (

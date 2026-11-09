@@ -39,3 +39,9 @@ npm run dev
 Set `NEXT_PUBLIC_API_BASE_URL` to the BuildPath API. In `builder-back`, copy `.env.example`, run `docker compose up -d` to start PostgreSQL, MinIO, and ClamAV, then start the API and review worker. To enable captures, install Chromium, set `CAPTURE_CHROMIUM_EXECUTABLE_PATH` in the backend environment, and run the worker as a non-root user with restricted egress. Configure the email provider for account registration. The local MinIO credentials are for development only.
 
 The product/API requirements live in [builder-docs](https://github.com/nurgeldiserikbay/builder-docs). The backend API contract is maintained in [builder-back](https://github.com/nurgeldiserikbay/builder-back/blob/main/apps/api/openapi.yaml).
+
+## Production
+
+`Dockerfile` builds a standalone Next.js server (`output: "standalone"`). The image calls the API on its own origin (`NEXT_PUBLIC_API_BASE_URL=/api/v1` by default); the reverse proxy routes `/api/*` to the API. Deployment for all services: `builder-back/deploy/README.md`.
+
+Optional browser error reporting: set `NEXT_PUBLIC_SENTRY_DSN` at build time (Sentry or self-hosted GlitchTip). Events carry no cookies, headers, query strings or user data; invite tokens are removed from URLs.

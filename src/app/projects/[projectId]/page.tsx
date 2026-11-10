@@ -8,6 +8,7 @@ import styles from "../journey.module.css";
 import PublishCard from "./publish-card";
 import ProjectMap from "./project-map";
 import BudgetCard from "./budget-card";
+import WalletCard from "./wallet-card";
 
 type ResultPackage = { generatedAt: string; complete: boolean; openItems: string[]; siteReady: boolean; files: Array<{ name: string; mimeType: string; content: string }> };
 
@@ -141,6 +142,7 @@ export default function JourneyPage() {
                 <a className={styles.secondary} href={`/projects/${projectId}/bookings`}>Открыть записи</a>
               </section>
             )}
+            <WalletCard projectId={projectId} />
             <BudgetCard projectId={projectId} />
             <PublishCard projectId={projectId} onChange={() => void load()} />
 

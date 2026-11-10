@@ -133,6 +133,14 @@ export default function JourneyPage() {
             <p style={{ margin: "4px 0 0" }}><a className={styles.back} href={`/projects/${projectId}/history`}>История запросов к ИИ →</a></p>
             {!specialist && <>
             <div style={{ height: 22 }} />
+            {journey.project.projectType === "booking" && (
+              <section className={styles.card} aria-labelledby="bookings-title">
+                <p className={styles.kicker}>Онлайн-запись</p>
+                <h2 id="bookings-title" className={styles.h2}>Записи клиентов</h2>
+                <p style={{ margin: "0 0 10px" }}>Кто, когда и к какому мастеру записался. Отменяйте записи и отмечайте, пришёл ли клиент.</p>
+                <a className={styles.secondary} href={`/projects/${projectId}/bookings`}>Открыть записи</a>
+              </section>
+            )}
             <BudgetCard projectId={projectId} />
             <PublishCard projectId={projectId} onChange={() => void load()} />
 

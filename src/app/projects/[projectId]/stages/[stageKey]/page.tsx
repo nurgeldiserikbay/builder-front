@@ -10,6 +10,7 @@ import { ContentEditor, DesignPicker, FieldsForm } from "./editors";
 import { SpecialistsPanel, SuggestionsPanel } from "./specialists";
 import ChangesPanel from "./changes";
 import { TimesheetPanel } from "./timesheet";
+import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { formatTenge } from "@/lib/money";
 import styles from "../../../journey.module.css";
 
@@ -29,6 +30,7 @@ function summarize(key: string, content: unknown): string {
   if (key === "offer") return `Услуг: ${(content as Offer).services.length}`;
   if (key === "content") return `Блоков: ${(content as Content).sections.length}`;
   if (key === "design") return `Стиль выбран`;
+  if (key === "schedule") { const schedule = content as Schedule; return `Услуг для записи: ${schedule.services.length}, мастеров: ${schedule.masters.length}`; }
   return "";
 }
 
@@ -57,9 +59,9 @@ export default function StagePage() {
       const next = await api<StageDetail>(`/projects/${projectId}/stages/${stageKey}`);
       setDetail(next);
       const type = next.stage.artifactType;
-      setDraft(next.current?.content ?? (type === "brief" ? {} : type === "offer" ? { services: [], hours: null } : type === "design" ? defaultDesign : null));
-      // A first style choice is a ready-to-save draft: offer «Сохранить» right away.
-      setDirty(!next.current && type === "design" && next.stage.canEdit);
+      setDraft(next.current?.content ?? (type === "brief" ? {} : type === "offer" ? { services: [], hours: null } : type === "design" ? defaultDesign : type === "schedule" ? next.options.schedule?.template ?? null : null));
+      // A first style choice or the prefilled schedule is a ready-to-save draft: offer «Сохранить» right away.
+      setDirty(!next.current && (type === "design" || type === "schedule") && next.stage.canEdit);
       return next;
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return null; }
@@ -318,6 +320,12 @@ export default function StagePage() {
         <section className={styles.card}>
           <DesignPicker design={draft as Design} onChange={edit} options={detail.options} disabled={!stage.canEdit} />
         </section>
+      )}
+
+      {stage.artifactType === "schedule" && stage.status !== "locked" && draft !== null && detail.options.schedule && (
+        <ScheduleEditor value={draft as Schedule} onChange={edit} options={detail.options.schedule} disabled={!stage.canEdit}
+          offerServices={((detail.inputs.find((input) => input.key === "offer")?.content as Offer | null)?.services ?? []).map((service) => service.name)}
+          issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
       )}
 
       {/* Build stage */}

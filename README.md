@@ -45,3 +45,9 @@ The product/API requirements live in [builder-docs](https://github.com/nurgeldis
 `Dockerfile` builds a standalone Next.js server (`output: "standalone"`). The image calls the API on its own origin (`NEXT_PUBLIC_API_BASE_URL=/api/v1` by default); the reverse proxy routes `/api/*` to the API. Deployment for all services: `builder-back/deploy/README.md`.
 
 Optional browser error reporting: set `NEXT_PUBLIC_SENTRY_DSN` at build time (Sentry or self-hosted GlitchTip). Events carry no cookies, headers, query strings or user data; invite tokens are removed from URLs.
+
+## Legal documents and account
+
+- `/legal/terms` and `/legal/privacy` render the documents served by the API (`GET /legal/{key}`), so the published text and its version come from one place.
+- Registration has a required consent checkbox. When the documents are updated, a dialog asks signed-in users to accept the new version before they continue (`consent-gate.tsx`).
+- `/account` lets the owner delete the account after seeing what happens immediately and how long data is kept.

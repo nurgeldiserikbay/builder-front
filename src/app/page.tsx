@@ -73,7 +73,7 @@ export default function HomePage() {
         <div className="section-heading"><div><p className="eyebrow">РАБОТАЕМ ВМЕСТЕ</p><h2>Вы решаете, каким должен быть результат</h2></div><p>BuildPath объясняет важные развилки и ведёт работу по сохранённому плану.</p></div>
         <div className="principle-grid">{principles.map(([title, description], index) => <article className="principle" key={title}><span className="principle-number">0{index + 1}</span><div><h3>{title}</h3><p>{description}</p></div></article>)}</div>
       </section>
-      <footer><a className="brand footer-brand" href="/"><span className="brand-mark" aria-hidden="true">B</span><span>buildpath</span></a><span>От первой идеи — к понятному результату.</span></footer>
+      <footer><a className="brand footer-brand" href="/"><span className="brand-mark" aria-hidden="true">B</span><span>buildpath</span></a><span>От первой идеи — к понятному результату.</span><span><a href="/legal/terms">Оферта</a> · <a href="/legal/privacy">Конфиденциальность</a></span></footer>
     </main>
   );
 }

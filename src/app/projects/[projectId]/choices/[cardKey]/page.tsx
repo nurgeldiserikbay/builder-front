@@ -5,11 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import { makeZip } from "@/lib/zip";
+import { GithubConnect } from "./github-connect";
 import styles from "../../../journey.module.css";
 
 type Step = { key: string; title: string; text: string[]; kind: "manual" | "connect" | "download" | "publish" | "push" | "package" | "verify"; link?: { label: string; url: string } };
 type Option = { key: string; requires?: { card: string; option: string; explanation: string }; title: string; summary: string; pros: string[]; limits: string[]; cost: string; upkeep: string; leaving: string; steps: Step[] };
-type Repository = { provider: string; repoPath: string; webUrl: string; defaultBranch: string; isPrivate: boolean; tokenHint: string; verifiedAt: string; lastPushAt: string | null; lastCommitUrl: string | null; lastError: string | null };
+type Repository = { provider: string; connectedVia?: string; repoPath: string; webUrl: string; defaultBranch: string; isPrivate: boolean; tokenHint: string; verifiedAt: string; lastPushAt: string | null; lastCommitUrl: string | null; lastError: string | null };
 type CardState = {
   card: { key: string; title: string; question: string; why: string; checkedAt: string; options: Option[] };
   recommendation: { optionKey: string; reason: string };
@@ -79,6 +80,16 @@ export default function ChoicePage() {
   const { card, recommendation, choice, repository } = state;
   const chosen = choice ? card.options.find((option) => option.key === choice.optionKey) ?? null : null;
   const showOptions = !chosen || picking;
+  const tokenForm = chosen ? (
+
+                        <form onSubmit={(event) => { event.preventDefault(); void run("connect", async () => { const next = await api<CardState>(`/projects/${projectId}/repository`, { method: "POST", body: JSON.stringify({ provider: chosen.key, repoUrl, token }) }); setToken(""); setDone("Готово: BuildPath может записывать в репозиторий. Ничего не отправлено — отправка только по вашей кнопке."); return next; }); }}>
+                          <label className={styles.label} htmlFor="repo-url">Адрес репозитория</label>
+                          <input id="repo-url" className={styles.input} inputMode="url" required maxLength={500} placeholder={chosen.key === "github" ? "https://github.com/имя/my-site" : "https://gitlab.com/имя/my-site"} value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} />
+                          <label className={styles.label} htmlFor="repo-token">Ключ доступа</label>
+                          <input id="repo-token" className={styles.input} type="password" autoComplete="off" required maxLength={400} value={token} onChange={(event) => setToken(event.target.value)} />
+                          <button className={styles.button} style={{ marginTop: 8 }} disabled={Boolean(busy)}>{busy === "connect" ? "Проверяем…" : "Проверить и подключить"}</button>
+                        </form>
+  ) : null;
 
   return (
     <Shell projectId={projectId}>
@@ -166,13 +177,10 @@ export default function ChoicePage() {
                     )}
                     {step.kind === "connect" && !repository && state.canDecide && (
                       state.connectAvailable ? (
-                        <form onSubmit={(event) => { event.preventDefault(); void run("connect", async () => { const next = await api<CardState>(`/projects/${projectId}/repository`, { method: "POST", body: JSON.stringify({ provider: chosen.key, repoUrl, token }) }); setToken(""); setDone("Готово: BuildPath может записывать в репозиторий. Ничего не отправлено — отправка только по вашей кнопке."); return next; }); }}>
-                          <label className={styles.label} htmlFor="repo-url">Адрес репозитория</label>
-                          <input id="repo-url" className={styles.input} inputMode="url" required maxLength={500} placeholder={chosen.key === "github" ? "https://github.com/имя/my-site" : "https://gitlab.com/имя/my-site"} value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} />
-                          <label className={styles.label} htmlFor="repo-token">Ключ доступа</label>
-                          <input id="repo-token" className={styles.input} type="password" autoComplete="off" required maxLength={400} value={token} onChange={(event) => setToken(event.target.value)} />
-                          <button className={styles.button} style={{ marginTop: 8 }} disabled={Boolean(busy)}>{busy === "connect" ? "Проверяем…" : "Проверить и подключить"}</button>
-                        </form>
+                        chosen.key === "github" ? (
+                          <GithubConnect projectId={projectId} projectName={state.context?.publication?.slug ?? ""} fallback={tokenForm}
+                            onConnected={(next) => { setState(next as CardState); setDone("Готово: репозиторий подключён. Ничего не отправлено — отправка только по вашей кнопке."); }} />
+                        ) : tokenForm
                       ) : <p className={`${styles.notice} ${styles.info}`}>{errors.REPO_CONNECT_NOT_CONFIGURED}</p>
                     )}
                   </div>
@@ -186,7 +194,7 @@ export default function ChoicePage() {
               <p className={styles.kicker}>Подключено</p>
               <p className={styles.cardTitle} style={{ marginTop: 0 }}><a href={repository.webUrl} target="_blank" rel="noreferrer">{repository.repoPath}</a></p>
               <p className={styles.small} style={{ margin: "0 0 8px" }}>
-                {repository.isPrivate ? "Закрытый репозиторий" : "Открытый репозиторий — код видят все"} · ветка {repository.defaultBranch} · ключ {repository.tokenHint} · проверено {date(repository.verifiedAt)}
+                {repository.isPrivate ? "Закрытый репозиторий" : "Открытый репозиторий — код видят все"} · ветка {repository.defaultBranch} · {repository.connectedVia === "oauth" ? "через ваш аккаунт GitHub" : `ключ ${repository.tokenHint}`} · проверено {date(repository.verifiedAt)}
                 {repository.lastPushAt && <><br />Последняя отправка: {date(repository.lastPushAt)}{repository.lastCommitUrl && <> · <a href={repository.lastCommitUrl} target="_blank" rel="noreferrer">посмотреть</a></>}</>}
                 {repository.lastError && <><br />Последняя попытка не удалась: {errors[repository.lastError] ?? repository.lastError}</>}
               </p>

@@ -6,6 +6,7 @@ import { ApiError, api } from "@/lib/api";
 import { download, explainError, isPlanMessage, statusTone, type Journey } from "@/lib/journey";
 import styles from "../journey.module.css";
 import PublishCard from "./publish-card";
+import ProjectMap from "./project-map";
 
 type ResultPackage = { generatedAt: string; complete: boolean; openItems: string[]; siteReady: boolean; files: Array<{ name: string; mimeType: string; content: string }> };
 
@@ -22,6 +23,7 @@ export default function JourneyPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<ResultPackage | null>(null);
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState<"map" | "list">("map");
 
   const load = useCallback(async () => {
     try {
@@ -98,9 +100,14 @@ export default function JourneyPage() {
                 : "ИИ пока не подключён: этапы заполняются вручную, а тексты и стиль можно получить по готовому шаблону."}
             </p>
 
-            <h2 className={styles.h2}>{specialist ? "Ваши этапы" : "Этапы"}</h2>
-            <p className={styles.small} style={{ margin: "0 0 10px" }}>Каждый этап открывается, когда приняты те, от которых он зависит. Принятый этап можно изменить позже.</p>
-            <ol className={styles.stageList}>
+            <h2 className={styles.h2}>{specialist ? "Ваши этапы" : "Карта проекта"}</h2>
+            <p className={styles.small} style={{ margin: "0 0 10px" }}>Этап открывается, когда приняты те, от которых он зависит. Этапы в одной строке можно делать одновременно. Принятый этап можно изменить позже.</p>
+            <div className={styles.viewToggle} role="group" aria-label="Вид">
+              <button type="button" aria-pressed={view === "map"} onClick={() => setView("map")}>Карта</button>
+              <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>Список</button>
+            </div>
+            {view === "map" && <ProjectMap projectId={projectId} stages={journey.stages} aiOn={journey.ai.configured} />}
+            {view === "list" && <ol className={styles.stageList}>
               {journey.stages.map((stage, index) => {
                 const tone = statusTone[stage.status];
                 const locked = stage.status === "locked";
@@ -120,7 +127,7 @@ export default function JourneyPage() {
                   </li>
                 );
               })}
-            </ol>
+            </ol>}
 
             {!specialist && <>
             <div style={{ height: 22 }} />

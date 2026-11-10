@@ -134,6 +134,13 @@ export default function JourneyPage() {
             <div style={{ height: 22 }} />
             <PublishCard projectId={projectId} onChange={() => void load()} />
 
+            <section className={styles.card} aria-labelledby="code-title">
+              <p className={styles.kicker}>Копия кода</p>
+              <h2 id="code-title" className={styles.h2}>Где хранить код</h2>
+              <p style={{ margin: "0 0 12px" }}>Сайт работает на BuildPath и без этого. Копия у вас — страховка: можно переехать, отдать разработчику или восстановить. Выберите вариант — мы объясним, что сделать.</p>
+              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/code_hosting`}>Выбрать, где хранить код</a>
+            </section>
+
             <section className={styles.card} aria-labelledby="result-title">
               <p className={styles.kicker}>Результат</p>
               <h2 id="result-title" className={styles.h2}>Забрать результат можно на любом этапе</h2>

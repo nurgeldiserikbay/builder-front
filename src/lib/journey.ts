@@ -13,6 +13,7 @@ export type JourneyStage = {
   inputs: Array<{ key: string; title: string; satisfied: boolean }>; currentVersionNumber: number | null; acceptedVersionNumber: number | null;
   people?: { lead: { kind: "owner" | "specialist" | "invited" | "you"; name: string | null }; consultants: number };
   needsYou?: string | null;
+  changes?: { incoming: Array<{ id: string; sourceKey: string; status: "open" | "discussing" }>; outgoing: Array<{ id: string; targetKey: string; status: "open" | "discussing" }> };
 };
 
 export type ViewerInfo = {
@@ -55,7 +56,7 @@ export type StageDetail = {
     canSubmit: boolean; canRequestChanges: boolean; canInvite: boolean; canSuggest: boolean; reviewNote: string | null;
     key: string; title: string; purpose: string; outcome: string; artifactType: ArtifactType; status: StageStatus; statusLabel: string; statusExplanation: string;
     acceptance: string[]; acceptExplanation: string; importHint: string | null; fields: FieldDefinition[] | null; lockedKeys: string[]; acceptedVersionId: string | null;
-    canEdit: boolean; canAccept: boolean; canReopen: boolean; canImport: boolean; inputsReady: boolean;
+    canEdit: boolean; canAccept: boolean; canReopen: boolean; canImport: boolean; inputsReady: boolean; changesPending?: boolean;
   };
   inputs: Array<{ key: string; title: string; satisfied: boolean; versionNumber: number | null; content: unknown }>;
   current: { id: string; versionNumber: number; origin: string; note: string | null; createdAt: string; content: unknown } | null;
@@ -68,6 +69,10 @@ export type StageDetail = {
 };
 
 const messages: Record<string, string> = {
+  CHANGE_NOTICE_OPEN: "Предыдущий этап изменился. Сначала решите по изменению вверху страницы: принять, оставить как есть или задать вопрос.",
+  CHANGE_DECISION_FORBIDDEN: "Решение по изменению принимает ведущий этого этапа или владелец.",
+  CHANGE_REPLY_FORBIDDEN: "Ответить может ведущий изменённого этапа или владелец.",
+  CHANGE_NOTICE_CLOSED: "По этому изменению уже приняли решение. Обновите страницу.",
   CONSENT_REQUIRED: "Мы обновили оферту и политику конфиденциальности. Примите новую редакцию, чтобы продолжить.",
   LEGAL_VERSION_OUTDATED: "Документы успели обновиться. Обновите страницу и прочитайте новую редакцию.",
   INVALID_PASSWORD: "Пароль не подошёл. Введите пароль от аккаунта.",

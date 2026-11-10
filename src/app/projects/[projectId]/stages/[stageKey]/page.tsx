@@ -8,6 +8,7 @@ import {
 } from "@/lib/journey";
 import { ContentEditor, DesignPicker, FieldsForm } from "./editors";
 import { SpecialistsPanel, SuggestionsPanel } from "./specialists";
+import ChangesPanel from "./changes";
 import styles from "../../../journey.module.css";
 
 type SaveAs = "one_off" | "stage_rule" | "project_rule";
@@ -162,12 +163,12 @@ export default function StagePage() {
   const specialist = detail.viewer.kind === "specialist";
   const assignment = detail.viewer.assignments.find((item) => item.stageKey === stage.key) ?? null;
   const submitBlocked = dirty || !stage.canSubmit || detail.issues.length > 0 || !stage.inputsReady;
-  const submitReason = dirty ? "Сначала сохраните изменения." : !detail.current ? "Сначала сделайте черновик."
+  const submitReason = stage.changesPending ? "Сначала решите по изменению предыдущего этапа (вверху страницы)." : dirty ? "Сначала сохраните изменения." : !detail.current ? "Сначала сделайте черновик."
     : !stage.inputsReady ? "Предыдущие этапы ещё не приняты владельцем." : detail.issues.length > 0 ? "Заполните то, чего не хватает (список выше)." : "Владелец проверит результат и примет этап или вернёт с комментарием.";
   const sectionTargets = stage.artifactType === "content" && detail.current
     ? (detail.current.content as Content).sections.map((section) => ({ key: section.key, label: section.title || detail.options.sectionTypes[section.type] })) : [];
   const acceptBlocked = dirty || !stage.canAccept || detail.issues.length > 0 || failedRequired.length > 0;
-  const acceptReason = dirty ? "Сначала сохраните изменения."
+  const acceptReason = stage.changesPending ? "Сначала решите по изменению предыдущего этапа (вверху страницы)." : dirty ? "Сначала сохраните изменения."
     : !stage.inputsReady ? "Сначала примите предыдущие этапы."
       : detail.issues.length > 0 ? "Заполните то, чего не хватает (список выше)."
         : failedRequired.length > 0 ? "Исправьте непройденные проверки."
@@ -195,6 +196,8 @@ export default function StagePage() {
       {stage.status === "in_review" && (
         <p className={`${styles.notice} ${styles.info}`}>{stage.canRequestChanges ? "Специалист отправил этап вам на приёмку. Посмотрите результат и примите его или верните с комментарием." : "Этап на приёмке у владельца. Пока он проверяет, менять его нельзя."}</p>
       )}
+
+      <ChangesPanel projectId={projectId} stageKey={stageKey} onChange={() => void load()} />
 
       <section className={styles.card} aria-label="Зачем этот этап">
         <p className={styles.cardTitle}>Зачем этот этап</p>
@@ -230,7 +233,7 @@ export default function StagePage() {
         </details>
       )}
 
-      {stage.status === "stale" && <p className={`${styles.notice} ${styles.warn}`}>Предыдущий этап изменился. Посмотрите, всё ли здесь ещё верно: если да — нажмите «Подтвердить», если нет — поправьте или попросите ИИ обновить.</p>}
+      {stage.status === "stale" && <p className={`${styles.notice} ${styles.warn}`}>Предыдущий этап изменился. Посмотрите, что изменилось, вверху страницы и решите: обновить этот этап или оставить его как есть.</p>}
       {!stage.inputsReady && stage.status !== "locked" && !accepted && (
         <p className={`${styles.notice} ${styles.info}`}>Можно готовить этап заранее, но принять его получится после того, как будут приняты предыдущие этапы.</p>
       )}

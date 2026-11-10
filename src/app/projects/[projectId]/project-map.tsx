@@ -35,7 +35,7 @@ function Connectors({ from, to }: { from: JourneyStage[]; to: JourneyStage[] }) 
   const lines: Array<{ x1: number; x2: number; changed: boolean }> = [];
   to.forEach((stage, target) => {
     from.forEach((source, origin) => {
-      if (stage.inputs.some((input) => input.key === source.key)) lines.push({ x1: x(origin, from.length), x2: x(target, to.length), changed: stage.status === "stale" });
+      if (stage.inputs.some((input) => input.key === source.key)) lines.push({ x1: x(origin, from.length), x2: x(target, to.length), changed: Boolean(stage.changes?.incoming.some((item) => item.sourceKey === source.key)) });
     });
   });
   if (!lines.length) return <div style={{ height: 14 }} />;

@@ -139,6 +139,8 @@ export default function JourneyPage() {
               <h2 id="code-title" className={styles.h2}>Где хранить код</h2>
               <p style={{ margin: "0 0 12px" }}>Сайт работает на BuildPath и без этого. Копия у вас — страховка: можно переехать, отдать разработчику или восстановить. Выберите вариант — мы объясним, что сделать.</p>
               <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/code_hosting`}>Выбрать, где хранить код</a>
+              <p style={{ margin: "14px 0 8px" }}>Сайт можно разместить не только на BuildPath: на своём сервере или в GitHub Pages. Мы проведём по шагам и проверим, что он открывается.</p>
+              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/deployment`}>Где будет работать сайт</a>
             </section>
 
             <section className={styles.card} aria-labelledby="result-title">

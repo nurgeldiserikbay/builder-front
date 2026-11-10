@@ -11,6 +11,8 @@ export type CatalogType = {
 export type JourneyStage = {
   key: string; title: string; purpose: string; outcome: string; aiLevel: string; status: StageStatus; statusLabel: string; statusExplanation: string;
   inputs: Array<{ key: string; title: string; satisfied: boolean }>; currentVersionNumber: number | null; acceptedVersionNumber: number | null;
+  people?: { lead: { kind: "owner" | "specialist" | "invited" | "you"; name: string | null }; consultants: number };
+  needsYou?: string | null;
 };
 
 export type ViewerInfo = {

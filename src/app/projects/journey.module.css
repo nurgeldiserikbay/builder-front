@@ -111,3 +111,4 @@
 .mapBadge{align-self:flex-start;background:#255b42;color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:3px 8px}
 .viewToggle{display:inline-flex;border:1px solid #d5ddd3;border-radius:10px;overflow:hidden;margin:0 0 12px}.viewToggle button{border:0;background:#fff;padding:8px 14px;font:inherit;font-size:13px;font-weight:700;color:#3f4d44;cursor:pointer}.viewToggle button[aria-pressed=true]{background:#255b42;color:#fff}
 .mapNode .chip{align-self:flex-start}
+.mapContract{align-self:flex-start;font-size:11px;font-weight:800;color:#3c3489;background:#eeedfe;border-radius:999px;padding:2px 8px}.contractCard{border-color:#afa9ec;background:#fafaff}

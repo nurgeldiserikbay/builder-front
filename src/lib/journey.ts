@@ -9,7 +9,7 @@ export type CatalogType = {
 };
 
 export type JourneyStage = {
-  key: string; title: string; purpose: string; outcome: string; aiLevel: string; status: StageStatus; statusLabel: string; statusExplanation: string;
+  key: string; title: string; purpose: string; outcome: string; aiLevel: string; contract?: boolean; status: StageStatus; statusLabel: string; statusExplanation: string;
   inputs: Array<{ key: string; title: string; satisfied: boolean }>; currentVersionNumber: number | null; acceptedVersionNumber: number | null;
   people?: { lead: { kind: "owner" | "specialist" | "invited" | "you"; name: string | null }; consultants: number };
   needsYou?: string | null;
@@ -57,6 +57,9 @@ export type StageDetail = {
     key: string; title: string; purpose: string; outcome: string; artifactType: ArtifactType; status: StageStatus; statusLabel: string; statusExplanation: string;
     acceptance: string[]; acceptExplanation: string; importHint: string | null; fields: FieldDefinition[] | null; lockedKeys: string[]; acceptedVersionId: string | null;
     canEdit: boolean; canAccept: boolean; canReopen: boolean; canImport: boolean; inputsReady: boolean; changesPending?: boolean;
+    contract?: { explanation: string } | null;
+    waitingBranches?: Array<{ stageKey: string; title: string; sourceKey: string; sourceTitle: string }>;
+    impact?: { opens: Array<{ key: string; title: string }>; willNotify: Array<{ key: string; title: string; status: string }> };
   };
   inputs: Array<{ key: string; title: string; satisfied: boolean; versionNumber: number | null; content: unknown }>;
   current: { id: string; versionNumber: number; origin: string; note: string | null; createdAt: string; content: unknown } | null;
@@ -69,6 +72,7 @@ export type StageDetail = {
 };
 
 const messages: Record<string, string> = {
+  BRANCHES_NOT_ALIGNED: "Не все этапы, на которых построен этот, решили по последнему изменению. Дождитесь их решения — иначе части сайта будут сделаны по разным версиям.",
   CHANGE_NOTICE_OPEN: "Предыдущий этап изменился. Сначала решите по изменению вверху страницы: принять, оставить как есть или задать вопрос.",
   CHANGE_DECISION_FORBIDDEN: "Решение по изменению принимает ведущий этого этапа или владелец.",
   CHANGE_REPLY_FORBIDDEN: "Ответить может ведущий изменённого этапа или владелец.",

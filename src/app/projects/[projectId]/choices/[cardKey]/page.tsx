@@ -6,9 +6,10 @@ import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import { makeZip } from "@/lib/zip";
 import { GithubConnect } from "./github-connect";
+import { DomainConnect } from "./domain-connect";
 import styles from "../../../journey.module.css";
 
-type Step = { key: string; title: string; text: string[]; kind: "manual" | "connect" | "download" | "publish" | "push" | "package" | "verify"; link?: { label: string; url: string } };
+type Step = { key: string; title: string; text: string[]; kind: "manual" | "connect" | "download" | "publish" | "push" | "package" | "verify" | "domain"; link?: { label: string; url: string } };
 type Option = { key: string; requires?: { card: string; option: string; explanation: string }; title: string; summary: string; pros: string[]; limits: string[]; cost: string; upkeep: string; leaving: string; steps: Step[] };
 type Repository = { provider: string; connectedVia?: string; repoPath: string; webUrl: string; defaultBranch: string; isPrivate: boolean; tokenHint: string; verifiedAt: string; lastPushAt: string | null; lastCommitUrl: string | null; lastError: string | null };
 type CardState = {
@@ -17,7 +18,7 @@ type CardState = {
   choice: { optionKey: string; reason: string | null; stepsDone: string[]; chosenAt: string; verification: Verification | null } | null;
   repository: Repository | null; canDecide: boolean; connectAvailable: boolean;
   available?: Record<string, boolean>;
-  context?: { siteAccepted: boolean; publication: { status: string; slug: string; upToDate: boolean } | null; repository: { provider: string; repoPath: string; pushedAt: string | null } | null } | null;
+  context?: { siteAccepted?: boolean; domainsAvailable?: boolean; publication: { status: string; slug: string; upToDate: boolean; domain?: string | null; domainStatus?: string | null } | null; repository?: { provider: string; repoPath: string; pushedAt: string | null } | null } | null;
 };
 type Verification = { url: string | null; status: "matches" | "outdated" | "different" | "unreachable" | "not_allowed" | "not_published"; checkedAt: string; httpStatus: number | null };
 const verificationText: Record<Verification["status"], string> = {
@@ -139,7 +140,7 @@ export default function ChoicePage() {
           <h2 className={styles.h2}>Что нужно от вас</h2>
           <ol className={styles.stageList}>
             {chosen.steps.map((step, index) => {
-              const stepDone = choice!.stepsDone.includes(step.key);
+              const stepDone = choice!.stepsDone.includes(step.key) || (step.kind === "domain" && state.context?.publication?.domainStatus === "active");
               return (
                 <li key={step.key}>
                   <div className={`${styles.mapNode} ${stepDone ? styles.done : styles.active}`}>
@@ -149,6 +150,7 @@ export default function ChoicePage() {
                     {step.kind === "download" && <a href={`/projects/${projectId}#result-title`}>Перейти к файлам →</a>}
                     {step.kind === "publish" && <span className={styles.small}>{state.context?.publication?.status === "live" ? `Сайт опубликован${state.context.publication.upToDate ? "" : ", но это не последняя принятая версия — обновите публикацию"}.` : "Сайт ещё не опубликован."} <a href={`/projects/${projectId}#publish-title`}>Открыть публикацию →</a></span>}
                     {step.kind === "push" && <span className={styles.small}>{state.context?.repository?.pushedAt ? `Последняя отправка в ${state.context.repository.repoPath}: ${date(state.context.repository.pushedAt)}.` : "Ещё не отправляли."} <a href={`/projects/${projectId}/choices/code_hosting`}>Открыть «Где хранить код» →</a></span>}
+                    {step.kind === "domain" && <DomainConnect projectId={projectId} canDecide={state.canDecide} onChange={() => void load()} />}
                     {step.kind === "package" && state.canDecide && (
                       <button className={styles.secondary} style={{ marginTop: 4 }} disabled={Boolean(busy)} onClick={() => run("package", async () => {
                         const pack = await api<{ folder: string; files: Array<{ name: string; content: string }> }>(`/projects/${projectId}/deployment/package`);

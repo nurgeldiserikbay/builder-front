@@ -76,7 +76,9 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
             <a className={styles.button} href={state.publication.url} target="_blank" rel="noopener">Открыть сайт</a>
             <button className={styles.ghost} onClick={() => { void navigator.clipboard?.writeText(state.publication!.url); setMessage("Ссылка скопирована — можно отправить клиентам."); }}>Скопировать ссылку</button>
           </div>
-          <p className={styles.small} style={{ margin: "0 0 10px" }}>Опубликована сборка версии {state.publication.publishedVersionNumber}.</p>
+          {state.publication.domain?.status === "active" && state.publication.domain.url && <p style={{ margin: "0 0 10px" }}>Свой домен: <a href={state.publication.domain.url} target="_blank" rel="noopener" style={{ color: "#255b42", fontWeight: 800, wordBreak: "break-all" }}>{state.publication.domain.display}</a></p>}
+          {state.publication.domain && state.publication.domain.status !== "active" && <p className={`${styles.notice} ${styles.warn}`}>Домен {state.publication.domain.display} ещё не подключён: нужно добавить запись у регистратора. <a href={`/projects/${projectId}/choices/domain`}>Продолжить →</a></p>}
+          <p className={styles.small} style={{ margin: "0 0 10px" }}>Опубликована сборка версии {state.publication.publishedVersionNumber}.{!state.publication.domain && state.domainsAvailable && <> <a href={`/projects/${projectId}/choices/domain`}>Подключить свой домен →</a></>}</p>
           {state.outdated && state.canManage && (
             <div className={`${styles.notice} ${styles.warn}`}>
               Есть новая принятая сборка (версия {state.acceptedBuild?.versionNumber}), которой ещё нет на сайте.

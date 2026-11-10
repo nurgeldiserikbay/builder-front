@@ -25,7 +25,7 @@ export type ViewerInfo = {
 
 export type Journey = {
   viewer: ViewerInfo;
-  project: { id: string; name: string; status: string; role: string; projectType: string; typeTitle: string; resultExplanation: string; startStageKey: string | null };
+  project: { id: string; name: string; status: string; role: string; projectType: string; typeTitle: string; resultExplanation: string; startStageKey: string | null; changeResponseDays?: number };
   progress: { accepted: number; total: number; percent: number };
   nextAction: { stageKey: string | null; title: string; text: string };
   stages: JourneyStage[];

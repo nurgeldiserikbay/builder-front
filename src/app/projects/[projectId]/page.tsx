@@ -129,6 +129,7 @@ export default function JourneyPage() {
               })}
             </ol>}
 
+            <p style={{ margin: "4px 0 0" }}><a className={styles.back} href={`/projects/${projectId}/history`}>История запросов к ИИ →</a></p>
             {!specialist && <>
             <div style={{ height: 22 }} />
             <PublishCard projectId={projectId} onChange={() => void load()} />

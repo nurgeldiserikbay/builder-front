@@ -8,7 +8,7 @@ import styles from "../../projects/journey.module.css";
 
 type Invite = {
   projectName: string; invitedBy: string; stageKey: string; stageTitle: string; stagePurpose: string; role: "lead" | "consultant"; roleTitle: string; roleExplanation: string;
-  can: string[]; cannot: string[]; afterAcceptance: string; aiBudget: number | null; email: string; status: string; expired: boolean; projectId: string | null;
+  can: string[]; cannot: string[]; afterAcceptance: string; aiBudget: number | null; email: string; status: string; expired: boolean; projectId: string | null; termsText: string; timeRules: string[];
 };
 
 export default function InvitePage() {
@@ -61,6 +61,12 @@ export default function InvitePage() {
               {invite.role === "lead" && <p className={styles.small}>{invite.aiBudget === null ? "Запросы к ИИ — в пределах дневного лимита проекта. Их оплачивает владелец." : `Запросов к ИИ: до ${invite.aiBudget}. Их оплачивает владелец проекта.`}</p>}
               <p className={styles.cardTitle} style={{ marginTop: 14 }}>Что будет недоступно</p>
               <ul className={styles.list}>{invite.cannot.map((item) => <li key={item}>{item}</li>)}</ul>
+              <div className={`${styles.notice} ${styles.info}`} style={{ marginTop: 12 }}>
+                <strong>Оплата</strong>
+                <p style={{ margin: "4px 0 6px" }}>{invite.termsText}</p>
+                <strong>Как считается время</strong>
+                <ul className={styles.list}>{invite.timeRules.map((item) => <li key={item}>{item}</li>)}</ul>
+              </div>
               <p className={styles.small} style={{ marginTop: 12 }}>{invite.afterAcceptance} Результаты этапа принадлежат владельцу проекта.</p>
             </section>
 

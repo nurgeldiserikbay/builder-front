@@ -9,6 +9,8 @@ import {
 import { ContentEditor, DesignPicker, FieldsForm } from "./editors";
 import { SpecialistsPanel, SuggestionsPanel } from "./specialists";
 import ChangesPanel from "./changes";
+import { TimesheetPanel } from "./timesheet";
+import { formatTenge } from "@/lib/money";
 import styles from "../../../journey.module.css";
 
 type SaveAs = "one_off" | "stage_rule" | "project_rule";
@@ -44,6 +46,11 @@ export default function StagePage() {
   const [importText, setImportText] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [nextStageKey, setNextStageKey] = useState<string | null>(null);
+  const [requestPrice, setRequestPrice] = useState<number | null>(null);
+  useEffect(() => {
+    // Specialists don't see project money; the request just fails quietly for them.
+    api<{ perRequest: number | null }>(`/projects/${projectId}/budget`).then((budget) => setRequestPrice(budget.perRequest)).catch(() => undefined);
+  }, [projectId]);
 
   const load = useCallback(async () => {
     try {
@@ -264,7 +271,7 @@ export default function StagePage() {
       {stage.artifactType === "brief" && stage.canEdit && ai.level !== "none" && (
         <section className={styles.card} aria-label="Описать бизнес своими словами">
           <p className={styles.cardTitle}>Расскажите о бизнесе своими словами</p>
-          <p className={styles.small} style={{ marginTop: 0 }}>{ai.configured ? ai.whatItDoes : "ИИ пока не подключён — заполните поля ниже вручную. Это займёт пару минут."}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{ai.configured ? `${ai.whatItDoes}${requestPrice !== null ? ` Один запрос к ИИ стоит около ${formatTenge(requestPrice)}.` : ""}` : "ИИ пока не подключён — заполните поля ниже вручную. Это займёт пару минут."}</p>
           {ai.configured && (
             <>
               <textarea className={styles.textarea} value={instruction} maxLength={1000} placeholder={ai.describeHint ?? ""} aria-label="Описание бизнеса" onChange={(event) => setInstruction(event.target.value)} />
@@ -375,7 +382,7 @@ export default function StagePage() {
           {!ai.configured && <p className={styles.small} style={{ marginTop: 0 }}>ИИ пока не подключён к платформе — правьте вручную.</p>}
           {ai.configured && (
             <>
-              <p className={styles.small} style={{ marginTop: 0 }}>{ai.whatItDoes} Защищённые места ИИ не тронет.</p>
+              <p className={styles.small} style={{ marginTop: 0 }}>{ai.whatItDoes} Защищённые места ИИ не тронет.{requestPrice !== null ? ` Один запрос к ИИ стоит около ${formatTenge(requestPrice)}.` : ""}</p>
               <textarea className={styles.textarea} value={instruction} maxLength={1000} aria-label="Инструкция для ИИ" placeholder="Напишите, что изменить" onChange={(event) => setInstruction(event.target.value)} />
               {ai.instructionExamples.length > 0 && (
                 <div className={styles.chips} style={{ margin: "10px 0" }} aria-label="Примеры">
@@ -407,6 +414,10 @@ export default function StagePage() {
 
       {stage.canInvite && stage.status !== "locked" && (
         <SpecialistsPanel projectId={projectId} stageKey={stageKey} editable={!accepted} />
+      )}
+
+      {(stage.canInvite || specialist) && (
+        <TimesheetPanel key={stage.status} projectId={projectId} stageKey={stageKey} specialistActive={specialist && assignment?.status === "active"} />
       )}
 
       {detail.rules.length > 0 && (

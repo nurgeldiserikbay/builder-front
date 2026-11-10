@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { formatTenge } from "@/lib/money";
 import { isPlanMessage, explainError, type Suggestion } from "@/lib/journey";
 import styles from "../../../journey.module.css";
 
-type Assignment = { id: string; email: string; name: string | null; role: "lead" | "consultant"; status: string; aiBudget: number | null; aiUsed: number; inviteExpired: boolean; readUntil: string | null };
+type Assignment = { id: string; email: string; name: string | null; role: "lead" | "consultant"; status: string; aiBudget: number | null; aiUsed: number; inviteExpired: boolean; readUntil: string | null; termsText: string };
 type Roles = { lead: { title: string; explanation: string; can: string[] }; consultant: { title: string; explanation: string; can: string[] }; cannot: string[]; afterAcceptance: string };
 
 const statusText: Record<string, string> = { invited: "приглашение отправлено", active: "работает над этапом", completed: "этап принят", revoked: "доступ отозван" };
@@ -18,6 +19,13 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
   const [role, setRole] = useState<"lead" | "consultant">("lead");
   const [email, setEmail] = useState("");
   const [budget, setBudget] = useState("20");
+  const [pay, setPay] = useState<"none" | "fixed" | "hourly">("hourly");
+  const [amount, setAmount] = useState("");
+  const [rate, setRate] = useState("");
+  const [limit, setLimit] = useState("10");
+  const [weekly, setWeekly] = useState("");
+  const [revisions, setRevisions] = useState("2");
+  const [onlyResult, setOnlyResult] = useState(true);
   const [link, setLink] = useState<{ url: string; emailSent: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -34,12 +42,20 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
     setBusy(true); setError("");
     try {
       const result = await api<{ inviteUrl: string; emailSent: boolean }>(`/projects/${projectId}/stages/${stageKey}/assignments`, {
-        method: "POST", body: JSON.stringify({ email: email.trim(), role, aiBudget: role === "lead" && budget.trim() ? Number(budget) : null }),
+        method: "POST", body: JSON.stringify({ email: email.trim(), role, aiBudget: role === "lead" && budget.trim() ? Number(budget) : null, ...termsBody() }),
       });
       setLink({ url: result.inviteUrl, emailSent: result.emailSent }); setEmail(""); setOpen(false);
       await load();
     } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
   }
+
+  function termsBody() {
+    if (pay === "fixed") return { payKind: pay, fixedAmount: Number(amount), ...(revisions ? { revisionsIncluded: Number(revisions) } : {}) };
+    if (pay === "hourly") return { payKind: pay, hourlyRate: Number(rate), hourLimit: Number(limit), ...(weekly ? { weeklyHourLimit: Number(weekly) } : {}), onlyResultTime: onlyResult };
+    return { payKind: pay };
+  }
+  const termsValid = pay === "none" || (pay === "fixed" ? Number(amount) >= 1000 : Number(rate) >= 500 && Number(limit) >= 1 && Number(limit) <= 1000 && (!weekly || (Number(weekly) >= 1 && Number(weekly) <= 80)));
+  const digits = (set: (value: string) => void, max: number) => (event: { target: { value: string } }) => set(event.target.value.replace(/\D/g, "").slice(0, max));
 
   async function revoke(item: Assignment) {
     if (!window.confirm(`Отозвать доступ у ${item.name ?? item.email}? Сделанные версии останутся в истории.`)) return;
@@ -69,6 +85,7 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
                 <span className={styles.small}>{item.role === "lead" ? "ведущий" : "консультант"}</span>
               </div>
               <div className={styles.small}>{item.inviteExpired ? "срок приглашения истёк" : statusText[item.status]}{item.role === "lead" ? ` · ИИ: ${item.aiUsed}${item.aiBudget === null ? "" : ` из ${item.aiBudget}`}` : ""}</div>
+              <div className={styles.small}>{item.termsText}</div>
               {(item.status === "invited" || item.status === "active" || (item.status === "completed" && item.readUntil)) && (
                 <button className={styles.danger} style={{ minHeight: 40, marginTop: 6 }} onClick={() => void revoke(item)}>Отозвать доступ</button>
               )}
@@ -98,6 +115,43 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
               <input className={styles.input} inputMode="numeric" value={budget} maxLength={4} onChange={(event) => setBudget(event.target.value.replace(/\D/g, ""))} />
             </label>
           )}
+          <fieldset className={styles.field} style={{ border: 0, padding: 0, margin: "14px 0 0" }}>
+            <legend className={styles.label}>Как вы платите специалисту</legend>
+            <span className={styles.why}>Заранее ничего не платится. Платформа считает время, а сумма начисляется, когда вы примете результат этапа.</span>
+            <div className={styles.choices} role="group" aria-label="Оплата">
+              {([["hourly", "Почасово", "Ставка за час и лимит часов. Вы видите, когда он работал и были ли действия."], ["fixed", "Цена за этап", "Одна сумма за принятый результат, сколько бы времени ни ушло."], ["none", "Договоримся сами", "Платформа только покажет время, деньги — не через неё."]] as const).map(([value, title, text]) => (
+                <button key={value} type="button" className={styles.choice} aria-pressed={pay === value} onClick={() => setPay(value)}>
+                  <strong>{title}</strong><span className={styles.small}>{text}</span>
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          {pay === "hourly" && (
+            <>
+              <div className={styles.row}>
+                <label className={styles.field} style={{ flex: 1 }}><span className={styles.label}>Ставка, ₸ в час</span>
+                  <input className={styles.input} inputMode="numeric" value={rate} placeholder="5000" onChange={digits(setRate, 7)} /></label>
+                <label className={styles.field} style={{ flex: 1 }}><span className={styles.label}>Лимит, часов</span>
+                  <input className={styles.input} inputMode="numeric" value={limit} onChange={digits(setLimit, 4)} /></label>
+              </div>
+              <label className={styles.field}><span className={styles.label}>Не больше часов в неделю</span>
+                <span className={styles.why}>Необязательно. Когда лимит закончится, учёт остановится.</span>
+                <input className={styles.input} inputMode="numeric" value={weekly} placeholder="без ограничения" onChange={digits(setWeekly, 2)} /></label>
+              <label className={styles.row} style={{ alignItems: "flex-start", gap: 10, margin: "4px 0 12px" }}>
+                <input type="checkbox" checked={onlyResult} onChange={(event) => setOnlyResult(event.target.checked)} style={{ width: 22, height: 22 }} />
+                <span><strong>Платить только за время с результатом</strong><br /><span className={styles.small}>Отрезки, когда страница была открыта, но на этапе ничего не делалось, не оплачиваются.</span></span>
+              </label>
+              {Number(rate) >= 500 && Number(limit) >= 1 && <p className={styles.small}>Максимум за этап: {formatTenge(Number(rate) * Number(limit))}</p>}
+            </>
+          )}
+          {pay === "fixed" && (
+            <div className={styles.row}>
+              <label className={styles.field} style={{ flex: 2 }}><span className={styles.label}>Сумма за этап, ₸</span>
+                <input className={styles.input} inputMode="numeric" value={amount} placeholder="150000" onChange={digits(setAmount, 9)} /></label>
+              <label className={styles.field} style={{ flex: 1 }}><span className={styles.label}>Правок входит</span>
+                <input className={styles.input} inputMode="numeric" value={revisions} onChange={digits(setRevisions, 2)} /></label>
+            </div>
+          )}
           <div className={`${styles.notice} ${styles.info}`}>
             <strong>Специалист сможет:</strong>
             <ul className={styles.list}>{roles[role].can.map((item) => <li key={item}>{item}</li>)}</ul>
@@ -108,7 +162,7 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
           <div className={styles.row}>
             <button className={styles.ghost} onClick={() => setOpen(false)}>Отмена</button>
             <div className={styles.spacer} />
-            <button className={styles.button} disabled={busy || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())} onClick={invite}>{busy ? "Создаём…" : "Пригласить"}</button>
+            <button className={styles.button} disabled={busy || !termsValid || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())} onClick={invite}>{busy ? "Создаём…" : "Пригласить"}</button>
           </div>
         </div>
       )}

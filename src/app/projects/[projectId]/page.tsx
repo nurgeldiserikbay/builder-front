@@ -7,6 +7,7 @@ import { download, explainError, isPlanMessage, statusTone, type Journey } from 
 import styles from "../journey.module.css";
 import PublishCard from "./publish-card";
 import ProjectMap from "./project-map";
+import BudgetCard from "./budget-card";
 
 type ResultPackage = { generatedAt: string; complete: boolean; openItems: string[]; siteReady: boolean; files: Array<{ name: string; mimeType: string; content: string }> };
 
@@ -132,6 +133,7 @@ export default function JourneyPage() {
             <p style={{ margin: "4px 0 0" }}><a className={styles.back} href={`/projects/${projectId}/history`}>История запросов к ИИ →</a></p>
             {!specialist && <>
             <div style={{ height: 22 }} />
+            <BudgetCard projectId={projectId} />
             <PublishCard projectId={projectId} onChange={() => void load()} />
 
             <section className={styles.card} aria-labelledby="code-title">
@@ -139,6 +141,8 @@ export default function JourneyPage() {
               <h2 id="code-title" className={styles.h2}>Где хранить код</h2>
               <p style={{ margin: "0 0 12px" }}>Сайт работает на BuildPath и без этого. Копия у вас — страховка: можно переехать, отдать разработчику или восстановить. Выберите вариант — мы объясним, что сделать.</p>
               <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/code_hosting`}>Выбрать, где хранить код</a>
+              <p style={{ margin: "14px 0 8px" }}>Сайт можно разместить не только на BuildPath: на своём сервере или в GitHub Pages. Мы проведём по шагам и проверим, что он открывается.</p>
+              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/deployment`}>Где будет работать сайт</a>
             </section>
 
             <section className={styles.card} aria-labelledby="result-title">

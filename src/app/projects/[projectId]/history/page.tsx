@@ -4,13 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
+import { formatTenge } from "@/lib/money";
 import styles from "../../journey.module.css";
 
 type Person = { id: string; name: string; kind: "you" | "owner" | "member" | "specialist" | "former" };
 type Item = {
   id: string; createdAt: string; stage: { key: string; title: string }; author: Person; text: string | null; savedAs: string | null;
   targetKey: string | null; rulesApplied: number; kind: "ai" | "template"; model: string | null; source: "app" | "telegram";
-  tokens: { input: number | null; output: number | null } | null; durationMs: number; result: { versionNumber: number } | null;
+  tokens: { input: number | null; output: number | null } | null; cost?: number | null; durationMs: number; result: { versionNumber: number } | null;
   outcome: "accepted" | "current" | "replaced" | "failed"; errorCode: string | null;
 };
 type Total = { requests: number; failed: number; tokens: number };
@@ -153,7 +154,7 @@ export default function HistoryPage() {
                   </span>
                   <span className={styles.mapWho}>
                     {item.outcome === "failed" && item.errorCode ? `${errors[item.errorCode] ?? "не получилось"}. ` : ""}
-                    {item.tokens ? `Токенов: ${number((item.tokens.input ?? 0) + (item.tokens.output ?? 0))}. ` : ""}
+                    {item.tokens ? `Токенов: ${number((item.tokens.input ?? 0) + (item.tokens.output ?? 0))}${typeof item.cost === "number" ? `, ${formatTenge(item.cost)}` : ""}. ` : ""}
                     {item.result && <a href={`/projects/${projectId}/stages/${item.stage.key}`}>Открыть этап →</a>}
                   </span>
                 </div>

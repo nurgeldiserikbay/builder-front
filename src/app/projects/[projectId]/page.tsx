@@ -7,6 +7,7 @@ import { download, explainError, isPlanMessage, statusTone, type Journey } from 
 import styles from "../journey.module.css";
 import PublishCard from "./publish-card";
 import ProjectMap from "./project-map";
+import BudgetCard from "./budget-card";
 
 type ResultPackage = { generatedAt: string; complete: boolean; openItems: string[]; siteReady: boolean; files: Array<{ name: string; mimeType: string; content: string }> };
 
@@ -132,6 +133,7 @@ export default function JourneyPage() {
             <p style={{ margin: "4px 0 0" }}><a className={styles.back} href={`/projects/${projectId}/history`}>История запросов к ИИ →</a></p>
             {!specialist && <>
             <div style={{ height: 22 }} />
+            <BudgetCard projectId={projectId} />
             <PublishCard projectId={projectId} onChange={() => void load()} />
 
             <section className={styles.card} aria-labelledby="code-title">

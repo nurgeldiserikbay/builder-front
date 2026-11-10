@@ -11,7 +11,15 @@ type Notice = {
   id: string; status: "open" | "discussing" | "accepted" | "accepted_no_change"; direction: "incoming" | "outgoing";
   source: { key: string; title: string; fromVersion: number | null; toVersion: number | null }; target: { key: string; title: string };
   changes: string[]; createdAt: string; createdBy: Person; decidedAt: string | null; decidedBy: Person; decidedByOwner: boolean;
-  messages: Message[]; can: { decide: boolean; discuss: boolean; reply: boolean };
+  messages: Message[]; can: { decide: boolean; discuss: boolean; reply: boolean; explain?: boolean };
+  respondBy?: string | null; overdue?: boolean; escalated?: boolean;
+  explanation?: { summary: string; impact: string[]; check: string[]; suggestion: "accept" | "accept_no_change" | "discuss"; why: string; createdAt: string } | null;
+};
+const suggestionLabels = { accept: "обновить этап по изменениям", accept_no_change: "оставить этап как есть", discuss: "обсудить с автором изменения" } as const;
+const daysLeft = (value: string) => {
+  const hours = Math.round((new Date(value).getTime() - Date.now()) / 3_600_000);
+  if (hours <= 0) return "срок ответа прошёл";
+  return hours < 24 ? `ответить в течение ${hours} ч` : `ответить до ${new Date(value).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}`;
 };
 
 const resolutionLabels = { kept: "Оставить изменение как есть", will_revise: "Выпущу исправленную версию", escalate: "Пусть решит владелец" } as const;
@@ -44,6 +52,12 @@ export default function ChangesPanel({ projectId, stageKey, onChange }: { projec
     } catch (caught) { setError(explainError(caught)); } finally { setBusy(""); }
   }
 
+  async function explain(notice: Notice) {
+    setBusy(`${notice.id}:explain`); setError("");
+    try { setItems((await api<{ items: Notice[] }>(`/projects/${projectId}/changes/${notice.id}/explain`, { method: "POST" })).items); }
+    catch (caught) { setError(explainError(caught)); } finally { setBusy(""); }
+  }
+
   if (!items || items.length === 0) return error ? <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p> : null;
   const open = items.filter((item) => item.status === "open" || item.status === "discussing");
   const closed = items.filter((item) => !open.includes(item)).slice(0, 3);
@@ -59,8 +73,26 @@ export default function ChangesPanel({ projectId, stageKey, onChange }: { projec
           {incoming ? `«${notice.source.title}»: версия ${notice.source.fromVersion ?? "?"} → ${notice.source.toVersion ?? "?"}` : `Вы изменили этот этап: версия ${notice.source.fromVersion ?? "?"} → ${notice.source.toVersion ?? "?"}`}
         </p>
         <span className={`${styles.chip} ${live ? styles.attention : styles.done}`}>{statusLabels[notice.status]}</span>
+        {live && incoming && notice.respondBy && (
+          <span className={styles.small} style={{ marginLeft: 8, color: notice.overdue ? "#a33" : undefined, fontWeight: notice.overdue ? 700 : undefined }}>
+            {daysLeft(notice.respondBy)}{notice.escalated ? " · владелец может решить за этап" : ""}
+          </span>
+        )}
         <p className={styles.small} style={{ margin: "8px 0 4px" }}>Что изменилось:</p>
         <ul className={styles.list} style={{ marginTop: 0 }}>{notice.changes.map((line) => <li key={line}>{line}</li>)}</ul>
+        {incoming && live && notice.explanation && (
+          <div style={{ background: "#f3f1fb", borderRadius: 10, padding: "10px 12px", margin: "8px 0" }}>
+            <p className={styles.small} style={{ margin: 0, fontWeight: 700 }}>Пояснение ИИ — это совет, решаете вы</p>
+            <p style={{ margin: "4px 0" }}>{notice.explanation.summary}</p>
+            {notice.explanation.impact.length > 0 && <><p className={styles.small} style={{ margin: "6px 0 2px" }}>Что это значит для этапа:</p><ul className={styles.list} style={{ marginTop: 0 }}>{notice.explanation.impact.map((line) => <li key={line}>{line}</li>)}</ul></>}
+            {notice.explanation.check.length > 0 && <><p className={styles.small} style={{ margin: "6px 0 2px" }}>Что проверить:</p><ul className={styles.list} style={{ marginTop: 0 }}>{notice.explanation.check.map((line) => <li key={line}>{line}</li>)}</ul></>}
+            <p className={styles.small} style={{ margin: "6px 0 0" }}>Совет: {suggestionLabels[notice.explanation.suggestion]}. {notice.explanation.why}</p>
+          </div>
+        )}
+        {incoming && live && !notice.explanation && notice.can.explain && (
+          <button className={styles.ghost} style={{ margin: "4px 0" }} disabled={Boolean(busy)} onClick={() => void explain(notice)}>
+            {busy === `${notice.id}:explain` ? "ИИ разбирается…" : "Объяснить простыми словами (ИИ)"}</button>
+        )}
         {incoming && live && <p className={styles.small}>Пока вы не решите, этот этап работает на прежней версии «{notice.source.title}», а принять или отправить его на приёмку нельзя.</p>}
 
         {notice.messages.length > 0 && (

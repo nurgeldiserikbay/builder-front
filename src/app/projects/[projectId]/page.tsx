@@ -104,6 +104,9 @@ export default function JourneyPage() {
 
             <h2 className={styles.h2}>{specialist ? "Ваши этапы" : "Карта проекта"}</h2>
             <p className={styles.small} style={{ margin: "0 0 10px" }}>Этап открывается, когда приняты те, от которых он зависит. Этапы в одной строке делаются одновременно: они построены на общем утверждённом контракте. Принятый этап можно изменить позже — следующие этапы получат уведомление.</p>
+            {!specialist && ["owner", "manager"].includes(journey.project.role) && journey.project.changeResponseDays && (
+              <ResponseDays projectId={projectId} value={journey.project.changeResponseDays} />
+            )}
             <div className={styles.viewToggle} role="group" aria-label="Вид">
               <button type="button" aria-pressed={view === "map"} onClick={() => setView("map")}>Карта</button>
               <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>Список</button>
@@ -190,5 +193,24 @@ export default function JourneyPage() {
         )}
       </main>
     </div>
+  );
+}
+
+/** How long the next stage has to answer a change: then a reminder, and two days later the owner can decide for it. */
+function ResponseDays({ projectId, value }: { projectId: string; value: number }) {
+  const [days, setDays] = useState(value);
+  const [saved, setSaved] = useState(false);
+  async function save(next: number) {
+    setDays(next); setSaved(false);
+    try { await api(`/projects/${projectId}/change-settings`, { method: "POST", body: JSON.stringify({ responseDays: next }) }); setSaved(true); } catch { setDays(value); }
+  }
+  return (
+    <label className={styles.small} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "0 0 10px" }}>
+      <span>Срок ответа на изменения:</span>
+      <select className={styles.input} style={{ width: "auto", minHeight: 36, padding: "4px 8px" }} value={days} onChange={(event) => void save(Number(event.target.value))}>
+        {[1, 2, 3, 5, 7, 14].map((item) => <option key={item} value={item}>{item} дн.</option>)}
+      </select>
+      <span>{saved ? "Сохранено." : "Потом — напоминание, а ещё через 2 дня вы сможете решить за этап."}</span>
+    </label>
   );
 }

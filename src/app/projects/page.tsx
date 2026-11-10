@@ -77,7 +77,7 @@ export default function ProjectsPage() {
       <header className={styles.top}><div className={styles.topInner}>
         <a className={styles.brand} href="/"><span aria-hidden="true">B</span>BuildPath</a>
         <div className={styles.spacer} />
-        <a className={styles.back} href="/account/plan">Тариф</a>
+        <a className={styles.back} href="/account">Аккаунт</a>
         <a className={styles.back} href="/review" style={{ marginLeft: 12 }}>Сверка сайта</a>
       </div></header>
       <main className={styles.container}>

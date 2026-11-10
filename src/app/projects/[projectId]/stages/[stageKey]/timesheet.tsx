@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import { formatTenge } from "@/lib/money";
 import styles from "../../../journey.module.css";
 
 type Terms = { payKind: "none" | "fixed" | "hourly"; fixedAmount: number | null; hourlyRate: number | null; hourLimit: number | null; weeklyHourLimit: number | null; revisionsIncluded: number | null; onlyResultTime: boolean };
 type Entry = { id: string; startedAt: string; endedAt: string; minutes: number; source: "tracked" | "manual"; actions: number; withoutResult: boolean; note: string | null; status: string; ownerComment: string | null; specialistReply: string | null };
-type Payment = { id: string; basis: string; minutes: number | null; amount: number; status: "due" | "paid_direct" | "paid" | "cancelled"; paidAt: string | null; stageVersion: number | null };
+type Payment = { id: string; basis: string; minutes: number | null; amount: number; fee: number | null; payout: number | null; status: "due" | "checkout" | "held" | "paid_out" | "paid_direct" | "paid" | "cancelled"; paidAt: string | null; paidOutAt: string | null; stageVersion: number | null };
 type Summary = { trackedMinutes: number; approvedMinutes: number; pendingMinutes: number; disputedMinutes: number; noResultMinutes: number; payableMinutes: number; limitMinutes: number | null; limitReached: boolean; amountDue: number };
 type Sheet = { id: string; name: string; isYou: boolean; role: string; status: string; terms: Terms; summary: Summary; entries: Entry[]; payments: Payment[] };
 
@@ -16,7 +16,10 @@ const hours = (minutes: number) => (minutes < 60 ? `${minutes} мин` : `${Math
 const time = (value: string) => new Date(value).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 const day = (value: string) => new Date(value).toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "long" });
 const statusText: Record<string, string> = { pending: "ждёт подтверждения", approved: "подтверждено", auto_approved: "подтверждено автоматически", disputed: "оспорено" };
-const paymentText: Record<string, string> = { due: "к оплате", paid_direct: "оплачено напрямую", paid: "оплачено", cancelled: "отменено" };
+const paymentText: Record<string, string> = {
+  due: "к оплате", checkout: "ждёт оплаты", held: "оплачено в BuildPath, ждёт перевода специалисту", paid_out: "переведено специалисту",
+  paid_direct: "оплачено напрямую", paid: "оплачено", cancelled: "отменено",
+};
 
 /**
  * While a specialist with an active assignment has the stage open and interacts with it, tell the server once a minute.
@@ -60,11 +63,12 @@ export function TimesheetPanel({ projectId, stageKey, specialistActive }: { proj
   const [comment, setComment] = useState<{ id: string; kind: "dispute" | "reply"; text: string } | null>(null);
   const [manual, setManual] = useState<{ date: string; start: string; minutes: string; note: string } | null>(null);
   const { limitReached } = useWorkHeartbeat(projectId, stageKey, specialistActive);
+  const [online, setOnline] = useState<{ payOnline: boolean; feePercent: number }>({ payOnline: false, feePercent: 0 });
 
   const load = useCallback(async () => {
     try {
-      const data = await api<{ canDecide: boolean; assignments: Sheet[] }>(`/projects/${projectId}/stages/${stageKey}/timesheet`);
-      setSheets(data.assignments); setCanDecide(data.canDecide);
+      const data = await api<{ canDecide: boolean; assignments: Sheet[]; payOnline: boolean; specialistFeePercent: number }>(`/projects/${projectId}/stages/${stageKey}/timesheet`);
+      setSheets(data.assignments); setCanDecide(data.canDecide); setOnline({ payOnline: data.payOnline, feePercent: data.specialistFeePercent });
     } catch (caught) { setError(explainError(caught)); }
   }, [projectId, stageKey]);
   useEffect(() => { void load(); }, [load]);
@@ -103,17 +107,35 @@ export function TimesheetPanel({ projectId, stageKey, specialistActive }: { proj
               {sheet.terms.payKind !== "none" && <li>{sheet.status === "completed" ? "Начислено" : "Если принять этап сейчас"}: <strong>{formatTenge(sheet.payments[0]?.amount ?? s.amountDue)}</strong></li>}
             </ul>
             {sheet.payments.map((payment) => (
-              <div key={payment.id} className={`${styles.notice} ${payment.status === "due" ? styles.info : styles.success}`}>
+              <div key={payment.id} className={`${styles.notice} ${payment.status === "due" || payment.status === "checkout" ? styles.info : styles.success}`}>
                 Версия {payment.stageVersion}: {formatTenge(payment.amount)}{payment.minutes !== null ? ` за ${hours(payment.minutes)}` : ""} — {paymentText[payment.status]}{payment.paidAt ? ` ${new Date(payment.paidAt).toLocaleDateString("ru-RU")}` : ""}
-                {canDecide && payment.status === "due" && (
+                {payment.payout !== null && ["held", "paid_out"].includes(payment.status) && payment.fee ? (
+                  <div className={styles.small}>Специалисту: {formatTenge(payment.payout)} · комиссия BuildPath: {formatTenge(payment.fee)}</div>
+                ) : null}
+                {canDecide && (payment.status === "due" || payment.status === "checkout") && (
                   <div style={{ marginTop: 8 }}>
-                    <span className={styles.small}>Оплата через платформу появится позже. Пока переведите деньги специалисту сами и отметьте здесь.</span>
+                    {online.payOnline ? (
+                      <>
+                        <span className={styles.small}>
+                          Заплатите через BuildPath картой — мы переведём деньги специалисту на его счёт.
+                          {online.feePercent > 0 ? ` Комиссия BuildPath ${online.feePercent}% удерживается из суммы специалиста; вы платите ${formatTenge(payment.amount)}.` : " Комиссии нет."}
+                        </span>
+                        <button className={styles.button} style={{ marginTop: 6 }} disabled={Boolean(busy)}
+                          onClick={() => void act(`pay-${payment.id}`, async () => {
+                            const { redirectUrl } = await api<{ redirectUrl: string }>(`/projects/${projectId}/payments/${payment.id}/checkout`, { method: "POST" });
+                            window.location.assign(redirectUrl);
+                            return new Promise<never>(() => {});
+                          })}>{busy === `pay-${payment.id}` ? "Открываем оплату…" : `Оплатить ${formatTenge(payment.amount)} через BuildPath`}</button>
+                        <span className={styles.small} style={{ display: "block", marginTop: 6 }}>Уже заплатили сами? Тогда отметьте:</span>
+                      </>
+                    ) : <span className={styles.small}>Переведите деньги специалисту сами и отметьте здесь.</span>}
                     <button className={styles.secondary} style={{ marginTop: 6 }} disabled={Boolean(busy)}
                       onClick={() => { if (window.confirm(`Отметить, что вы заплатили ${formatTenge(payment.amount)} напрямую?`)) void act(payment.id, () => post(`/projects/${projectId}/payments/${payment.id}/mark-paid`)); }}>Я оплатил напрямую</button>
                   </div>
                 )}
               </div>
             ))}
+            {sheet.isYou && sheet.terms.payKind !== "none" && online.payOnline && <PayoutAccount />}
             {[...byDay.entries()].map(([label, entries]) => (
               <details key={label} open={entries.some((entry) => entry.status === "pending" || entry.status === "disputed")}>
                 <summary className={styles.small} style={{ fontWeight: 700, padding: "6px 0" }}>{label} · {hours(entries.reduce((sum, entry) => sum + entry.minutes, 0))}</summary>
@@ -185,5 +207,43 @@ export function TimesheetPanel({ projectId, stageKey, specialistActive }: { proj
         );
       })}
     </section>
+  );
+}
+
+/** Where BuildPath sends the specialist's money. The full IBAN never comes back to the browser after saving. */
+export function PayoutAccount() {
+  const [state, setState] = useState<{ details: { holderName: string; iban: string } | null; canSave: boolean } | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [holder, setHolder] = useState("");
+  const [iban, setIban] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => { api<{ details: { holderName: string; iban: string } | null; canSave: boolean }>("/me/payout-details").then(setState).catch(() => setState(null)); }, []);
+  if (!state) return null;
+  async function save() {
+    setBusy(true); setError("");
+    try { setState(await api("/me/payout-details", { method: "PUT", body: JSON.stringify({ holderName: holder, iban }) })); setEditing(false); setIban(""); }
+    catch (caught) { setError(caught instanceof ApiError && caught.message === "IBAN_INVALID" ? "Проверьте IBAN: 20 знаков, начинается с KZ. Его можно скопировать в приложении банка." : explainError(caught)); }
+    finally { setBusy(false); }
+  }
+  if (state.details && !editing) {
+    return (
+      <div className={styles.small} style={{ marginTop: 8 }}>
+        Переведём на счёт {state.details.iban} ({state.details.holderName}). <button className={styles.ghost} style={{ minHeight: 36 }} onClick={() => { setHolder(state.details!.holderName); setEditing(true); }}>Изменить</button>
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginTop: 8 }}>
+      <p style={{ margin: "0 0 6px" }}><strong>Куда перевести деньги</strong></p>
+      <p className={styles.small} style={{ marginTop: 0 }}>Укажите IBAN своего счёта в банке Казахстана (есть в приложении банка в реквизитах счёта) и имя владельца. Мы храним его зашифрованным и показываем только сотруднику, который делает перевод.</p>
+      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
+      <label className={styles.field}><span className={styles.label}>Имя владельца счёта</span>
+        <input className={styles.input} value={holder} maxLength={120} autoComplete="name" onChange={(event) => setHolder(event.target.value)} /></label>
+      <label className={styles.field}><span className={styles.label}>IBAN</span>
+        <input className={styles.input} value={iban} maxLength={40} autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="KZ00 000K ZT00 0000 0000" onChange={(event) => setIban(event.target.value.toUpperCase())} /></label>
+      {!state.canSave && <p className={`${styles.notice} ${styles.info}`}>Сохранение счетов пока не включено на этом сервере BuildPath.</p>}
+      <button className={styles.button} disabled={busy || !state.canSave || holder.trim().length < 3 || iban.replace(/\s/g, "").length !== 20} onClick={() => void save()}>{busy ? "Сохраняем…" : "Сохранить счёт"}</button>
+    </div>
   );
 }

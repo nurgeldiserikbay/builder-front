@@ -4,16 +4,28 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
+import { makeZip } from "@/lib/zip";
 import styles from "../../../journey.module.css";
 
-type Step = { key: string; title: string; text: string[]; kind: "manual" | "connect" | "download"; link?: { label: string; url: string } };
-type Option = { key: string; title: string; summary: string; pros: string[]; limits: string[]; cost: string; upkeep: string; leaving: string; steps: Step[] };
+type Step = { key: string; title: string; text: string[]; kind: "manual" | "connect" | "download" | "publish" | "push" | "package" | "verify"; link?: { label: string; url: string } };
+type Option = { key: string; requires?: { card: string; option: string; explanation: string }; title: string; summary: string; pros: string[]; limits: string[]; cost: string; upkeep: string; leaving: string; steps: Step[] };
 type Repository = { provider: string; repoPath: string; webUrl: string; defaultBranch: string; isPrivate: boolean; tokenHint: string; verifiedAt: string; lastPushAt: string | null; lastCommitUrl: string | null; lastError: string | null };
 type CardState = {
   card: { key: string; title: string; question: string; why: string; checkedAt: string; options: Option[] };
   recommendation: { optionKey: string; reason: string };
-  choice: { optionKey: string; reason: string | null; stepsDone: string[]; chosenAt: string } | null;
+  choice: { optionKey: string; reason: string | null; stepsDone: string[]; chosenAt: string; verification: Verification | null } | null;
   repository: Repository | null; canDecide: boolean; connectAvailable: boolean;
+  available?: Record<string, boolean>;
+  context?: { siteAccepted: boolean; publication: { status: string; slug: string; upToDate: boolean } | null; repository: { provider: string; repoPath: string; pushedAt: string | null } | null } | null;
+};
+type Verification = { url: string | null; status: "matches" | "outdated" | "different" | "unreachable" | "not_allowed" | "not_published"; checkedAt: string; httpStatus: number | null };
+const verificationText: Record<Verification["status"], string> = {
+  matches: "Сайт открывается, и это последняя принятая версия.",
+  outdated: "Сайт открывается, но это старая версия. Отправьте или загрузите последнюю и проверьте ещё раз.",
+  different: "По этому адресу открывается другая страница. Проверьте адрес и что загружен файл index.html из BuildPath.",
+  unreachable: "Сайт не открылся. Если вы только что всё настроили, подождите несколько минут и проверьте снова.",
+  not_allowed: "Этот адрес проверить нельзя: нужен обычный адрес сайта в интернете, начинающийся с https://.",
+  not_published: "Сайт ещё не опубликован на BuildPath.",
 };
 type Preview = { branch: string; files: Array<{ path: string; bytes: number }>; siteIncluded: boolean; complete: boolean };
 
@@ -30,6 +42,9 @@ const errors: Record<string, string> = {
   REPO_CONNECT_NOT_CONFIGURED: "Подключение репозиториев пока не включено на этом сервере BuildPath. Можно скачать архив.",
   REPO_RECONNECT_REQUIRED: "Сохранённый ключ больше не читается. Подключите репозиторий заново.",
   CHOICE_FORBIDDEN: "Решение принимает владелец проекта.",
+  CHOICE_REQUIREMENT_NOT_MET: "Для этого варианта сначала нужно другое решение — смотрите подсказку у варианта.",
+  SITE_NOT_ACCEPTED: "Сначала примите этап «Сборка и проверка»: проверять и выкладывать можно только принятую версию сайта.",
+  SITE_URL_REQUIRED: "Вставьте адрес сайта.",
 };
 const message = (caught: unknown) => (caught instanceof ApiError && errors[caught.message]) || explainError(caught);
 const date = (value: string) => new Date(value).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
@@ -45,6 +60,7 @@ export default function ChoicePage() {
   const [token, setToken] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [done, setDone] = useState("");
+  const [siteUrl, setSiteUrl] = useState("");
 
   const load = useCallback(async () => {
     try { setState(await api<CardState>(`/projects/${projectId}/choices/${cardKey}`)); } catch (caught) {
@@ -88,7 +104,8 @@ export default function ChoicePage() {
                 <p className={styles.small} style={{ margin: "0 0 4px" }}><strong>Ограничения</strong></p>
                 <ul className={styles.list} style={{ marginTop: 0 }}>{option.limits.map((item) => <li key={item}>{item}</li>)}</ul>
                 <p className={styles.small} style={{ margin: "0 0 4px" }}><strong>Цена:</strong> {option.cost}. <strong>Что делать потом:</strong> {option.upkeep}. <strong>Если захотите уйти:</strong> {option.leaving}.</p>
-                {state.canDecide && <button className={recommended ? styles.button : styles.secondary} disabled={Boolean(busy)}
+                {option.requires && state.available?.[option.key] === false && <p className={`${styles.notice} ${styles.info}`}>{option.requires.explanation} <a href={`/projects/${projectId}/choices/${option.requires.card}`}>Открыть →</a></p>}
+                {state.canDecide && <button className={recommended ? styles.button : styles.secondary} disabled={Boolean(busy) || state.available?.[option.key] === false}
                   onClick={() => run(option.key, async () => { const next = await api<CardState>(`/projects/${projectId}/choices/${cardKey}`, { method: "POST", body: JSON.stringify({ optionKey: option.key }) }); setPicking(false); return next; })}>
                   {busy === option.key ? "Сохраняем…" : choice?.optionKey === option.key ? "Оставить этот вариант" : "Выбрать"}
                 </button>}
@@ -119,7 +136,28 @@ export default function ChoicePage() {
                     {step.text.map((line) => <span key={line} className={styles.small} style={{ display: "block" }}>{line}</span>)}
                     {step.link && <a href={step.link.url} target="_blank" rel="noreferrer">{step.link.label} →</a>}
                     {step.kind === "download" && <a href={`/projects/${projectId}#result-title`}>Перейти к файлам →</a>}
-                    {step.kind !== "connect" && state.canDecide && (
+                    {step.kind === "publish" && <span className={styles.small}>{state.context?.publication?.status === "live" ? `Сайт опубликован${state.context.publication.upToDate ? "" : ", но это не последняя принятая версия — обновите публикацию"}.` : "Сайт ещё не опубликован."} <a href={`/projects/${projectId}#publish-title`}>Открыть публикацию →</a></span>}
+                    {step.kind === "push" && <span className={styles.small}>{state.context?.repository?.pushedAt ? `Последняя отправка в ${state.context.repository.repoPath}: ${date(state.context.repository.pushedAt)}.` : "Ещё не отправляли."} <a href={`/projects/${projectId}/choices/code_hosting`}>Открыть «Где хранить код» →</a></span>}
+                    {step.kind === "package" && state.canDecide && (
+                      <button className={styles.secondary} style={{ marginTop: 4 }} disabled={Boolean(busy)} onClick={() => run("package", async () => {
+                        const pack = await api<{ folder: string; files: Array<{ name: string; content: string }> }>(`/projects/${projectId}/deployment/package`);
+                        const blob = makeZip(pack.files.map((file) => ({ name: `${pack.folder}/${file.name}`, content: file.content })));
+                        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${pack.folder}.zip`; document.body.appendChild(link); link.click(); link.remove();
+                        await api(`/projects/${projectId}/choices/${cardKey}/steps`, { method: "POST", body: JSON.stringify({ stepKey: step.key, done: true }) });
+                        return api<CardState>(`/projects/${projectId}/choices/${cardKey}`);
+                      })}>{busy === "package" ? "Готовим…" : "Скачать пакет (zip)"}</button>
+                    )}
+                    {step.kind === "verify" && state.canDecide && (
+                      <form onSubmit={(event) => { event.preventDefault(); void run("verify", () => api<CardState>(`/projects/${projectId}/deployment/verify`, { method: "POST", body: JSON.stringify({ url: chosen.key === "buildpath" ? null : siteUrl }) })); }}>
+                        {chosen.key !== "buildpath" && <input className={styles.input} inputMode="url" required maxLength={500} placeholder={chosen.key === "github_pages" ? "https://имя.github.io/my-site/" : "https://ваш-домен.kz"} value={siteUrl} onChange={(event) => setSiteUrl(event.target.value)} />}
+                        <button className={styles.button} style={{ marginTop: 6 }} disabled={Boolean(busy)}>{busy === "verify" ? "Проверяем…" : "Проверить"}</button>
+                        {choice?.verification && <p className={`${styles.notice} ${choice.verification.status === "matches" ? styles.success : styles.warn}`} style={{ marginTop: 8 }}>
+                          {verificationText[choice.verification.status]}{choice.verification.httpStatus && choice.verification.status === "unreachable" ? ` (ответ сервера: ${choice.verification.httpStatus})` : ""}
+                          <br /><span className={styles.small}>{choice.verification.url ? `${choice.verification.url} · ` : ""}проверено {date(choice.verification.checkedAt)}</span>
+                        </p>}
+                      </form>
+                    )}
+                    {(step.kind === "manual" || step.kind === "download") && state.canDecide && (
                       <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
                         <input type="checkbox" checked={stepDone} disabled={Boolean(busy)} style={{ width: 20, height: 20 }}
                           onChange={(event) => run(step.key, () => api<CardState>(`/projects/${projectId}/choices/${cardKey}/steps`, { method: "POST", body: JSON.stringify({ stepKey: step.key, done: event.target.checked }) }))} />

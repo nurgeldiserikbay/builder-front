@@ -101,7 +101,7 @@ export default function JourneyPage() {
             </p>
 
             <h2 className={styles.h2}>{specialist ? "Ваши этапы" : "Карта проекта"}</h2>
-            <p className={styles.small} style={{ margin: "0 0 10px" }}>Этап открывается, когда приняты те, от которых он зависит. Этапы в одной строке можно делать одновременно. Принятый этап можно изменить позже.</p>
+            <p className={styles.small} style={{ margin: "0 0 10px" }}>Этап открывается, когда приняты те, от которых он зависит. Этапы в одной строке делаются одновременно: они построены на общем утверждённом контракте. Принятый этап можно изменить позже — следующие этапы получат уведомление.</p>
             <div className={styles.viewToggle} role="group" aria-label="Вид">
               <button type="button" aria-pressed={view === "map"} onClick={() => setView("map")}>Карта</button>
               <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>Список</button>

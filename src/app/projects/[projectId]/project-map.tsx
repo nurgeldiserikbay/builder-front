@@ -66,6 +66,7 @@ export default function ProjectMap({ projectId, stages, aiOn }: { projectId: str
                 <a key={stage.key} role="listitem" href={`/projects/${projectId}/stages/${stage.key}`} aria-disabled={locked}
                   className={`${styles.mapNode} ${styles[tone]} ${stage.needsYou ? styles.mapNodeAttention : ""}`}>
                   {stage.needsYou && <span className={styles.mapBadge}>{stage.needsYou}</span>}
+                  {stage.contract && <span className={styles.mapContract}>Контракт</span>}
                   <strong className={styles.mapTitle}>{tone === "done" ? "✓ " : ""}{stage.title}</strong>
                   <span className={`${styles.chip} ${styles[tone]}`}>{stage.statusLabel}{version ? ` · версия ${version}` : ""}</span>
                   <span className={styles.mapWho}>{locked && waiting.length ? `Откроется после: ${waiting.join(", ")}` : who(stage, aiOn)}</span>

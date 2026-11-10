@@ -168,11 +168,12 @@ export default function StagePage() {
   const sectionTargets = stage.artifactType === "content" && detail.current
     ? (detail.current.content as Content).sections.map((section) => ({ key: section.key, label: section.title || detail.options.sectionTypes[section.type] })) : [];
   const acceptBlocked = dirty || !stage.canAccept || detail.issues.length > 0 || failedRequired.length > 0;
-  const acceptReason = stage.changesPending ? "Сначала решите по изменению предыдущего этапа (вверху страницы)." : dirty ? "Сначала сохраните изменения."
+  const impactText = stage.impact?.willNotify.length ? `Этапы ${stage.impact.willNotify.map((item) => `«${item.title}»`).join(", ")} получат уведомление об изменении.` : stage.impact?.opens.length ? `Откроется: ${stage.impact.opens.map((item) => `«${item.title}»`).join(", ")}.` : "";
+  const acceptReason = stage.waitingBranches?.length ? "Ждём решения по изменениям (вверху страницы)." : stage.changesPending ? "Сначала решите по изменению предыдущего этапа (вверху страницы)." : dirty ? "Сначала сохраните изменения."
     : !stage.inputsReady ? "Сначала примите предыдущие этапы."
       : detail.issues.length > 0 ? "Заполните то, чего не хватает (список выше)."
         : failedRequired.length > 0 ? "Исправьте непройденные проверки."
-          : !detail.current ? "Сначала сделайте черновик." : stage.acceptExplanation;
+          : !detail.current ? "Сначала сделайте черновик." : [stage.acceptExplanation, impactText].filter(Boolean).join(" ");
 
   return (
     <Shell projectId={projectId} title={stage.title}>
@@ -198,6 +199,27 @@ export default function StagePage() {
       )}
 
       <ChangesPanel projectId={projectId} stageKey={stageKey} onChange={() => void load()} />
+
+      {stage.contract && (
+        <section className={`${styles.card} ${styles.contractCard}`} aria-label="Контракт">
+          <p className={styles.kicker}>Контракт этапов</p>
+          <p style={{ margin: "0 0 8px" }}>{stage.contract.explanation}</p>
+          {stage.impact && stage.impact.opens.length > 1 && <p className={styles.small} style={{ margin: 0 }}>После утверждения одновременно откроются: {stage.impact.opens.map((item) => `«${item.title}»`).join(", ")}.</p>}
+        </section>
+      )}
+      {stage.waitingBranches && stage.waitingBranches.length > 0 && (
+        <div className={`${styles.notice} ${styles.warn}`}>
+          {[...new Set(stage.waitingBranches.map((item) => item.sourceTitle))].map((source) => (
+            <p key={source} style={{ margin: "0 0 6px" }}>
+              Изменился этап «{source}». Ждём решения этапов: {stage.waitingBranches!.filter((item) => item.sourceTitle === source).map((item, index) => (
+                <span key={item.stageKey}>{index > 0 ? ", " : ""}<a href={`/projects/${projectId}/stages/${item.stageKey}`}>«{item.title}»</a></span>
+              ))}.
+            </p>
+          ))}
+          <span>Пока они не решат, этот этап нельзя собрать и принять — иначе части сайта будут сделаны по разным версиям.</span>
+        </div>
+      )}
+
 
       <section className={styles.card} aria-label="Зачем этот этап">
         <p className={styles.cardTitle}>Зачем этот этап</p>
@@ -485,7 +507,7 @@ export default function StagePage() {
           ) : (
             <>
               <span className={styles.bottomText}>{acceptReason}</span>
-              <button className={styles.button} disabled={Boolean(busy) || acceptBlocked} onClick={accept}>{busy === "accept" ? "Принимаем…" : stage.status === "stale" ? "Подтвердить" : "Принять этап"}</button>
+              <button className={styles.button} disabled={Boolean(busy) || acceptBlocked} onClick={accept}>{busy === "accept" ? "Принимаем…" : stage.status === "stale" ? "Подтвердить" : stage.contract ? "Утвердить" : "Принять этап"}</button>
             </>
           )}
         </div></div>

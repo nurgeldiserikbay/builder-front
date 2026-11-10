@@ -9,6 +9,7 @@ import {
 import { ContentEditor, DesignPicker, FieldsForm } from "./editors";
 import { SpecialistsPanel, SuggestionsPanel } from "./specialists";
 import ChangesPanel from "./changes";
+import { TimesheetPanel } from "./timesheet";
 import { formatTenge } from "@/lib/money";
 import styles from "../../../journey.module.css";
 
@@ -413,6 +414,10 @@ export default function StagePage() {
 
       {stage.canInvite && stage.status !== "locked" && (
         <SpecialistsPanel projectId={projectId} stageKey={stageKey} editable={!accepted} />
+      )}
+
+      {(stage.canInvite || specialist) && (
+        <TimesheetPanel key={stage.status} projectId={projectId} stageKey={stageKey} specialistActive={specialist && assignment?.status === "active"} />
       )}
 
       {detail.rules.length > 0 && (

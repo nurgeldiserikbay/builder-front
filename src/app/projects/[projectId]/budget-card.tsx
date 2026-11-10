@@ -11,6 +11,7 @@ type Budget = {
   spent: { total: number; requests: number; unpricedRequests: number };
   stages: Array<{ key: string; title: string; done: boolean; aiUsed: boolean; spent: number; requests: number; planned: { requestsMin: number; requestsMax: number; min: number; max: number } | null }>;
   participants: Array<{ id: string; name: string; spent: number; requests: number }>;
+  specialists: { specialists: number; planned: number; due: number; paid: number } | null;
 };
 
 /** Estimate of AI spending for the project and what has been spent, by stage and by participant. */
@@ -24,14 +25,22 @@ export default function BudgetCard({ projectId }: { projectId: string }) {
 
   return (
     <section className={styles.card} aria-labelledby="budget-title">
-      <p className={styles.kicker}>Деньги на ИИ</p>
+      <p className={styles.kicker}>Деньги на проект</p>
       <h2 id="budget-title" className={styles.h2}>Смета и расход</h2>
+      {budget.specialists && budget.specialists.specialists > 0 && (
+        <p style={{ margin: "0 0 10px" }}>
+          Специалисты ({budget.specialists.specialists}): по условиям — до <strong>{formatTenge(budget.specialists.planned)}</strong>.
+          {budget.specialists.due > 0 ? <> К оплате за принятые этапы: <strong>{formatTenge(budget.specialists.due)}</strong>.</> : null}
+          {budget.specialists.paid > 0 ? ` Оплачено: ${formatTenge(budget.specialists.paid)}.` : ""}
+          <span className={styles.small} style={{ display: "block" }}>Начисляется только когда вы принимаете этап; время и оплату смотрите на странице этапа.</span>
+        </p>
+      )}
       {!budget.pricingConfigured ? (
-        <p style={{ margin: 0 }}>Цены на запросы к ИИ ещё не установлены, поэтому смету показать нельзя. Запросов сделано: {spent.requests}.</p>
+        <p style={{ margin: 0 }}>ИИ: цены на запросы ещё не установлены, поэтому смету показать нельзя. Запросов сделано: {spent.requests}.</p>
       ) : (
         <>
           <p style={{ margin: "0 0 8px" }}>
-            Весь проект по смете: <strong>{formatTenge(estimate!.min)} – {formatTenge(estimate!.max)}</strong>. Потрачено: <strong>{formatTenge(spent.total)}</strong> за {spent.requests} запросов.
+            ИИ на весь проект по смете: <strong>{formatTenge(estimate!.min)} – {formatTenge(estimate!.max)}</strong>. Потрачено: <strong>{formatTenge(spent.total)}</strong> за {spent.requests} запросов.
           </p>
           <div className={styles.progress} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={share} aria-label="Потрачено от верхней границы сметы">
             <span style={{ width: `${share}%`, background: over ? "#c98a00" : undefined }} />

@@ -7,6 +7,7 @@ import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import { formatTenge } from "@/lib/money";
 import styles from "../../journey.module.css";
+import AppHeader from "../../../app-header";
 
 type Person = { id: string; name: string; kind: "you" | "owner" | "member" | "specialist" | "former" };
 type Item = {
@@ -84,10 +85,7 @@ export default function HistoryPage() {
 
   return (
     <div className={styles.shell}>
-      <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.back} href={`/projects/${projectId}`}>{t("← Проект")}</a>
-        <span className={styles.topTitle}>{t("История запросов")}</span>
-      </div></header>
+      <AppHeader back={{ href: `/projects/${projectId}`, label: t("← Проект") }} title={t("История запросов")} />
       <main className={styles.container}>
         <p className={styles.kicker}>{t("Запросы к ИИ")}</p>
         <h1 className={styles.h1}>{t("Кто, что и когда просил")}</h1>

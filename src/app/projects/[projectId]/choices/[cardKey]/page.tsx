@@ -9,6 +9,7 @@ import { makeZip } from "@/lib/zip";
 import { GithubConnect } from "./github-connect";
 import { DomainConnect } from "./domain-connect";
 import styles from "../../../journey.module.css";
+import AppHeader from "../../../../app-header";
 
 type Step = { key: string; title: string; text: string[]; kind: "manual" | "connect" | "download" | "publish" | "push" | "package" | "verify" | "domain"; link?: { label: string; url: string } };
 type Option = { key: string; requires?: { card: string; option: string; explanation: string }; title: string; summary: string; pros: string[]; limits: string[]; cost: string; upkeep: string; leaving: string; steps: Step[] };
@@ -107,7 +108,7 @@ export default function ChoicePage() {
           {card.options.map((option) => {
             const recommended = option.key === recommendation.optionKey;
             return (
-              <section key={option.key} className={styles.card} style={recommended ? { boxShadow: "0 0 0 2px #255b42" } : undefined} aria-label={option.title}>
+              <section key={option.key} className={styles.card} style={recommended ? { boxShadow: "0 0 0 2px var(--brand)" } : undefined} aria-label={option.title}>
                 {recommended && <span className={styles.mapBadge}>{t("Рекомендуем")}</span>}
                 <p className={styles.cardTitle} style={{ marginTop: recommended ? 8 : 0 }}>{option.title}</p>
                 <p style={{ margin: "0 0 8px" }}>{option.summary}</p>
@@ -227,10 +228,7 @@ export default function ChoicePage() {
 function Shell({ projectId, children }: { projectId: string; children: React.ReactNode }) {
   return (
     <div className={styles.shell}>
-      <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.back} href={`/projects/${projectId}`}>{t("← Проект")}</a>
-        <span className={styles.topTitle}>{t("Решение")}</span>
-      </div></header>
+      <AppHeader back={{ href: `/projects/${projectId}`, label: t("← Проект") }} title={t("Решение")} />
       <main className={styles.container}>{children}</main>
     </div>
   );

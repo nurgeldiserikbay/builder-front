@@ -111,7 +111,7 @@ export default function WalletCard({ projectId }: { projectId: string }) {
       {wallet.topUps.length > 0 && (
         <details open={Boolean(refundFor)}><summary className={styles.small}>{t("История пополнений и возвраты")}</summary>
           {wallet.topUps.map((item) => (
-            <div key={item.id} style={{ borderTop: "1px solid #e3e7e3", padding: "8px 0" }}>
+            <div key={item.id} style={{ borderTop: "1px solid var(--line)", padding: "8px 0" }}>
               <div>{new Date(item.createdAt).toLocaleDateString(dateLocale())}: <strong>{formatTenge(item.amount)}</strong> — {statusText[item.status]}{refundState(item) ? `, ${refundState(item)}` : ""}</div>
               {item.status === "paid" && (
                 <div className={styles.row} style={{ flexWrap: "wrap", gap: 6, marginTop: 4 }}>

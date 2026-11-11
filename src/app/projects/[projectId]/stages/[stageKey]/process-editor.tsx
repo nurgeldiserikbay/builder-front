@@ -71,8 +71,8 @@ export function ProcessEditor({ value, onChange, options, disabled, issues }: { 
         <p id="process-scenarios" className={styles.cardTitle}>{t("Сценарии")}</p>
         <p className={styles.small} style={{ marginTop: 0 }}>{t("Сценарий — путь от начала до результата: запись, заказ, отмена. Для каждого шага выберите, что он делает, — по этому архитектура покажет, что сделает сайт, а что останется за вами.")}</p>
         {value.scenarios.map((item, index) => (
-          <details key={item.key} open={index === scenarioIndex} style={{ borderTop: "1px solid #e3e7e3", padding: "8px 0" }} onToggle={(event) => { if ((event.target as HTMLDetailsElement).open) setScenarioIndex(index); }}>
-            <summary style={{ fontWeight: 800 }}>{item.title || t("Сценарий {0}", [index + 1])} · {t("шагов: {0}", [item.steps.length])}</summary>
+          <details key={item.key} open={index === scenarioIndex} style={{ borderTop: "1px solid var(--line)", padding: "8px 0" }} onToggle={(event) => { if ((event.target as HTMLDetailsElement).open) setScenarioIndex(index); }}>
+            <summary style={{ fontWeight: 700 }}>{item.title || t("Сценарий {0}", [index + 1])} · {t("шагов: {0}", [item.steps.length])}</summary>
             <label className={styles.label} htmlFor={`sc-title-${item.key}`}>{t("Название")}</label>
             <input id={`sc-title-${item.key}`} className={styles.input} value={item.title} maxLength={80} disabled={disabled} placeholder={t("Например: Запись")} onChange={(event) => setScenario(index, { title: event.target.value })} />
             <label className={styles.label} htmlFor={`sc-goal-${item.key}`}>{t("Чем заканчивается (необязательно)")}</label>
@@ -126,8 +126,8 @@ export function ProcessEditor({ value, onChange, options, disabled, issues }: { 
         <p className={styles.small} style={{ marginTop: 0 }}>{t("Какую информацию вы храните и как она связана: например, у клиента много записей, у записи одна услуга. Сплошная линия — «много», пунктир — «один».")}</p>
         <DataDiagram entities={value.data} />
         {value.data.map((entity, i) => (
-          <details key={entity.key} style={{ borderTop: "1px solid #e3e7e3", padding: "8px 0" }}>
-            <summary style={{ fontWeight: 800 }}>{entity.name || t("Без названия")}</summary>
+          <details key={entity.key} style={{ borderTop: "1px solid var(--line)", padding: "8px 0" }}>
+            <summary style={{ fontWeight: 700 }}>{entity.name || t("Без названия")}</summary>
             <label className={styles.label} htmlFor={`en-name-${entity.key}`}>{t("Название")}</label>
             <input id={`en-name-${entity.key}`} className={styles.input} value={entity.name} maxLength={40} disabled={disabled} placeholder={t("Например: Заказ")}
               onChange={(event) => set({ data: value.data.map((x, k) => (k === i ? { ...x, name: event.target.value } : x)) })} />

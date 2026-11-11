@@ -19,12 +19,12 @@ export function SitemapDiagram({ value, sectionTypes }: { value: Sitemap; sectio
   const [home, ...rest] = value.pages;
   if (!home) return null;
   const card = (page: SitemapPage, main: boolean) => (
-    <div key={page.key} style={{ border: `1.5px solid ${main ? "#255b42" : "#2d6da3"}`, background: main ? "#e8f2ec" : "#fff", borderRadius: 12, padding: "8px 10px", minWidth: 0 }}>
-      <div style={{ fontWeight: 800, fontSize: 14, overflowWrap: "anywhere" }}>{page.title || t("Без названия")}</div>
-      <div style={{ fontSize: 12, color: "#4f5f57", fontFamily: "ui-monospace, monospace" }}>{page.path || pathFor(page.title)}</div>
+    <div key={page.key} style={{ border: `1.5px solid ${main ? "var(--brand-ink)" : "#2d6da3"}`, background: main ? "var(--brand-soft)" : "#fff", borderRadius: 12, padding: "8px 10px", minWidth: 0 }}>
+      <div style={{ fontWeight: 700, fontSize: 16, overflowWrap: "anywhere" }}>{page.title || t("Без названия")}</div>
+      <div style={{ fontSize: 14, color: "var(--muted)", fontFamily: "ui-monospace, monospace" }}>{page.path || pathFor(page.title)}</div>
       {page.sections.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
-          {page.sections.map((type) => <span key={type} style={{ fontSize: 11, background: "#f1f3f1", borderRadius: 6, padding: "1px 6px" }}>{sectionTypes[type]}</span>)}
+          {page.sections.map((type) => <span key={type} style={{ fontSize: 13, background: "var(--canvas)", borderRadius: 6, padding: "1px 6px" }}>{sectionTypes[type]}</span>)}
         </div>
       )}
     </div>

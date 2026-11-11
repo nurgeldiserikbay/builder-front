@@ -48,7 +48,7 @@ export function TechPlanView({ plan, outdated, notes, onNotes, disabled, onRefre
   const coverage = plan.coverage ?? null;
   const count = (status: Coverage["status"]) => coverage?.filter((step) => step.status === status).length ?? 0;
   const statusText = { built: t("делает сайт"), manual: t("вручную, вне сайта"), not_built: t("сайт не делает") };
-  const statusColor = { built: "#255b42", manual: "#6b716d", not_built: "#b3261e" };
+  const statusColor = { built: "var(--brand-ink)", manual: "#6b716d", not_built: "#b3261e" };
   return (
     <>
       {outdated && (
@@ -109,7 +109,7 @@ export function TechPlanView({ plan, outdated, notes, onNotes, disabled, onRefre
       {plan.api && <section className={styles.card} aria-label={t("Контракт API")}>
         <p className={styles.cardTitle}>{t("Контракт API")}</p>
         <p className={styles.small} style={{ marginTop: 0 }}>{plan.kind === "site" ? t("Точное описание формы заявки в формате OpenAPI — передайте разработчику, если он будет что-то дорабатывать.") : t("Точное описание адресов и форм записи в формате OpenAPI — передайте разработчику, если он будет что-то дорабатывать. Сайт на BuildPath и программа для своего сервера работают по нему одинаково.")}</p>
-        <details><summary className={styles.small}>{t("Показать")}</summary><pre style={{ whiteSpace: "pre-wrap", fontSize: 12, overflowX: "auto" }}>{plan.api}</pre></details>
+        <details><summary className={styles.small}>{t("Показать")}</summary><pre style={{ whiteSpace: "pre-wrap", fontSize: 14, overflowX: "auto" }}>{plan.api}</pre></details>
         <button className={styles.ghost} style={{ marginTop: 8 }} onClick={() => download(plan.kind === "site" ? "lead-api.yaml" : "booking-api.yaml", plan.api, "text/yaml")}>{plan.kind === "site" ? t("Скачать lead-api.yaml") : t("Скачать booking-api.yaml")}</button>
       </section>}
       <section className={styles.card} aria-label={t("Заметки")}>

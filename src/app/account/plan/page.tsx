@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import styles from "../../projects/journey.module.css";
+import AppHeader from "../../app-header";
 
 type Overview = {
   plan: { key: string; title: string; specialists: boolean; validUntil: string | null; expired: boolean; expiredPlanTitle: string | null };
@@ -29,10 +30,7 @@ export default function PlanPage() {
 
   return (
     <div className={styles.shell}>
-      <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.back} href="/projects">{t("← Проекты")}</a>
-        <span className={styles.topTitle}>{t("Тариф")}</span>
-      </div></header>
+      <AppHeader back={{ href: "/projects", label: t("← Проекты") }} title={t("Тариф")} />
       <main className={styles.container}>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
         {!data && !error && <p className={styles.muted}>{t("Загружаем…")}</p>}
@@ -62,7 +60,7 @@ export default function PlanPage() {
 
             <h2 className={styles.h2}>{t("Тарифы")}</h2>
             {data.plans.map((plan) => (
-              <article key={plan.key} className={styles.card} style={plan.key === data.plan.key ? { borderColor: "#255b42", borderWidth: 2 } : undefined}>
+              <article key={plan.key} className={styles.card} style={plan.key === data.plan.key ? { borderColor: "var(--brand-ink)", borderWidth: 2 } : undefined}>
                 <div className={styles.row}>
                   <p className={styles.cardTitle} style={{ margin: 0 }}>{plan.title}</p>
                   <div className={styles.spacer} />

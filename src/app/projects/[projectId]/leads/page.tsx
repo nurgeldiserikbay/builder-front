@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { API_BASE_URL, ApiError, api } from "@/lib/api";
 import { explainError, type Lead } from "@/lib/journey";
 import styles from "../../journey.module.css";
+import AppHeader from "../../../app-header";
 
 const channelText: Record<string, string> = {
   sent: t("отправлено"), failed: t("не удалось отправить"), off: t("выключено"), not_linked: t("не подключён"), not_configured: t("не настроено"), pending: t("отправляется"),
@@ -50,10 +51,7 @@ export default function LeadsPage() {
 
   return (
     <div className={styles.shell}>
-      <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.back} href={`/projects/${projectId}`}>{t("← Проект")}</a>
-        <span className={styles.topTitle}>{t("Заявки")}</span>
-      </div></header>
+      <AppHeader back={{ href: `/projects/${projectId}`, label: t("← Проект") }} title={t("Заявки")} />
       <main className={styles.container}>
         <p className={styles.kicker}>{t("С формы на сайте")}</p>
         <h1 className={styles.h1}>{t("Заявки")}</h1>
@@ -72,7 +70,7 @@ export default function LeadsPage() {
                 <div className={styles.spacer} />
                 <span className={styles.small}>{new Date(lead.createdAt).toLocaleString(dateLocale(), { dateStyle: "medium", timeStyle: "short" })}</span>
               </div>
-              <p style={{ margin: "6px 0" }}>{href ? <a href={href} style={{ color: "#255b42", fontWeight: 800 }}>{lead.contact}</a> : <strong>{lead.contact}</strong>}</p>
+              <p style={{ margin: "6px 0" }}>{href ? <a href={href} style={{ color: "var(--brand-ink)", fontWeight: 700 }}>{lead.contact}</a> : <strong>{lead.contact}</strong>}</p>
               {lead.message && <p style={{ margin: "0 0 8px", whiteSpace: "pre-wrap" }}>{lead.message}</p>}
               <p className={styles.small} style={{ margin: "0 0 8px" }}>Telegram: {channelText[lead.telegramStatus] ?? lead.telegramStatus} · Email: {channelText[lead.emailStatus] ?? lead.emailStatus}</p>
               <div className={styles.row}>

@@ -43,7 +43,7 @@ function Connectors({ from, to }: { from: JourneyStage[]; to: JourneyStage[] }) 
   return (
     <svg className={styles.mapLinks} viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
       {lines.map((line, index) => (
-        <path key={index} d={`M${line.x1} 0 C${line.x1} 14 ${line.x2} 14 ${line.x2} 28`} fill="none" stroke={line.changed ? "#c98a00" : "#b9c7bd"} strokeWidth={line.changed ? 2 : 1.5} vectorEffect="non-scaling-stroke" />
+        <path key={index} d={`M${line.x1} 0 C${line.x1} 14 ${line.x2} 14 ${line.x2} 28`} fill="none" stroke={line.changed ? "#d99a1e" : "#c3cad3"} strokeWidth={line.changed ? 2 : 1.5} vectorEffect="non-scaling-stroke" />
       ))}
     </svg>
   );

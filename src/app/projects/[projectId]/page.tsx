@@ -10,6 +10,7 @@ import PublishCard from "./publish-card";
 import ProjectMap from "./project-map";
 import BudgetCard from "./budget-card";
 import WalletCard from "./wallet-card";
+import AppHeader from "../../app-header";
 
 type ResultPackage = { generatedAt: string; complete: boolean; openItems: string[]; siteReady: boolean; files: Array<{ name: string; mimeType: string; content: string }> };
 
@@ -59,25 +60,28 @@ export default function JourneyPage() {
 
   return (
     <div className={styles.shell}>
-      <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.back} href="/projects">{t("← Проекты")}</a>
-        <span className={styles.topTitle}>{journey?.project.name ?? ""}</span>
-      </div></header>
-      <main className={styles.container}>
-        {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>{t("Открыть тариф →")}</a></>}</p>}
+      <AppHeader back={{ href: "/projects", label: t("← Проекты") }} title={journey?.project.name ?? ""} />
+      <main className={`${styles.container} ${styles.wide}`}>
+        {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть тариф →")}</a></>}</p>}
         {!journey && !error && <p className={styles.muted}>{t("Загружаем проект…")}</p>}
         {journey && (
           <>
-            <p className={styles.kicker}>{journey.project.typeTitle}</p>
-            <h1 className={styles.h1}>{journey.project.name}</h1>
-            <div className={styles.progress} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={journey.progress.percent} aria-label={t("Готовность проекта")}>
-              <span style={{ width: `${journey.progress.percent}%` }} />
+            <div className={styles.pageHead}>
+              <div>
+                <p className={styles.kicker}>{journey.project.typeTitle}</p>
+                <h1 className={styles.h1}>{journey.project.name}</h1>
+                <div className={styles.progress} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={journey.progress.percent} aria-label={t("Готовность проекта")}>
+                  <span style={{ width: `${journey.progress.percent}%` }} />
+                </div>
+                <p className={styles.small} style={{ margin: 0 }}>{t("Принято этапов:")}{" "}{journey.progress.accepted}{" "}{t("из")}{" "}{journey.progress.total}</p>
+              </div>
             </div>
-            <p className={styles.small} style={{ margin: "0 0 18px" }}>{t("Принято этапов:")}{" "}{journey.progress.accepted}{" "}{t("из")}{" "}{journey.progress.total}</p>
             {specialist && (
               <p className={`${styles.notice} ${styles.info}`}>{t("Вы приглашены в этот проект как специалист. Вам видны только ваши этапы и то, что для них нужно. Принимает работу владелец проекта.")}</p>
             )}
 
+            <div className={styles.layout}>
+            <div className={styles.mainCol}>
             {archived ? (
               <div className={`${styles.notice} ${styles.info}`}>
                 {t("Проект в архиве: его можно смотреть и скачивать, но не менять. Он не занимает место в тарифе.")}
@@ -89,11 +93,13 @@ export default function JourneyPage() {
                 <div style={{ marginTop: 10 }}><button className={styles.secondary} disabled={busy} onClick={() => setStatus("resume")}>{t("Продолжить проект")}</button></div>
               </div>
             ) : (
-              <section className={styles.card} aria-labelledby="next-title">
-                <p className={styles.kicker}>{t("Что дальше")}</p>
-                <h2 id="next-title" className={styles.h2}>{journey.nextAction.title}</h2>
-                <p style={{ margin: "0 0 12px" }}>{journey.nextAction.text}</p>
-                {journey.nextAction.stageKey && <a className={`${styles.button} ${styles.block}`} href={`/projects/${projectId}/stages/${journey.nextAction.stageKey}`}>{t("Открыть этап")}</a>}
+              <section className={styles.nextCard} aria-labelledby="next-title">
+                <div>
+                  <p className={styles.kicker}>{t("Что дальше")}</p>
+                  <h2 id="next-title" className={styles.h2}>{journey.nextAction.title}</h2>
+                  <p style={{ margin: 0 }}>{journey.nextAction.text}</p>
+                </div>
+                {journey.nextAction.stageKey && <a className={styles.button} href={`/projects/${projectId}/stages/${journey.nextAction.stageKey}`}>{t("Открыть этап")}</a>}
               </section>
             )}
 
@@ -103,15 +109,18 @@ export default function JourneyPage() {
                 : t("ИИ пока не подключён: этапы заполняются вручную, а тексты и стиль можно получить по готовому шаблону.")}
             </p>
 
-            <h2 className={styles.h2}>{specialist ? t("Ваши этапы") : t("Карта проекта")}</h2>
-            <p className={styles.small} style={{ margin: "0 0 10px" }}>{t("Этап открывается, когда приняты те, от которых он зависит. Этапы в одной строке делаются одновременно: они построены на общем утверждённом контракте. Принятый этап можно изменить позже — следующие этапы получат уведомление.")}</p>
+            <div className={styles.sectionTitle}>
+              <h2 className={styles.h2}>{specialist ? t("Ваши этапы") : t("Карта проекта")}</h2>
+              <div className={styles.spacer} />
+              <div className={styles.viewToggle} role="group" aria-label={t("Вид")} style={{ margin: 0 }}>
+                <button type="button" aria-pressed={view === "map"} onClick={() => setView("map")}>{t("Карта")}</button>
+                <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>{t("Список")}</button>
+              </div>
+            </div>
+            <p className={styles.small} style={{ margin: "0 0 16px", maxWidth: "72ch" }}>{t("Этап открывается, когда приняты те, от которых он зависит. Этапы в одной строке делаются одновременно: они построены на общем утверждённом контракте. Принятый этап можно изменить позже — следующие этапы получат уведомление.")}</p>
             {!specialist && ["owner", "manager"].includes(journey.project.role) && journey.project.changeResponseDays && (
               <ResponseDays projectId={projectId} value={journey.project.changeResponseDays} />
             )}
-            <div className={styles.viewToggle} role="group" aria-label={t("Вид")}>
-              <button type="button" aria-pressed={view === "map"} onClick={() => setView("map")}>{t("Карта")}</button>
-              <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>{t("Список")}</button>
-            </div>
             {view === "map" && <ProjectMap projectId={projectId} stages={journey.stages} aiOn={journey.ai.configured} />}
             {view === "list" && <ol className={styles.stageList}>
               {journey.stages.map((stage, index) => {
@@ -137,7 +146,7 @@ export default function JourneyPage() {
 
             <p style={{ margin: "4px 0 0" }}><a className={styles.back} href={`/projects/${projectId}/history`}>{t("История запросов к ИИ →")}</a></p>
             {!specialist && <>
-            <div style={{ height: 22 }} />
+            <div style={{ height: 24 }} />
             {journey.project.projectType === "booking" && (
               <section className={styles.card} aria-labelledby="bookings-title">
                 <p className={styles.kicker}>{t("Онлайн-запись")}</p>
@@ -154,6 +163,9 @@ export default function JourneyPage() {
                 <a className={styles.secondary} href={`/projects/${projectId}/orders`}>{t("Открыть заказы")}</a>
               </section>
             )}
+            </>}
+            </div>
+            {!specialist && <aside className={styles.aside} aria-label={t("Проект")}>
             <WalletCard projectId={projectId} />
             <BudgetCard projectId={projectId} />
             <PublishCard projectId={projectId} onChange={() => void load()} />
@@ -201,7 +213,8 @@ export default function JourneyPage() {
                 <button className={styles.ghost} style={{ marginTop: 12 }} disabled={busy} onClick={() => setStatus("complete")}>{t("Завершить проект на этом этапе")}</button>
               )}
             </section>
-            </>}
+            </aside>}
+            </div>
           </>
         )}
       </main>

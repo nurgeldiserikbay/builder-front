@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import styles from "../projects/journey.module.css";
+import AppHeader from "../app-header";
 
 type Booking = {
   id: string; serviceName: string; minutes: number; price: string | null; startsAt: string; endsAt: string; timezone: string;
@@ -50,7 +51,7 @@ export default function MasterPage() {
   const now = Date.now();
   return (
     <div className={styles.shell}>
-      <header className={styles.top}><div className={styles.topInner}><a className={styles.brand} href="/projects"><span aria-hidden="true">B</span>BuildPath</a></div></header>
+      <AppHeader minimal />
       <main className={styles.container}>
         <p className={styles.kicker}>{t("Для мастера")}</p>
         <h1 className={styles.h1}>{t("Мои записи")}</h1>
@@ -88,7 +89,7 @@ export default function MasterPage() {
                           <span className={styles.small}>{statusText[booking.status]}</span>
                         </div>
                         <p style={{ margin: "6px 0 2px" }}><strong>{booking.serviceName}</strong>{booking.price ? ` · ${booking.price}` : ""}</p>
-                        <p style={{ margin: "6px 0" }}>{booking.clientName} · <a href={`tel:${phone}`} style={{ color: "#255b42", fontWeight: 800 }}>{booking.clientPhone}</a></p>
+                        <p style={{ margin: "6px 0" }}>{booking.clientName} · <a href={`tel:${phone}`} style={{ color: "var(--brand-ink)", fontWeight: 700 }}>{booking.clientPhone}</a></p>
                         {booking.comment && <p className={styles.small} style={{ margin: "0 0 6px", whiteSpace: "pre-wrap" }}>«{booking.comment}»</p>}
                         {started && ["booked", "done", "no_show"].includes(booking.status) && (
                           <div className={styles.row} style={{ flexWrap: "wrap" }}>

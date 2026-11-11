@@ -1,5 +1,6 @@
 "use client";
 
+import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
@@ -19,8 +20,8 @@ type SaveAs = "one_off" | "stage_rule" | "project_rule";
 const defaultDesign: Design = { palette: "forest", font: "modern", corners: "rounded", heroLayout: "centered" };
 const blankContent: Content = {
   sections: [
-    { key: "hero", type: "hero", title: "", text: "", items: [], buttonLabel: "Связаться" },
-    { key: "contacts", type: "contacts", title: "Контакты", text: "", items: [], buttonLabel: "Связаться" },
+    { key: "hero", type: "hero", title: "", text: "", items: [], buttonLabel: t("Связаться") },
+    { key: "contacts", type: "contacts", title: t("Контакты"), text: "", items: [], buttonLabel: t("Связаться") },
   ],
   seo: { title: "", description: "" },
 };
@@ -28,11 +29,11 @@ const blankContent: Content = {
 function summarize(key: string, content: unknown): string {
   if (!content) return "";
   if (key === "goal") { const brief = content as Record<string, string | null>; return [brief.businessName, brief.whatYouDo].filter(Boolean).join(" — "); }
-  if (key === "offer") return `Услуг: ${(content as Offer).services.length}`;
-  if (key === "content") return `Блоков: ${(content as Content).sections.length}`;
-  if (key === "design") return `Стиль выбран`;
-  if (key === "techplan") return `План версии ${(content as TechPlan).planVersion}`;
-  if (key === "schedule") { const schedule = content as Schedule; return `Услуг для записи: ${schedule.services.length}, мастеров: ${schedule.masters.length}`; }
+  if (key === "offer") return t("Услуг: {0}", [(content as Offer).services.length]);
+  if (key === "content") return t("Блоков: {0}", [(content as Content).sections.length]);
+  if (key === "design") return t("Стиль выбран");
+  if (key === "techplan") return t("План версии {0}", [(content as TechPlan).planVersion]);
+  if (key === "schedule") { const schedule = content as Schedule; return t("Услуг для записи: {0}, мастеров: {1}", [schedule.services.length, schedule.masters.length]); }
   return "";
 }
 
@@ -93,7 +94,7 @@ export default function StagePage() {
       method: "PUT", body: JSON.stringify({ content: draft, baseVersionId: detail?.current?.id ?? null }),
     });
     const next = await load();
-    setMessage(saved.changed.length ? `Сохранено — версия ${saved.versionNumber}. Изменённые вами места защищены от перезаписи ИИ.` : "Изменений нет.");
+    setMessage(saved.changed.length ? t("Сохранено — версия {0}. Изменённые вами места защищены от перезаписи ИИ.", [saved.versionNumber]) : t("Изменений нет."));
     return next;
   }
 
@@ -106,8 +107,8 @@ export default function StagePage() {
     await load();
     setPreview(null);
     setMessage(result.provider === "template"
-      ? `Готов черновик по шаблону (версия ${result.versionNumber}). Замените места в [квадратных скобках] своими данными.`
-      : `ИИ подготовил версию ${result.versionNumber}. Проверьте её — если что-то не так, напишите, что поменять.`);
+      ? t("Готов черновик по шаблону (версия {0}). Замените места в [квадратных скобках] своими данными.", [result.versionNumber])
+      : t("ИИ подготовил версию {0}. Проверьте её — если что-то не так, напишите, что поменять.", [result.versionNumber]));
   }
 
   async function showPreview(versionId?: string) {
@@ -129,7 +130,7 @@ export default function StagePage() {
       const journey = await api<Journey>(`/projects/${projectId}/stages/${stageKey}/accept`, { method: "POST", body: JSON.stringify({ versionId: detail.current!.id }) });
       await load();
       setNextStageKey(journey.nextAction.stageKey);
-      setMessage(journey.nextAction.stageKey ? `Этап принят. Дальше: «${journey.nextAction.title}».` : "Этап принят. Все этапы проекта готовы — скачайте результат на странице проекта.");
+      setMessage(journey.nextAction.stageKey ? t("Этап принят. Дальше: «{0}».", [journey.nextAction.title]) : t("Этап принят. Все этапы проекта готовы — скачайте результат на странице проекта."));
     });
   }
 
@@ -138,31 +139,31 @@ export default function StagePage() {
     await run("submit", async () => {
       await api(`/projects/${projectId}/stages/${stageKey}/submit`, { method: "POST", body: JSON.stringify({ versionId: detail.current!.id }) });
       await load();
-      setMessage("Отправлено владельцу на приёмку. Пока он проверяет, этап нельзя менять.");
+      setMessage(t("Отправлено владельцу на приёмку. Пока он проверяет, этап нельзя менять."));
     });
   }
 
   async function requestChanges() {
-    const note = window.prompt("Что нужно доработать? Специалист увидит этот комментарий.");
+    const note = window.prompt(t("Что нужно доработать? Специалист увидит этот комментарий."));
     if (!note || note.trim().length < 2) return;
     await run("changes", async () => {
       await api(`/projects/${projectId}/stages/${stageKey}/request-changes`, { method: "POST", body: JSON.stringify({ note: note.trim() }) });
       await load();
-      setMessage("Этап возвращён на доработку с вашим комментарием.");
+      setMessage(t("Этап возвращён на доработку с вашим комментарием."));
     });
   }
 
   async function reopen() {
-    if (!window.confirm("Изменить принятый этап? Этапы, которые построены на нём, нужно будет проверить ещё раз.")) return;
+    if (!window.confirm(t("Изменить принятый этап? Этапы, которые построены на нём, нужно будет проверить ещё раз."))) return;
     await run("reopen", async () => {
       await api(`/projects/${projectId}/stages/${stageKey}/reopen`, { method: "POST" });
       await load();
-      setMessage("Этап снова открыт для изменений.");
+      setMessage(t("Этап снова открыт для изменений."));
     });
   }
 
-  if (error && !detail) return <Shell projectId={projectId} title=""><p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>Открыть тариф →</a></>}</p></Shell>;
-  if (!detail) return <Shell projectId={projectId} title=""><p className={styles.muted}>Загружаем этап…</p></Shell>;
+  if (error && !detail) return <Shell projectId={projectId} title=""><p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>{t("Открыть тариф →")}</a></>}</p></Shell>;
+  if (!detail) return <Shell projectId={projectId} title=""><p className={styles.muted}>{t("Загружаем этап…")}</p></Shell>;
 
   const { stage, ai } = detail;
   const tone = statusTone[stage.status];
@@ -174,123 +175,123 @@ export default function StagePage() {
   const specialist = detail.viewer.kind === "specialist";
   const assignment = detail.viewer.assignments.find((item) => item.stageKey === stage.key) ?? null;
   const submitBlocked = dirty || !stage.canSubmit || detail.issues.length > 0 || !stage.inputsReady;
-  const submitReason = stage.changesPending ? "Сначала решите по изменению предыдущего этапа (вверху страницы)." : dirty ? "Сначала сохраните изменения." : !detail.current ? "Сначала сделайте черновик."
-    : !stage.inputsReady ? "Предыдущие этапы ещё не приняты владельцем." : detail.issues.length > 0 ? "Заполните то, чего не хватает (список выше)." : "Владелец проверит результат и примет этап или вернёт с комментарием.";
+  const submitReason = stage.changesPending ? t("Сначала решите по изменению предыдущего этапа (вверху страницы).") : dirty ? t("Сначала сохраните изменения.") : !detail.current ? t("Сначала сделайте черновик.")
+    : !stage.inputsReady ? t("Предыдущие этапы ещё не приняты владельцем.") : detail.issues.length > 0 ? t("Заполните то, чего не хватает (список выше).") : t("Владелец проверит результат и примет этап или вернёт с комментарием.");
   const sectionTargets = stage.artifactType === "content" && detail.current
     ? (detail.current.content as Content).sections.map((section) => ({ key: section.key, label: section.title || detail.options.sectionTypes[section.type] })) : [];
   const acceptBlocked = dirty || !stage.canAccept || detail.issues.length > 0 || failedRequired.length > 0;
-  const impactText = stage.impact?.willNotify.length ? `Этапы ${stage.impact.willNotify.map((item) => `«${item.title}»`).join(", ")} получат уведомление об изменении.` : stage.impact?.opens.length ? `Откроется: ${stage.impact.opens.map((item) => `«${item.title}»`).join(", ")}.` : "";
-  const acceptReason = stage.waitingBranches?.length ? "Ждём решения по изменениям (вверху страницы)." : stage.changesPending ? "Сначала решите по изменению предыдущего этапа (вверху страницы)." : dirty ? "Сначала сохраните изменения."
-    : !stage.inputsReady ? "Сначала примите предыдущие этапы."
-      : detail.issues.length > 0 ? "Заполните то, чего не хватает (список выше)."
-        : failedRequired.length > 0 ? "Исправьте непройденные проверки."
-          : !detail.current ? "Сначала сделайте черновик." : [stage.acceptExplanation, impactText].filter(Boolean).join(" ");
+  const impactText = stage.impact?.willNotify.length ? t("Этапы {0} получат уведомление об изменении.", [stage.impact.willNotify.map((item) => `«${item.title}»`).join(", ")]) : stage.impact?.opens.length ? t("Откроется: {0}.", [stage.impact.opens.map((item) => `«${item.title}»`).join(", ")]) : "";
+  const acceptReason = stage.waitingBranches?.length ? t("Ждём решения по изменениям (вверху страницы).") : stage.changesPending ? t("Сначала решите по изменению предыдущего этапа (вверху страницы).") : dirty ? t("Сначала сохраните изменения.")
+    : !stage.inputsReady ? t("Сначала примите предыдущие этапы.")
+      : detail.issues.length > 0 ? t("Заполните то, чего не хватает (список выше).")
+        : failedRequired.length > 0 ? t("Исправьте непройденные проверки.")
+          : !detail.current ? t("Сначала сделайте черновик.") : [stage.acceptExplanation, impactText].filter(Boolean).join(" ");
 
   return (
     <Shell projectId={projectId} title={stage.title}>
-      <p className={styles.kicker}>Этап</p>
+      <p className={styles.kicker}>{t("Этап")}</p>
       <h1 className={styles.h1}>{stage.title}</h1>
       <span className={`${styles.chip} ${styles[tone]}`} title={stage.statusExplanation}>{stage.statusLabel}</span>
       <p className={styles.small} style={{ margin: "6px 0 14px" }}>{stage.statusExplanation}</p>
       {stage.artifactType === "site" && detail.options.technology === "developer" && (
-        <p className={`${styles.notice} ${styles.info}`}>Выбран свой стек у разработчика: сайт он делает и размещает сам, проверки и публикация BuildPath к нему не применяются. Сборка с ИИ ниже сделает сайт на технологиях BuildPath — это удобно как образец для разработчика. <a href={`/projects/${projectId}/choices/technologies`}>Изменить решение →</a></p>
+        <p className={`${styles.notice} ${styles.info}`}>{t("Выбран свой стек у разработчика: сайт он делает и размещает сам, проверки и публикация BuildPath к нему не применяются. Сборка с ИИ ниже сделает сайт на технологиях BuildPath — это удобно как образец для разработчика.")}{" "}<a href={`/projects/${projectId}/choices/technologies`}>{t("Изменить решение →")}</a></p>
       )}
       {stage.artifactType === "site" && detail.options.technology === "constructor" && (
-        <p className={`${styles.notice} ${styles.info}`}>Выбран конструктор сайтов: сайт соберёте там, перенеся тексты вручную. Сборка с ИИ сделает сайт на технологиях BuildPath — как образец того, что получится. <a href={`/projects/${projectId}/choices/technologies`}>Изменить решение →</a></p>
+        <p className={`${styles.notice} ${styles.info}`}>{t("Выбран конструктор сайтов: сайт соберёте там, перенеся тексты вручную. Сборка с ИИ сделает сайт на технологиях BuildPath — как образец того, что получится.")}{" "}<a href={`/projects/${projectId}/choices/technologies`}>{t("Изменить решение →")}</a></p>
       )}
       {stage.artifactType === "site" && detail.options.technology === null && (
-        <p className={styles.small} style={{ margin: "-6px 0 14px" }}>Сборка делается на технологиях BuildPath. Нужен свой стек или конструктор? <a href={`/projects/${projectId}/choices/technologies`}>Сравнить варианты →</a></p>
+        <p className={styles.small} style={{ margin: "-6px 0 14px" }}>{t("Сборка делается на технологиях BuildPath. Нужен свой стек или конструктор?")}{" "}<a href={`/projects/${projectId}/choices/technologies`}>{t("Сравнить варианты →")}</a></p>
       )}
 
       {specialist && assignment && (
         <p className={`${styles.notice} ${styles.info}`}>
           {assignment.status === "completed"
-            ? "Владелец принял этап. Менять его больше нельзя, смотреть можно ещё несколько дней."
+            ? t("Владелец принял этап. Менять его больше нельзя, смотреть можно ещё несколько дней.")
             : assignment.role === "lead"
-              ? `Вы ведущий этого этапа: направляйте ИИ, правьте результат и отправьте его владельцу на приёмку.${assignment.aiBudget !== null ? ` Запросов к ИИ: ${assignment.aiUsed} из ${assignment.aiBudget}.` : ""}`
-              : "Вы консультант этого этапа: смотрите результат и предлагайте правки — ведущий или владелец отправит их ИИ."}
+              ? t("Вы ведущий этого этапа: направляйте ИИ, правьте результат и отправьте его владельцу на приёмку.{0}", [assignment.aiBudget !== null ? t(" Запросов к ИИ: {0} из {1}.", [assignment.aiUsed, assignment.aiBudget]) : ""])
+              : t("Вы консультант этого этапа: смотрите результат и предлагайте правки — ведущий или владелец отправит их ИИ.")}
         </p>
       )}
       {stage.status === "changes_requested" && stage.reviewNote && (
-        <p className={`${styles.notice} ${styles.warn}`}><strong>Владелец просит доработать:</strong> {stage.reviewNote}</p>
+        <p className={`${styles.notice} ${styles.warn}`}><strong>{t("Владелец просит доработать:")}</strong> {stage.reviewNote}</p>
       )}
       {stage.status === "in_review" && (
-        <p className={`${styles.notice} ${styles.info}`}>{stage.canRequestChanges ? "Специалист отправил этап вам на приёмку. Посмотрите результат и примите его или верните с комментарием." : "Этап на приёмке у владельца. Пока он проверяет, менять его нельзя."}</p>
+        <p className={`${styles.notice} ${styles.info}`}>{stage.canRequestChanges ? t("Специалист отправил этап вам на приёмку. Посмотрите результат и примите его или верните с комментарием.") : t("Этап на приёмке у владельца. Пока он проверяет, менять его нельзя.")}</p>
       )}
 
       <ChangesPanel projectId={projectId} stageKey={stageKey} onChange={() => void load()} />
 
       {stage.contract && (
-        <section className={`${styles.card} ${styles.contractCard}`} aria-label="Контракт">
-          <p className={styles.kicker}>Контракт этапов</p>
+        <section className={`${styles.card} ${styles.contractCard}`} aria-label={t("Контракт")}>
+          <p className={styles.kicker}>{t("Контракт этапов")}</p>
           <p style={{ margin: "0 0 8px" }}>{stage.contract.explanation}</p>
-          {stage.impact && stage.impact.opens.length > 1 && <p className={styles.small} style={{ margin: 0 }}>После утверждения одновременно откроются: {stage.impact.opens.map((item) => `«${item.title}»`).join(", ")}.</p>}
+          {stage.impact && stage.impact.opens.length > 1 && <p className={styles.small} style={{ margin: 0 }}>{t("После утверждения одновременно откроются:")}{" "}{stage.impact.opens.map((item) => `«${item.title}»`).join(", ")}.</p>}
         </section>
       )}
       {stage.waitingBranches && stage.waitingBranches.length > 0 && (
         <div className={`${styles.notice} ${styles.warn}`}>
           {[...new Set(stage.waitingBranches.map((item) => item.sourceTitle))].map((source) => (
             <p key={source} style={{ margin: "0 0 6px" }}>
-              Изменился этап «{source}». Ждём решения этапов: {stage.waitingBranches!.filter((item) => item.sourceTitle === source).map((item, index) => (
+              {t("Изменился этап «")}{source}{t("». Ждём решения этапов:")}{" "}{stage.waitingBranches!.filter((item) => item.sourceTitle === source).map((item, index) => (
                 <span key={item.stageKey}>{index > 0 ? ", " : ""}<a href={`/projects/${projectId}/stages/${item.stageKey}`}>«{item.title}»</a></span>
               ))}.
             </p>
           ))}
-          <span>Пока они не решат, этот этап нельзя собрать и принять — иначе части сайта будут сделаны по разным версиям.</span>
+          <span>{t("Пока они не решат, этот этап нельзя собрать и принять — иначе части сайта будут сделаны по разным версиям.")}</span>
         </div>
       )}
 
 
-      <section className={styles.card} aria-label="Зачем этот этап">
-        <p className={styles.cardTitle}>Зачем этот этап</p>
+      <section className={styles.card} aria-label={t("Зачем этот этап")}>
+        <p className={styles.cardTitle}>{t("Зачем этот этап")}</p>
         <p style={{ margin: "0 0 8px" }}>{stage.purpose}</p>
-        <p className={styles.small} style={{ margin: 0 }}><strong>Результат:</strong> {stage.outcome}</p>
+        <p className={styles.small} style={{ margin: 0 }}><strong>{t("Результат:")}</strong> {stage.outcome}</p>
       </section>
 
-      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>Открыть тариф →</a></>}</p>}
+      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>{t("Открыть тариф →")}</a></>}</p>}
       {message && (
         <p className={`${styles.notice} ${styles.success}`} role="status">{message}
-          {nextStageKey && accepted && <><br /><a className={styles.back} href={`/projects/${projectId}/stages/${nextStageKey}`}>Перейти к следующему этапу →</a></>}
+          {nextStageKey && accepted && <><br /><a className={styles.back} href={`/projects/${projectId}/stages/${nextStageKey}`}>{t("Перейти к следующему этапу →")}</a></>}
         </p>
       )}
 
       {stage.status === "locked" && (
         <div className={`${styles.notice} ${styles.info}`}>
-          Этот этап откроется, когда будут приняты: {detail.inputs.filter((input) => !input.satisfied).map((input) => `«${input.title}»`).join(", ")}.
-          <br /><a className={styles.back} href={`/projects/${projectId}`}>← К списку этапов</a>
+          {t("Этот этап откроется, когда будут приняты:")}{" "}{detail.inputs.filter((input) => !input.satisfied).map((input) => `«${input.title}»`).join(", ")}.
+          <br /><a className={styles.back} href={`/projects/${projectId}`}>{t("← К списку этапов")}</a>
         </div>
       )}
 
       {detail.inputs.length > 0 && stage.status !== "locked" && (
         <details className={`${styles.card} ${styles.details}`}>
-          <summary>Что берём из прошлых этапов</summary>
+          <summary>{t("Что берём из прошлых этапов")}</summary>
           <ul className={styles.list}>
             {detail.inputs.map((input) => (
               <li key={input.key}>
-                <strong>{input.title}</strong>{input.satisfied ? ` (версия ${input.versionNumber}): ${summarize(input.key, input.content)}` : " — ещё не принят"}
-                {!input.satisfied && <> · <a className={styles.back} href={`/projects/${projectId}/stages/${input.key}`}>открыть</a></>}
+                <strong>{input.title}</strong>{input.satisfied ? t(" (версия {0}): {1}", [input.versionNumber, summarize(input.key, input.content)]) : t(" — ещё не принят")}
+                {!input.satisfied && <> · <a className={styles.back} href={`/projects/${projectId}/stages/${input.key}`}>{t("открыть")}</a></>}
               </li>
             ))}
           </ul>
         </details>
       )}
 
-      {stage.status === "stale" && <p className={`${styles.notice} ${styles.warn}`}>Предыдущий этап изменился. Посмотрите, что изменилось, вверху страницы и решите: обновить этот этап или оставить его как есть.</p>}
+      {stage.status === "stale" && <p className={`${styles.notice} ${styles.warn}`}>{t("Предыдущий этап изменился. Посмотрите, что изменилось, вверху страницы и решите: обновить этот этап или оставить его как есть.")}</p>}
       {!stage.inputsReady && stage.status !== "locked" && !accepted && (
-        <p className={`${styles.notice} ${styles.info}`}>Можно готовить этап заранее, но принять его получится после того, как будут приняты предыдущие этапы.</p>
+        <p className={`${styles.notice} ${styles.info}`}>{t("Можно готовить этап заранее, но принять его получится после того, как будут приняты предыдущие этапы.")}</p>
       )}
 
       {/* Stage with AI-first start for the brief */}
       {stage.artifactType === "brief" && stage.canEdit && ai.level !== "none" && (
-        <section className={styles.card} aria-label="Описать бизнес своими словами">
-          <p className={styles.cardTitle}>Расскажите о бизнесе своими словами</p>
-          <p className={styles.small} style={{ marginTop: 0 }}>{ai.configured ? `${ai.whatItDoes}${requestPrice !== null ? ` Один запрос к ИИ стоит около ${formatTenge(requestPrice)}.` : ""}` : "ИИ пока не подключён — заполните поля ниже вручную. Это займёт пару минут."}</p>
+        <section className={styles.card} aria-label={t("Описать бизнес своими словами")}>
+          <p className={styles.cardTitle}>{t("Расскажите о бизнесе своими словами")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{ai.configured ? `${ai.whatItDoes}${requestPrice !== null ? t(" Один запрос к ИИ стоит около {0}.", [formatTenge(requestPrice)]) : ""}` : t("ИИ пока не подключён — заполните поля ниже вручную. Это займёт пару минут.")}</p>
           {ai.configured && (
             <>
-              <textarea className={styles.textarea} value={instruction} maxLength={1000} placeholder={ai.describeHint ?? ""} aria-label="Описание бизнеса" onChange={(event) => setInstruction(event.target.value)} />
+              <textarea className={styles.textarea} value={instruction} maxLength={1000} placeholder={ai.describeHint ?? ""} aria-label={t("Описание бизнеса")} onChange={(event) => setInstruction(event.target.value)} />
               <button className={`${styles.button} ${styles.block}`} style={{ marginTop: 10 }} disabled={Boolean(busy) || instruction.trim().length < 2}
-                onClick={() => run("ai", async () => { await askAi({ instruction: instruction.trim() }); setInstruction(""); })}>{busy === "ai" ? "ИИ заполняет…" : "✨ Заполнить поля с ИИ"}</button>
-              <p className={styles.small}>Поля, которые вы уже заполнили сами, ИИ не тронет.</p>
+                onClick={() => run("ai", async () => { await askAi({ instruction: instruction.trim() }); setInstruction(""); })}>{busy === "ai" ? t("ИИ заполняет…") : t("✨ Заполнить поля с ИИ")}</button>
+              <p className={styles.small}>{t("Поля, которые вы уже заполнили сами, ИИ не тронет.")}</p>
             </>
           )}
         </section>
@@ -298,25 +299,25 @@ export default function StagePage() {
 
       {/* Starting point for an empty content stage */}
       {stage.artifactType === "content" && !detail.current && draft === null && stage.canEdit && (
-        <section className={styles.card} aria-label="Как начать">
-          <p className={styles.cardTitle}>Как начнём тексты?</p>
+        <section className={styles.card} aria-label={t("Как начать")}>
+          <p className={styles.cardTitle}>{t("Как начнём тексты?")}</p>
           <div style={{ display: "grid", gap: 10 }}>
             {ai.configured && stage.inputsReady && (
-              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{busy === "ai" ? "ИИ пишет тексты…" : "✨ Пусть ИИ напишет тексты"}</button>
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{busy === "ai" ? t("ИИ пишет тексты…") : t("✨ Пусть ИИ напишет тексты")}</button>
             )}
             {!ai.configured && ai.templateAvailable && stage.inputsReady && (
-              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>Сделать черновик по шаблону</button>
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{t("Сделать черновик по шаблону")}</button>
             )}
-            <button className={styles.secondary} onClick={() => edit(blankContent)}>Написать самому с чистого листа</button>
+            <button className={styles.secondary} onClick={() => edit(blankContent)}>{t("Написать самому с чистого листа")}</button>
           </div>
-          {!stage.inputsReady && <p className={styles.small}>Черновик от ИИ или по шаблону станет доступен, когда будет принят паспорт проекта. Свои тексты можно вставить уже сейчас (ниже).</p>}
+          {!stage.inputsReady && <p className={styles.small}>{t("Черновик от ИИ или по шаблону станет доступен, когда будет принят паспорт проекта. Свои тексты можно вставить уже сейчас (ниже).")}</p>}
         </section>
       )}
 
       {/* Editors */}
       {stage.status !== "locked" && stage.fields && (stage.artifactType === "brief" || stage.artifactType === "offer") && draft !== null && (
         <section className={styles.card}>
-          <p className={styles.cardTitle}>{stage.artifactType === "brief" ? "Паспорт проекта" : "Услуги"}</p>
+          <p className={styles.cardTitle}>{stage.artifactType === "brief" ? t("Паспорт проекта") : t("Услуги")}</p>
           <FieldsForm fields={stage.fields} value={draft as Record<string, unknown>} onChange={edit} issueKeys={issueKeys} disabled={!stage.canEdit}
             lockedKeys={stage.lockedKeys} onToggleLock={toggleLock} canLock={stage.canEdit && Boolean(detail.current)} />
         </section>
@@ -343,94 +344,94 @@ export default function StagePage() {
         <TechPlanView plan={(detail.options.techplan.outdated || !detail.current ? detail.options.techplan.preview : detail.current.content as TechPlan) ?? null}
           outdated={detail.options.techplan.outdated} notes={((draft as { ownerNotes?: string | null } | null)?.ownerNotes) ?? ""} disabled={!stage.canEdit}
           onNotes={(value) => edit({ ownerNotes: value })} busy={busy === "plan"}
-          onRefresh={stage.canEdit ? () => run("plan", async () => { await saveDraft(); setMessage("План обновлён по принятым этапам. Проверьте и примите его."); }) : null} />
+          onRefresh={stage.canEdit ? () => run("plan", async () => { await saveDraft(); setMessage(t("План обновлён по принятым этапам. Проверьте и примите его.")); }) : null} />
       )}
 
       {/* Build stage */}
       {stage.artifactType === "site" && stage.status !== "locked" && (
-        <section className={styles.card} aria-label="Сборка">
-          <p className={styles.cardTitle}>Сборка сайта</p>
-          <p className={styles.small} style={{ marginTop: 0 }}>Платформа соберёт страницу из принятых текстов и стиля и проверит её. Это занимает секунду.</p>
+        <section className={styles.card} aria-label={t("Сборка")}>
+          <p className={styles.cardTitle}>{t("Сборка сайта")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{t("Платформа соберёт страницу из принятых текстов и стиля и проверит её. Это занимает секунду.")}</p>
           {stage.canEdit && (
             <button className={`${styles.button} ${styles.block}`} disabled={Boolean(busy) || !stage.inputsReady}
               onClick={() => run("build", async () => {
                 await api(`/projects/${projectId}/build`, { method: "POST" });
                 const next = await load();
                 if (next?.current) await showPreview(next.current.id);
-                setMessage("Сайт собран. Посмотрите результат и проверки ниже.");
-              })}>{busy === "build" ? "Собираем…" : detail.current ? "Собрать заново" : "Собрать сайт"}</button>
+                setMessage(t("Сайт собран. Посмотрите результат и проверки ниже."));
+              })}>{busy === "build" ? t("Собираем…") : detail.current ? t("Собрать заново") : t("Собрать сайт")}</button>
           )}
           {siteChecks.length > 0 && (
             <>
-              <p className={styles.cardTitle} style={{ marginTop: 16 }}>Проверки</p>
+              <p className={styles.cardTitle} style={{ marginTop: 16 }}>{t("Проверки")}</p>
               <ul className={styles.checks}>
                 {siteChecks.map((check) => (
                   <li key={check.id}>
                     <span className={`${styles.checkIcon} ${styles[check.status]}`} aria-hidden="true">{check.status === "passed" ? "✓" : check.status === "warning" ? "!" : "✕"}</span>
-                    <span><strong>{check.title}</strong>{check.required ? "" : " (рекомендация)"}<br /><span className={styles.small}>{check.details}</span></span>
+                    <span><strong>{check.title}</strong>{check.required ? "" : t(" (рекомендация)")}<br /><span className={styles.small}>{check.details}</span></span>
                   </li>
                 ))}
               </ul>
-              <p className={styles.small}>Это автоматические проверки содержимого. Они не заменяют просмотр сайта на вашем телефоне.</p>
+              <p className={styles.small}>{t("Это автоматические проверки содержимого. Они не заменяют просмотр сайта на вашем телефоне.")}</p>
             </>
           )}
-          {detail.current && !preview && <button className={styles.ghost} style={{ marginTop: 10 }} onClick={() => run("preview", () => showPreview(detail.current!.id))}>Показать сайт</button>}
+          {detail.current && !preview && <button className={styles.ghost} style={{ marginTop: 10 }} onClick={() => run("preview", () => showPreview(detail.current!.id))}>{t("Показать сайт")}</button>}
         </section>
       )}
 
       {/* Preview for content/design drafts */}
       {(stage.artifactType === "content" || stage.artifactType === "design") && detail.current && !preview && (
-        <button className={`${styles.ghost} ${styles.block}`} style={{ marginBottom: 14 }} onClick={() => run("preview", () => showPreview())}>👁 Посмотреть, как это выглядит на телефоне</button>
+        <button className={`${styles.ghost} ${styles.block}`} style={{ marginBottom: 14 }} onClick={() => run("preview", () => showPreview())}>{t("👁 Посмотреть, как это выглядит на телефоне")}</button>
       )}
       {preview && (
-        <section className={styles.card} aria-label="Предпросмотр">
+        <section className={styles.card} aria-label={t("Предпросмотр")}>
           <div className={styles.row} style={{ marginBottom: 10 }}>
-            <p className={styles.cardTitle} style={{ margin: 0 }}>Предпросмотр</p><div className={styles.spacer} />
-            <button className={styles.ghost} style={{ minHeight: 40 }} onClick={() => setPreview(null)}>Скрыть</button>
+            <p className={styles.cardTitle} style={{ margin: 0 }}>{t("Предпросмотр")}</p><div className={styles.spacer} />
+            <button className={styles.ghost} style={{ minHeight: 40 }} onClick={() => setPreview(null)}>{t("Скрыть")}</button>
           </div>
-          <div className={styles.phone}><iframe title="Предпросмотр сайта" sandbox="" srcDoc={preview} /></div>
-          {stage.artifactType !== "site" && <p className={styles.small}>Это черновик: здесь видны последние сохранённые версии этапов, даже не принятые.</p>}
+          <div className={styles.phone}><iframe title={t("Предпросмотр сайта")} sandbox="" srcDoc={preview} /></div>
+          {stage.artifactType !== "site" && <p className={styles.small}>{t("Это черновик: здесь видны последние сохранённые версии этапов, даже не принятые.")}</p>}
         </section>
       )}
 
       {/* What is missing */}
       {detail.current && detail.issues.length > 0 && stage.artifactType !== "site" && (
-        <section className={`${styles.notice} ${styles.warn}`} aria-label="Чего не хватает">
-          <strong>Чего не хватает, чтобы принять этап:</strong>
+        <section className={`${styles.notice} ${styles.warn}`} aria-label={t("Чего не хватает")}>
+          <strong>{t("Чего не хватает, чтобы принять этап:")}</strong>
           <ul className={styles.list}>{[...new Set(detail.issues.map((issue) => issue.message))].map((text) => <li key={text}>{text}</li>)}</ul>
         </section>
       )}
 
       {/* AI instruction panel */}
       {ai.level !== "none" && stage.artifactType !== "brief" && detail.current && stage.canEdit && (
-        <section className={styles.card} aria-label="Инструкция для ИИ">
-          <p className={styles.cardTitle}>✨ Попросить ИИ</p>
-          {!ai.configured && <p className={styles.small} style={{ marginTop: 0 }}>ИИ пока не подключён к платформе — правьте вручную.</p>}
+        <section className={styles.card} aria-label={t("Инструкция для ИИ")}>
+          <p className={styles.cardTitle}>{t("✨ Попросить ИИ")}</p>
+          {!ai.configured && <p className={styles.small} style={{ marginTop: 0 }}>{t("ИИ пока не подключён к платформе — правьте вручную.")}</p>}
           {ai.configured && (
             <>
-              <p className={styles.small} style={{ marginTop: 0 }}>{ai.whatItDoes} Защищённые места ИИ не тронет.{requestPrice !== null ? ` Один запрос к ИИ стоит около ${formatTenge(requestPrice)}.` : ""}</p>
-              <textarea className={styles.textarea} value={instruction} maxLength={1000} aria-label="Инструкция для ИИ" placeholder="Напишите, что изменить" onChange={(event) => setInstruction(event.target.value)} />
+              <p className={styles.small} style={{ marginTop: 0 }}>{ai.whatItDoes}{" "}{t("Защищённые места ИИ не тронет.")}{requestPrice !== null ? t(" Один запрос к ИИ стоит около {0}.", [formatTenge(requestPrice)]) : ""}</p>
+              <textarea className={styles.textarea} value={instruction} maxLength={1000} aria-label={t("Инструкция для ИИ")} placeholder={t("Напишите, что изменить")} onChange={(event) => setInstruction(event.target.value)} />
               {ai.instructionExamples.length > 0 && (
-                <div className={styles.chips} style={{ margin: "10px 0" }} aria-label="Примеры">
+                <div className={styles.chips} style={{ margin: "10px 0" }} aria-label={t("Примеры")}>
                   {ai.instructionExamples.map((example) => <button key={example} type="button" className={styles.exampleChip} onClick={() => setInstruction(example)}>{example}</button>)}
                 </div>
               )}
               <fieldset style={{ border: 0, padding: 0, margin: "8px 0 12px" }}>
-                <legend className={styles.label} style={{ marginBottom: 6 }}>Запомнить эту просьбу?</legend>
-                {([["one_off", "Нет, только сейчас"], ["stage_rule", "Да, для этого этапа"], ...(specialist ? [] : [["project_rule", "Да, для всего проекта"]] as const)] as const).map(([value, label]) => (
+                <legend className={styles.label} style={{ marginBottom: 6 }}>{t("Запомнить эту просьбу?")}</legend>
+                {([["one_off", t("Нет, только сейчас")], ["stage_rule", t("Да, для этого этапа")], ...(specialist ? [] : [["project_rule", t("Да, для всего проекта")]] as const)] as const).map(([value, label]) => (
                   <label key={value} style={{ display: "flex", gap: 8, alignItems: "center", minHeight: 36 }}>
                     <input type="radio" name="saveAs" checked={saveAs === value} onChange={() => setSaveAs(value)} /> {label}
                   </label>
                 ))}
-                <p className={styles.why}>Запомненные правила ИИ будет учитывать каждый раз, например «пиши без канцелярита».</p>
+                <p className={styles.why}>{t("Запомненные правила ИИ будет учитывать каждый раз, например «пиши без канцелярита».")}</p>
               </fieldset>
               <button className={`${styles.button} ${styles.block}`} disabled={Boolean(busy) || instruction.trim().length < 2}
-                onClick={() => run("ai", async () => { await askAi({ instruction: instruction.trim(), saveAs }); setInstruction(""); setSaveAs("one_off"); })}>{busy === "ai" ? "ИИ работает…" : "Попросить ИИ"}</button>
-              <p className={styles.small}>{ai.budget && ai.budget.limit !== null ? `Ваших запросов к ИИ: ${ai.budget.used} из ${ai.budget.limit}` : ai.month ? `Запросов к ИИ в этом месяце осталось: ${ai.month.left} из ${ai.month.limit}` : `Осталось запросов сегодня: ${ai.remainingToday}`}</p>
+                onClick={() => run("ai", async () => { await askAi({ instruction: instruction.trim(), saveAs }); setInstruction(""); setSaveAs("one_off"); })}>{busy === "ai" ? t("ИИ работает…") : t("Попросить ИИ")}</button>
+              <p className={styles.small}>{ai.budget && ai.budget.limit !== null ? t("Ваших запросов к ИИ: {0} из {1}", [ai.budget.used, ai.budget.limit]) : ai.month ? t("Запросов к ИИ в этом месяце осталось: {0} из {1}", [ai.month.left, ai.month.limit]) : t("Осталось запросов сегодня: {0}", [ai.remainingToday])}</p>
             </>
           )}
           {!ai.configured && ai.templateAvailable && stage.inputsReady && (
-            <button className={styles.ghost} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>Обновить черновик по шаблону</button>
+            <button className={styles.ghost} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{t("Обновить черновик по шаблону")}</button>
           )}
         </section>
       )}
@@ -448,17 +449,17 @@ export default function StagePage() {
 
       {detail.rules.length > 0 && (
         <details className={`${styles.card} ${styles.details}`}>
-          <summary>Правила для ИИ ({detail.rules.filter((rule) => rule.status === "active").length})</summary>
+          <summary>{t("Правила для ИИ (")}{detail.rules.filter((rule) => rule.status === "active").length})</summary>
           <ul className={styles.versions}>
             {detail.rules.map((rule) => (
               <li key={rule.id}>
                 <div>{rule.text}</div>
                 <div className={styles.row}>
-                  <span className={styles.small}>{rule.kind === "project_rule" ? "Для всего проекта" : "Для этого этапа"} · {rule.status === "active" ? "действует" : "выключено"}</span>
+                  <span className={styles.small}>{rule.kind === "project_rule" ? t("Для всего проекта") : t("Для этого этапа")} · {rule.status === "active" ? t("действует") : t("выключено")}</span>
                   <div className={styles.spacer} />
                   {!specialist && <button className={styles.ghost} style={{ minHeight: 40 }} disabled={Boolean(busy)}
                     onClick={() => run("rule", async () => { await api(`/projects/${projectId}/rules/${rule.id}/status`, { method: "POST", body: JSON.stringify({ status: rule.status === "active" ? "disabled" : "active" }) }); await load(); })}>
-                    {rule.status === "active" ? "Выключить" : "Включить"}</button>}
+                    {rule.status === "active" ? t("Выключить") : t("Включить")}</button>}
                 </div>
               </li>
             ))}
@@ -468,36 +469,36 @@ export default function StagePage() {
 
       {stage.canImport && stage.importHint && (
         <details className={`${styles.card} ${styles.details}`} open={!detail.current && stage.artifactType !== "brief"}>
-          <summary>У меня уже есть готовое</summary>
+          <summary>{t("У меня уже есть готовое")}</summary>
           <p className={styles.small}>{stage.importHint}</p>
-          <textarea className={styles.textarea} style={{ minHeight: 140 }} value={importText} maxLength={20000} aria-label="Ваши материалы" onChange={(event) => setImportText(event.target.value)} />
+          <textarea className={styles.textarea} style={{ minHeight: 140 }} value={importText} maxLength={20000} aria-label={t("Ваши материалы")} onChange={(event) => setImportText(event.target.value)} />
           <button className={styles.secondary} style={{ marginTop: 10 }} disabled={Boolean(busy) || importText.trim().length < 2}
             onClick={() => run("import", async () => {
               const result = await api<{ status: string; issues: Array<{ message: string }> }>(`/projects/${projectId}/stages/${stageKey}/import`, { method: "POST", body: JSON.stringify({ text: importText }) });
               await load(); setImportText("");
-              setMessage(result.status === "imported" ? "Материалы добавлены, этап засчитан. Следующие этапы открыты." : "Материалы добавлены как черновик. Проверьте его и дополните то, чего не хватает.");
-            })}>Добавить мои материалы</button>
+              setMessage(result.status === "imported" ? t("Материалы добавлены, этап засчитан. Следующие этапы открыты.") : t("Материалы добавлены как черновик. Проверьте его и дополните то, чего не хватает."));
+            })}>{t("Добавить мои материалы")}</button>
         </details>
       )}
 
       {detail.versions.length > 0 && (
         <details className={`${styles.card} ${styles.details}`}>
-          <summary>История версий ({detail.versions.length})</summary>
-          <p className={styles.small}>Каждое изменение сохраняется. К любой версии можно вернуться.</p>
+          <summary>{t("История версий (")}{detail.versions.length})</summary>
+          <p className={styles.small}>{t("Каждое изменение сохраняется. К любой версии можно вернуться.")}</p>
           <ul className={styles.versions}>
             {detail.versions.map((version) => (
               <li key={version.id}>
                 <div className={styles.row}>
-                  <strong>Версия {version.versionNumber}</strong>
-                  {version.accepted && <span className={`${styles.chip} ${styles.done}`} style={{ marginTop: 0 }}>принята</span>}
-                  {detail.current?.id === version.id && <span className={`${styles.chip} ${styles.active}`} style={{ marginTop: 0 }}>текущая</span>}
+                  <strong>{t("Версия")}{" "}{version.versionNumber}</strong>
+                  {version.accepted && <span className={`${styles.chip} ${styles.done}`} style={{ marginTop: 0 }}>{t("принята")}</span>}
+                  {detail.current?.id === version.id && <span className={`${styles.chip} ${styles.active}`} style={{ marginTop: 0 }}>{t("текущая")}</span>}
                 </div>
-                <div className={styles.small}>{originLabels[version.origin] ?? version.origin} · {new Date(version.createdAt).toLocaleString("ru-RU")}</div>
-                {version.provenance?.instruction && <div className={styles.small}>Просьба: «{version.provenance.instruction}»{version.provenance.targetKey ? " (один блок)" : ""}</div>}
-                {version.provenance && version.provenance.rulesApplied > 0 && <div className={styles.small}>Учтено правил: {version.provenance.rulesApplied}</div>}
+                <div className={styles.small}>{originLabels[version.origin] ?? version.origin} · {new Date(version.createdAt).toLocaleString(dateLocale())}</div>
+                {version.provenance?.instruction && <div className={styles.small}>{t("Просьба: «")}{version.provenance.instruction}»{version.provenance.targetKey ? t(" (один блок)") : ""}</div>}
+                {version.provenance && version.provenance.rulesApplied > 0 && <div className={styles.small}>{t("Учтено правил:")}{" "}{version.provenance.rulesApplied}</div>}
                 {stage.canEdit && detail.current?.id !== version.id && stage.artifactType !== "site" && (
                   <button className={styles.ghost} style={{ minHeight: 40, marginTop: 6 }} disabled={Boolean(busy)}
-                    onClick={() => run("restore", async () => { await api(`/projects/${projectId}/stages/${stageKey}/versions/${version.id}/restore`, { method: "POST" }); await load(); setMessage(`Вернули версию ${version.versionNumber} — она сохранена как новая.`); })}>Вернуть эту версию</button>
+                    onClick={() => run("restore", async () => { await api(`/projects/${projectId}/stages/${stageKey}/versions/${version.id}/restore`, { method: "POST" }); await load(); setMessage(t("Вернули версию {0} — она сохранена как новая.", [version.versionNumber])); })}>{t("Вернуть эту версию")}</button>
                 )}
               </li>
             ))}
@@ -507,7 +508,7 @@ export default function StagePage() {
 
       {stage.acceptance.length > 0 && stage.status !== "locked" && (
         <details className={`${styles.card} ${styles.details}`}>
-          <summary>Когда этап можно принимать</summary>
+          <summary>{t("Когда этап можно принимать")}</summary>
           <ul className={styles.list}>{stage.acceptance.map((item) => <li key={item}>{item}</li>)}</ul>
         </details>
       )}
@@ -516,35 +517,35 @@ export default function StagePage() {
         <div className={styles.bottomBar}><div className={styles.bottomInner}>
           {accepted ? (
             <>
-              <span className={styles.bottomText}>Этап принят{detail.versions.find((version) => version.accepted) ? ` (версия ${detail.versions.find((version) => version.accepted)!.versionNumber})` : ""}.</span>
-              {nextStageKey && <a className={styles.button} href={`/projects/${projectId}/stages/${nextStageKey}`}>Дальше →</a>}
-              {stage.canReopen && <button className={styles.ghost} disabled={Boolean(busy)} onClick={reopen}>Изменить этап</button>}
+              <span className={styles.bottomText}>{t("Этап принят")}{detail.versions.find((version) => version.accepted) ? t(" (версия {0})", [detail.versions.find((version) => version.accepted)!.versionNumber]) : ""}.</span>
+              {nextStageKey && <a className={styles.button} href={`/projects/${projectId}/stages/${nextStageKey}`}>{t("Дальше →")}</a>}
+              {stage.canReopen && <button className={styles.ghost} disabled={Boolean(busy)} onClick={reopen}>{t("Изменить этап")}</button>}
             </>
           ) : dirty ? (
             <>
-              <span className={styles.bottomText}>Есть несохранённые изменения.</span>
-              <button className={styles.ghost} disabled={Boolean(busy)} onClick={() => void load()}>Отменить</button>
-              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("save", async () => { await saveDraft(); })}>{busy === "save" ? "Сохраняем…" : "Сохранить"}</button>
+              <span className={styles.bottomText}>{t("Есть несохранённые изменения.")}</span>
+              <button className={styles.ghost} disabled={Boolean(busy)} onClick={() => void load()}>{t("Отменить")}</button>
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("save", async () => { await saveDraft(); })}>{busy === "save" ? t("Сохраняем…") : t("Сохранить")}</button>
             </>
           ) : stage.status === "in_review" && !stage.canRequestChanges ? (
-            <span className={styles.bottomText}>На приёмке у владельца проекта.</span>
+            <span className={styles.bottomText}>{t("На приёмке у владельца проекта.")}</span>
           ) : stage.status === "in_review" ? (
             <>
-              <span className={styles.bottomText}>{failedRequired.length > 0 ? "Есть непройденные проверки." : "Примите результат специалиста или верните его с комментарием."}</span>
-              <button className={styles.ghost} disabled={Boolean(busy)} onClick={requestChanges}>Вернуть на доработку</button>
-              <button className={styles.button} disabled={Boolean(busy) || acceptBlocked} onClick={accept}>{busy === "accept" ? "Принимаем…" : "Принять этап"}</button>
+              <span className={styles.bottomText}>{failedRequired.length > 0 ? t("Есть непройденные проверки.") : t("Примите результат специалиста или верните его с комментарием.")}</span>
+              <button className={styles.ghost} disabled={Boolean(busy)} onClick={requestChanges}>{t("Вернуть на доработку")}</button>
+              <button className={styles.button} disabled={Boolean(busy) || acceptBlocked} onClick={accept}>{busy === "accept" ? t("Принимаем…") : t("Принять этап")}</button>
             </>
           ) : specialist && assignment?.role === "consultant" ? (
-            <span className={styles.bottomText}>Вы консультант: предлагайте правки выше. Принимает этап владелец.</span>
+            <span className={styles.bottomText}>{t("Вы консультант: предлагайте правки выше. Принимает этап владелец.")}</span>
           ) : specialist || (stage.canSubmit && !stage.canAccept) ? (
             <>
               <span className={styles.bottomText}>{submitReason}</span>
-              <button className={styles.button} disabled={Boolean(busy) || submitBlocked} onClick={submit}>{busy === "submit" ? "Отправляем…" : "Отправить на приёмку"}</button>
+              <button className={styles.button} disabled={Boolean(busy) || submitBlocked} onClick={submit}>{busy === "submit" ? t("Отправляем…") : t("Отправить на приёмку")}</button>
             </>
           ) : (
             <>
               <span className={styles.bottomText}>{acceptReason}</span>
-              <button className={styles.button} disabled={Boolean(busy) || acceptBlocked} onClick={accept}>{busy === "accept" ? "Принимаем…" : stage.status === "stale" ? "Подтвердить" : stage.contract ? "Утвердить" : "Принять этап"}</button>
+              <button className={styles.button} disabled={Boolean(busy) || acceptBlocked} onClick={accept}>{busy === "accept" ? t("Принимаем…") : stage.status === "stale" ? t("Подтвердить") : stage.contract ? t("Утвердить") : t("Принять этап")}</button>
             </>
           )}
         </div></div>
@@ -557,7 +558,7 @@ function Shell({ projectId, title, children }: { projectId: string; title: strin
   return (
     <div className={styles.shell}>
       <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.back} href={`/projects/${projectId}`}>← Этапы</a>
+        <a className={styles.back} href={`/projects/${projectId}`}>{t("← Этапы")}</a>
         <span className={styles.topTitle}>{title}</span>
       </div></header>
       <main className={styles.container}>{children}</main>

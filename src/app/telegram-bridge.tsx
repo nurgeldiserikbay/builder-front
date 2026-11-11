@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 
@@ -40,8 +41,8 @@ export default function TelegramBridge() {
           window.location.replace(target.startsWith("/login") ? "/projects" : target);
         } catch (loginError) {
           setNotice(loginError instanceof ApiError && loginError.message === "TELEGRAM_NOT_LINKED"
-            ? "Этот Telegram ещё не подключён к BuildPath. Войдите по почте и паролю — подключить Telegram можно на странице проекта."
-            : "Не получилось войти через Telegram. Войдите по почте и паролю.");
+            ? t("Этот Telegram ещё не подключён к BuildPath. Войдите по почте и паролю — подключить Telegram можно на странице проекта.")
+            : t("Не получилось войти через Telegram. Войдите по почте и паролю."));
         }
       }
     };

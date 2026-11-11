@@ -1,3 +1,5 @@
+import { getLocale } from "./i18n";
+
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api/v1").replace(/\/$/, "");
 
 export class ApiError extends Error {
@@ -9,6 +11,7 @@ export class ApiError extends Error {
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
+  if (!headers.has("Accept-Language")) headers.set("Accept-Language", getLocale());
   if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,

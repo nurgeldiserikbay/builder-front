@@ -1,5 +1,6 @@
 "use client";
 
+import { t, dateLocale, getLocale } from "@/lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
@@ -68,16 +69,16 @@ type ReviewReport = {
 
 function formatQualityGateReason(reason: string): string {
   const labels: Record<string, string> = {
-    profile_snapshot_invalid: "Снимок профиля повреждён.",
-    profile_policy_invalid: "Политика профиля имеет неподдерживаемый формат.",
-    requirements_coverage_below_minimum: "Покрытие требований ниже заданного порога.",
-    backend_api_check_failed: "Не пройдены пользовательские API-проверки.",
-    assessment_not_supported: "Полная проверка этой категории пока не поддерживается.",
-    evidence_incomplete: "Не все страницы имеют необходимые результаты проверки.",
-    critical_finding_limit_exceeded: "Превышен лимит критических замечаний.",
-    high_finding_limit_exceeded: "Превышен лимит замечаний высокого уровня.",
+    profile_snapshot_invalid: t("Снимок профиля повреждён."),
+    profile_policy_invalid: t("Политика профиля имеет неподдерживаемый формат."),
+    requirements_coverage_below_minimum: t("Покрытие требований ниже заданного порога."),
+    backend_api_check_failed: t("Не пройдены пользовательские API-проверки."),
+    assessment_not_supported: t("Полная проверка этой категории пока не поддерживается."),
+    evidence_incomplete: t("Не все страницы имеют необходимые результаты проверки."),
+    critical_finding_limit_exceeded: t("Превышен лимит критических замечаний."),
+    high_finding_limit_exceeded: t("Превышен лимит замечаний высокого уровня."),
   };
-  const categoryLabels: Record<string, string> = { security: "Безопасность", accessibility: "Доступность", performance: "Производительность", seo: "SEO" };
+  const categoryLabels: Record<string, string> = { security: t("Безопасность"), accessibility: t("Доступность"), performance: t("Производительность"), seo: "SEO" };
   const separator = reason.indexOf(":");
   if (separator < 0) return labels[reason] ?? reason;
   const category = reason.slice(0, separator);
@@ -99,26 +100,26 @@ function escapeReportHtml(value: unknown): string {
 function buildStaticHtmlReport(report: ReviewReport): string {
   const escape = escapeReportHtml;
   const labels: Record<string, string> = {
-    pending: "Ожидает проверки",
-    satisfied: "Подтверждено",
-    failed: "Не выполнено",
-    blocked: "Заблокировано",
-    unknown: "Не проверено",
-    open: "Открыто",
-    in_progress: "В работе",
-    resolved: "Решено",
-    dismissed: "Отклонено",
+    pending: t("Ожидает проверки"),
+    satisfied: t("Подтверждено"),
+    failed: t("Не выполнено"),
+    blocked: t("Заблокировано"),
+    unknown: t("Не проверено"),
+    open: t("Открыто"),
+    in_progress: t("В работе"),
+    resolved: t("Решено"),
+    dismissed: t("Отклонено"),
   };
   const statusLabel = (value: string) => labels[value] ?? value;
   const coverageRows: Array<{ label: string; checked: number; total: number }> = [
-    { label: "Рабочий сайт", checked: report.summary.coverage.site.checked, total: report.summary.coverage.site.total },
-    { label: "ТЗ подтверждено", checked: report.summary.coverage.requirements.satisfied, total: report.summary.coverage.requirements.total },
-    { label: "Сравнено с макетом", checked: report.summary.coverage.design.compared, total: report.summary.coverage.design.total },
-    { label: "Backend проверен API", checked: report.summary.coverage.backend.checked, total: report.summary.coverage.backend.total },
+    { label: t("Рабочий сайт"), checked: report.summary.coverage.site.checked, total: report.summary.coverage.site.total },
+    { label: t("ТЗ подтверждено"), checked: report.summary.coverage.requirements.satisfied, total: report.summary.coverage.requirements.total },
+    { label: t("Сравнено с макетом"), checked: report.summary.coverage.design.compared, total: report.summary.coverage.design.total },
+    { label: t("Backend проверен API"), checked: report.summary.coverage.backend.checked, total: report.summary.coverage.backend.total },
   ];
   const coverageHtml = coverageRows.map((item) => {
     const percent = item.total > 0 ? Math.min(100, Math.round(item.checked / item.total * 100)) : 0;
-    const count = item.total > 0 ? item.checked + "/" + item.total + " · " + percent + "%" : "Нет данных";
+    const count = item.total > 0 ? item.checked + "/" + item.total + " · " + percent + "%" : t("Нет данных");
     return "<article class=\"coverage-card\"><div><strong>" + escape(item.label) + "</strong><b>" + escape(count) + "</b></div><div class=\"track\"><i style=\"width:" + percent + "%\"></i></div></article>";
   }).join("");
   const requirementStatusHtml = Object.entries(report.summary.requirements.byStatus).map(([status, count]) =>
@@ -135,61 +136,61 @@ function buildStaticHtmlReport(report: ReviewReport): string {
       "<li><span>" + escape(finding.summary) + "</span><strong>" + escape(finding.severity) + " · " + escape(statusLabel(finding.status)) + "</strong></li>",
     ).join("");
     const apiChecks = page.apiChecks.map((check) =>
-      "<li><code>" + escape(check.method) + " " + escape(check.endpoint) + "</code><strong>" + (check.passed ? "Пройдено" : "Не пройдено") + (check.actualStatus === null ? "" : " · HTTP " + check.actualStatus) + "</strong></li>",
+      "<li><code>" + escape(check.method) + " " + escape(check.endpoint) + "</code><strong>" + (check.passed ? t("Пройдено") : t("Не пройдено")) + (check.actualStatus === null ? "" : " · HTTP " + check.actualStatus) + "</strong></li>",
     ).join("");
-    const captureStatus = page.latestCapture ? statusLabel(page.latestCapture.status) : "Нет снимка";
+    const captureStatus = page.latestCapture ? statusLabel(page.latestCapture.status) : t("Нет снимка");
     const diff = page.latestCapture?.visualDiff?.changedPercent === null || page.latestCapture?.visualDiff?.changedPercent === undefined
-      ? "Нет данных"
+      ? t("Нет данных")
       : page.latestCapture.visualDiff.changedPercent + "%";
     const quality = page.latestCapture?.qualityAudit
-      ? "H1: " + page.latestCapture.qualityAudit.h1Count + ", изображения без alt: " + page.latestCapture.qualityAudit.imagesMissingAlt + ", ссылки без названия: " + page.latestCapture.qualityAudit.linksMissingName + ", кнопки без названия: " + page.latestCapture.qualityAudit.buttonsMissingName + ", поля без подписи: " + page.latestCapture.qualityAudit.formControlsMissingLabel + ", HTTPS: " + (page.latestCapture.qualityAudit.security ? (page.latestCapture.qualityAudit.security.isHttps ? "да" : "нет") : "нет данных") + ", загрузка: " + (page.latestCapture.qualityAudit.performance?.navigationMs ?? "нет данных") + " мс"
-      : "Аудит пока не запускался";
-    return "<section class=\"page-card\"><h3>" + (index + 1) + ". " + escape(page.title || page.route) + "</h3><p class=\"muted\">" + escape(page.route) + " · снимок: " + escape(captureStatus) + " · отличие: " + escape(diff) + " · макет: " + (page.designMapped ? "привязан" : "не привязан") + "</p><p>" + escape(quality) + "</p>" +
-      (requirements ? "<h4>Требования</h4><ul class=\"rows\">" + requirements + "</ul>" : "") +
-      (findings ? "<h4>Замечания</h4><ul class=\"rows\">" + findings + "</ul>" : "") +
-      (apiChecks ? "<h4>API-проверки</h4><ul class=\"rows\">" + apiChecks + "</ul>" : "") +
+      ? "H1: " + page.latestCapture.qualityAudit.h1Count + t(", изображения без alt: ") + page.latestCapture.qualityAudit.imagesMissingAlt + t(", ссылки без названия: ") + page.latestCapture.qualityAudit.linksMissingName + t(", кнопки без названия: ") + page.latestCapture.qualityAudit.buttonsMissingName + t(", поля без подписи: ") + page.latestCapture.qualityAudit.formControlsMissingLabel + ", HTTPS: " + (page.latestCapture.qualityAudit.security ? (page.latestCapture.qualityAudit.security.isHttps ? t("да") : t("нет")) : t("нет данных")) + t(", загрузка: ") + (page.latestCapture.qualityAudit.performance?.navigationMs ?? t("нет данных")) + t(" мс")
+      : t("Аудит пока не запускался");
+    return "<section class=\"page-card\"><h3>" + (index + 1) + ". " + escape(page.title || page.route) + "</h3><p class=\"muted\">" + escape(page.route) + t(" · снимок: ") + escape(captureStatus) + t(" · отличие: ") + escape(diff) + t(" · макет: ") + (page.designMapped ? t("привязан") : t("не привязан")) + "</p><p>" + escape(quality) + "</p>" +
+      (requirements ? t("<h4>Требования</h4><ul class=\"rows\">") + requirements + "</ul>" : "") +
+      (findings ? t("<h4>Замечания</h4><ul class=\"rows\">") + findings + "</ul>" : "") +
+      (apiChecks ? t("<h4>API-проверки</h4><ul class=\"rows\">") + apiChecks + "</ul>" : "") +
       "</section>";
   }).join("");
   const gateStatusLabels: Record<QualityGate["status"], string> = {
-    not_configured: "Профиль не настроен", invalid_configuration: "Профиль повреждён",
-    not_assessed: "Нет достаточных данных", blocked: "Проверка заблокирована", passed: "Проверки пройдены",
+    not_configured: t("Профиль не настроен"), invalid_configuration: t("Профиль повреждён"),
+    not_assessed: t("Нет достаточных данных"), blocked: t("Проверка заблокирована"), passed: t("Проверки пройдены"),
   };
   const gateCategoryLabels: Record<QualityGate["categories"][number]["id"], string> = {
-    security: "Безопасность", accessibility: "Доступность", performance: "Производительность", seo: "SEO",
+    security: t("Безопасность"), accessibility: t("Доступность"), performance: t("Производительность"), seo: "SEO",
   };
   const gateCategoryStatus: Record<QualityGate["categories"][number]["status"], string> = {
-    disabled: "Выключено", not_assessed: "Нет данных", blocked: "Блокировка", passed: "Проверено",
+    disabled: t("Выключено"), not_assessed: t("Нет данных"), blocked: t("Блокировка"), passed: t("Проверено"),
   };
   const gateReasonLabel = (reason: string) => {
     const labels: Record<string, string> = {
-      profile_snapshot_invalid: "Некорректный снимок профиля.",
-      profile_policy_invalid: "Политика профиля имеет неподдерживаемый формат.",
-      requirements_coverage_below_minimum: "Покрытие требований ниже заданного порога.",
-      backend_api_check_failed: "Не пройдены пользовательские API-проверки.",
-      assessment_not_supported: "В текущем анализаторе нет полной проверки этой категории.",
-      evidence_incomplete: "Не все страницы имеют необходимые результаты проверки.",
-      critical_finding_limit_exceeded: "Превышен лимит открытых критических замечаний.",
-      high_finding_limit_exceeded: "Превышен лимит открытых замечаний высокого уровня.",
+      profile_snapshot_invalid: t("Некорректный снимок профиля."),
+      profile_policy_invalid: t("Политика профиля имеет неподдерживаемый формат."),
+      requirements_coverage_below_minimum: t("Покрытие требований ниже заданного порога."),
+      backend_api_check_failed: t("Не пройдены пользовательские API-проверки."),
+      assessment_not_supported: t("В текущем анализаторе нет полной проверки этой категории."),
+      evidence_incomplete: t("Не все страницы имеют необходимые результаты проверки."),
+      critical_finding_limit_exceeded: t("Превышен лимит открытых критических замечаний."),
+      high_finding_limit_exceeded: t("Превышен лимит открытых замечаний высокого уровня."),
     };
     const [category, code] = reason.includes(":") ? reason.split(":", 2) : ["", reason];
     return (category ? (gateCategoryLabels[category as keyof typeof gateCategoryLabels] ?? category) + ": " : "") + (labels[code] ?? code);
   };
   const gateRowsHtml = report.qualityGate.categories.map((category) =>
-    "<li><span>" + escape(gateCategoryLabels[category.id]) + " · " + escape(gateCategoryStatus[category.status]) + "</span><strong>" + escape(category.evidence.checked + "/" + category.evidence.total + " страниц") + " · critical " + category.issues.critical + " · high " + category.issues.high + " · medium " + category.issues.medium + "</strong></li>",
+    "<li><span>" + escape(gateCategoryLabels[category.id]) + " · " + escape(gateCategoryStatus[category.status]) + "</span><strong>" + escape(category.evidence.checked + "/" + category.evidence.total + t(" страниц")) + " · critical " + category.issues.critical + " · high " + category.issues.high + " · medium " + category.issues.medium + "</strong></li>",
   ).join("");
   const gateReasonsHtml = report.qualityGate.blockingReasons.map((reason) => "<li>" + escape(gateReasonLabel(reason)) + "</li>").join("");
   const gateProfileLabel = report.qualityGate.profile
     ? escape(report.qualityGate.profile.name) + " · v" + report.qualityGate.profile.version
-    : "Нет активного профиля для этого review";
-  const qualityGateHtml = "<section class=\"panel quality-gate\" data-status=\"" + escape(report.qualityGate.status) + "\"><h2>Quality gate: " + escape(gateStatusLabels[report.qualityGate.status]) + "</h2><p class=\"muted\">Профиль: " + gateProfileLabel + "</p>" +
-    (report.qualityGate.requirementCoverage.actualPercent === null ? "" : "<p>Покрытие требований: " + report.qualityGate.requirementCoverage.actualPercent + "% · минимум " + report.qualityGate.requirementCoverage.minimumPercent + "%</p>") +
-    "<p>API-проверки: " + report.qualityGate.apiChecks.failed + " ошибок из " + report.qualityGate.apiChecks.checked + " проверок</p>" +
+    : t("Нет активного профиля для этого review");
+  const qualityGateHtml = "<section class=\"panel quality-gate\" data-status=\"" + escape(report.qualityGate.status) + "\"><h2>Quality gate: " + escape(gateStatusLabels[report.qualityGate.status]) + t("</h2><p class=\"muted\">Профиль: ") + gateProfileLabel + "</p>" +
+    (report.qualityGate.requirementCoverage.actualPercent === null ? "" : t("<p>Покрытие требований: ") + report.qualityGate.requirementCoverage.actualPercent + t("% · минимум ") + report.qualityGate.requirementCoverage.minimumPercent + "%</p>") +
+    t("<p>API-проверки: ") + report.qualityGate.apiChecks.failed + t(" ошибок из ") + report.qualityGate.apiChecks.checked + t(" проверок</p>") +
     (gateRowsHtml ? "<ul class=\"rows\">" + gateRowsHtml + "</ul>" : "") +
     (gateReasonsHtml ? "<ul class=\"signal-list\">" + gateReasonsHtml + "</ul>" : "") +
-    "<p class=\"muted\">Это оценка имеющихся данных отчёта, а не разрешение на публикацию. Полные security и performance проверки пока не выполняются.</p></section>";
+    t("<p class=\"muted\">Это оценка имеющихся данных отчёта, а не разрешение на публикацию. Полные security и performance проверки пока не выполняются.</p></section>");
   const limitationsHtml = report.limitations.map((limitation) => "<li>" + escape(limitation) + "</li>").join("");
   const generatedAt = new Date(report.generatedAt);
-  const dateLabel = Number.isNaN(generatedAt.getTime()) ? report.generatedAt : generatedAt.toLocaleString("ru-RU");
+  const dateLabel = Number.isNaN(generatedAt.getTime()) ? report.generatedAt : generatedAt.toLocaleString(dateLocale());
   const pageTitle = escape(report.review.title) + " — BuildPath";
   return [
     "<!doctype html>",
@@ -204,23 +205,23 @@ function buildStaticHtmlReport(report: ReviewReport): string {
     "</style>",
     "</head>",
     "<body><main>",
-    "<header><h1>" + escape(report.review.title) + "</h1><div class=\"muted\">Сформировано " + escape(dateLabel) + " · состояние: " + escape(statusLabel(report.review.status)) + (report.review.siteOrigin ? " · сайт: " + escape(report.review.siteOrigin) : "") + "</div></header>",
-    "<section class=\"panel\"><h2>Покрытие проверки</h2><p class=\"muted\">Индикаторы показывают объём собранных доказательств, а не автоматическую оценку качества продукта.</p><div class=\"coverage\">" + coverageHtml + "</div></section>",
+    "<header><h1>" + escape(report.review.title) + t("</h1><div class=\"muted\">Сформировано ") + escape(dateLabel) + t(" · состояние: ") + escape(statusLabel(report.review.status)) + (report.review.siteOrigin ? t(" · сайт: ") + escape(report.review.siteOrigin) : "") + "</div></header>",
+    t("<section class=\"panel\"><h2>Покрытие проверки</h2><p class=\"muted\">Индикаторы показывают объём собранных доказательств, а не автоматическую оценку качества продукта.</p><div class=\"coverage\">") + coverageHtml + "</div></section>",
     qualityGateHtml,
-    "<section class=\"panel\"><h2>Сводка</h2><div class=\"stats\"><article><strong>" + report.summary.pages.total + "</strong>страниц</article><article><strong>" + report.summary.visualDiff.compared + "</strong>визуальных сравнений</article><article><strong>" + report.summary.findings.total + "</strong>замечаний</article><article><strong>" + report.summary.apiChecks.passedRecent + "/" + report.summary.apiChecks.totalRecent + "</strong>API-проверок пройдено</article><article><strong>" + report.summary.aiReview.analyzedCaptures + "</strong>ИИ-разборов</article><article><strong>" + report.summary.aiReview.totalSuggestions + "</strong>ИИ-предложений</article><article><strong>" + (report.summary.visualDiff.averageChangedPercent === null ? "—" : report.summary.visualDiff.averageChangedPercent + "%") + "</strong>среднее отличие</article><article><strong>" + report.summary.analysis.totalSignals + "</strong>сигналов правил</article></div></section>",
-    "<section class=\"panel\"><h2>Статусы требований</h2>" + (requirementStatusHtml ? "<ul class=\"rows\">" + requirementStatusHtml + "</ul>" : "<p class=\"muted\">Требования ещё не добавлены.</p>") + "</section>",
-    "<section class=\"panel\"><h2>Что требует внимания</h2>" + (signalHtml ? "<ul class=\"signal-list\">" + signalHtml + "</ul>" : "<p class=\"muted\">Автоматические сигналы не найдены.</p>") + "</section>",
-    "<section><h2>Страницы</h2>" + (pageHtml || "<p class=\"muted\">Страницы не найдены.</p>") + "</section>",
-    "<section class=\"panel\"><h2>Ограничения отчёта</h2><ul>" + limitationsHtml + "</ul><p class=\"footnote\">Пиксельные отличия, API-проверки и ИИ-рекомендации являются отдельными свидетельствами. ИИ-результаты не подтверждают требования автоматически. Сформировано BuildPath, версия схемы " + report.schemaVersion + ".</p></section>",
+    t("<section class=\"panel\"><h2>Сводка</h2><div class=\"stats\"><article><strong>") + report.summary.pages.total + t("</strong>страниц</article><article><strong>") + report.summary.visualDiff.compared + t("</strong>визуальных сравнений</article><article><strong>") + report.summary.findings.total + t("</strong>замечаний</article><article><strong>") + report.summary.apiChecks.passedRecent + "/" + report.summary.apiChecks.totalRecent + t("</strong>API-проверок пройдено</article><article><strong>") + report.summary.aiReview.analyzedCaptures + t("</strong>ИИ-разборов</article><article><strong>") + report.summary.aiReview.totalSuggestions + t("</strong>ИИ-предложений</article><article><strong>") + (report.summary.visualDiff.averageChangedPercent === null ? "—" : report.summary.visualDiff.averageChangedPercent + "%") + t("</strong>среднее отличие</article><article><strong>") + report.summary.analysis.totalSignals + t("</strong>сигналов правил</article></div></section>"),
+    t("<section class=\"panel\"><h2>Статусы требований</h2>") + (requirementStatusHtml ? "<ul class=\"rows\">" + requirementStatusHtml + "</ul>" : t("<p class=\"muted\">Требования ещё не добавлены.</p>")) + "</section>",
+    t("<section class=\"panel\"><h2>Что требует внимания</h2>") + (signalHtml ? "<ul class=\"signal-list\">" + signalHtml + "</ul>" : t("<p class=\"muted\">Автоматические сигналы не найдены.</p>")) + "</section>",
+    t("<section><h2>Страницы</h2>") + (pageHtml || t("<p class=\"muted\">Страницы не найдены.</p>")) + "</section>",
+    t("<section class=\"panel\"><h2>Ограничения отчёта</h2><ul>") + limitationsHtml + t("</ul><p class=\"footnote\">Пиксельные отличия, API-проверки и ИИ-рекомендации являются отдельными свидетельствами. ИИ-результаты не подтверждают требования автоматически. Сформировано BuildPath, версия схемы ") + report.schemaVersion + ".</p></section>",
     "</main></body>",
     "</html>",
   ].join("\n");
 }
 
 const statusText: Record<string, string> = {
-  draft: "Черновик", queued: "В очереди", discovering: "Ищем страницы",
-  ready: "Страницы найдены", failed: "Сканирование завершилось с ошибкой",
-  cancelled: "Остановлено",
+  draft: t("Черновик"), queued: t("В очереди"), discovering: t("Ищем страницы"),
+  ready: t("Страницы найдены"), failed: t("Сканирование завершилось с ошибкой"),
+  cancelled: t("Остановлено"),
 };
 
 export default function ReviewPage() {
@@ -271,7 +272,7 @@ export default function ReviewPage() {
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     if (query.get("figma") === "connected") {
-      setMessage("Аккаунт Figma подключён. Теперь вставьте ссылку на нужный кадр.");
+      setMessage(t("Аккаунт Figma подключён. Теперь вставьте ссылку на нужный кадр."));
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -287,14 +288,14 @@ export default function ReviewPage() {
         if (!active) return;
         setWorkspaces(items);
         setWorkspaceId(items[0]?.id ?? "");
-        if (items.length === 0) setMessage("В аккаунте пока нет доступного рабочего пространства.");
+        if (items.length === 0) setMessage(t("В аккаунте пока нет доступного рабочего пространства."));
         const figma = await api<FigmaConnectionStatus>("/integrations/figma/status");
         if (active) setFigmaConnection(figma);
       })
       .catch((error: unknown) => {
         if (!active) return;
         if (error instanceof ApiError && error.status === 401) router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`);
-        else setMessage(error instanceof Error ? error.message : "Не удалось загрузить рабочее пространство.");
+        else setMessage(error instanceof Error ? error.message : t("Не удалось загрузить рабочее пространство."));
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -310,7 +311,7 @@ export default function ReviewPage() {
         setProjectId((current) => items.some((item) => item.id === current) ? current : items[0]?.id ?? "");
       })
       .catch((error: unknown) => {
-        if (active) setMessage(error instanceof Error ? error.message : "Не удалось загрузить проекты.");
+        if (active) setMessage(error instanceof Error ? error.message : t("Не удалось загрузить проекты."));
       });
     return () => { active = false; };
   }, [workspaceId]);
@@ -331,7 +332,7 @@ export default function ReviewPage() {
         setSelectedPageId((current) => nextPages.some((page) => page.id === current) ? current : nextPages[0]?.id ?? "");
         if (!["ready", "failed", "cancelled"].includes(nextReview.status)) timer = setTimeout(refresh, 2500);
       } catch (error) {
-        if (!cancelled) setMessage(error instanceof Error ? error.message : "Не удалось обновить прогресс.");
+        if (!cancelled) setMessage(error instanceof Error ? error.message : t("Не удалось обновить прогресс."));
       }
     };
     timer = setTimeout(refresh, 1200);
@@ -339,10 +340,10 @@ export default function ReviewPage() {
   }, [review?.id, review?.status]);
 
   const reviewCoverage = reportData ? [
-    { label: "Рабочий сайт", done: reportData.summary.coverage.site.checked, total: reportData.summary.coverage.site.total, detail: "страниц со снимком" },
-    { label: "ТЗ", done: reportData.summary.coverage.requirements.satisfied, total: reportData.summary.coverage.requirements.total, detail: "пунктов подтверждено" },
-    { label: "Макет", done: reportData.summary.coverage.design.compared, total: reportData.summary.coverage.design.total, detail: "страниц сравнено с макетом" },
-    { label: "Backend", done: reportData.summary.coverage.backend.checked, total: reportData.summary.coverage.backend.total, detail: "backend-пунктов проверено API" },
+    { label: t("Рабочий сайт"), done: reportData.summary.coverage.site.checked, total: reportData.summary.coverage.site.total, detail: t("страниц со снимком") },
+    { label: t("ТЗ"), done: reportData.summary.coverage.requirements.satisfied, total: reportData.summary.coverage.requirements.total, detail: t("пунктов подтверждено") },
+    { label: t("Макет"), done: reportData.summary.coverage.design.compared, total: reportData.summary.coverage.design.total, detail: t("страниц сравнено с макетом") },
+    { label: "Backend", done: reportData.summary.coverage.backend.checked, total: reportData.summary.coverage.backend.total, detail: t("backend-пунктов проверено API") },
   ] : [];
 
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? null;
@@ -364,14 +365,14 @@ export default function ReviewPage() {
         const next = await api<Capture>(`/reviews/${review.id}/captures/${selectedCapture.captureId}`);
         if (!active) return;
         setCaptures((current) => ({ ...current, [selectedPage.id]: next }));
-        if (next.status === "queued") setMessage("Браузерный worker готовит снимок страницы…");
-        else if (next.status === "failed") setMessage(next.safeErrorCode?.includes("BROWSER") ? "Worker не настроен: установите Chromium и задайте CAPTURE_CHROMIUM_EXECUTABLE_PATH." : "Не удалось снять страницу: " + (next.safeErrorCode ?? "CAPTURE_FAILED"));
-        else if (next.status === "captured") setMessage("Снимок сайта готов и привязан к выбранному макету.");
+        if (next.status === "queued") setMessage(t("Браузерный worker готовит снимок страницы…"));
+        else if (next.status === "failed") setMessage(next.safeErrorCode?.includes("BROWSER") ? t("Worker не настроен: установите Chromium и задайте CAPTURE_CHROMIUM_EXECUTABLE_PATH.") : t("Не удалось снять страницу: ") + (next.safeErrorCode ?? "CAPTURE_FAILED"));
+        else if (next.status === "captured") setMessage(t("Снимок сайта готов и привязан к выбранному макету."));
         if (next.status === "queued") timer = setTimeout(refresh, 1_500);
         else if (next.status === "captured") timer = setTimeout(refresh, 240_000);
       } catch (error) {
         if (active) {
-          setMessage(error instanceof Error ? error.message : "Не удалось получить снимок страницы.");
+          setMessage(error instanceof Error ? error.message : t("Не удалось получить снимок страницы."));
           timer = setTimeout(refresh, 10_000);
         }
       }
@@ -385,7 +386,7 @@ export default function ReviewPage() {
     let active = true;
     api<Finding[]>(`/reviews/${review.id}/pages/${selectedPage.id}/findings`)
       .then((items) => { if (active) setFindings(items); })
-      .catch((error: unknown) => { if (active) setMessage(error instanceof Error ? error.message : "Не удалось загрузить замечания."); });
+      .catch((error: unknown) => { if (active) setMessage(error instanceof Error ? error.message : t("Не удалось загрузить замечания.")); });
     return () => { active = false; };
   }, [review?.id, selectedPage?.id]);
 
@@ -396,7 +397,7 @@ export default function ReviewPage() {
     let active = true;
     api<Requirement[]>(`/reviews/${review.id}/pages/${selectedPage.id}/requirements`)
       .then((items) => { if (active) setRequirements(items); })
-      .catch((error: unknown) => { if (active) setMessage(error instanceof Error ? error.message : "Не удалось загрузить чеклист ТЗ."); });
+      .catch((error: unknown) => { if (active) setMessage(error instanceof Error ? error.message : t("Не удалось загрузить чеклист ТЗ.")); });
     return () => { active = false; };
   }, [review?.id, selectedPage?.id]);
 
@@ -410,10 +411,10 @@ export default function ReviewPage() {
       try {
         const asset = await api<{ url: string; expiresInSeconds: number }>(`/reviews/${review.id}/sources/design-upload/${selectedPage.designAssetId}/url`);
         if (!active) return;
-        setDesigns((current) => ({ ...current, [selectedPage.id]: { name: current[selectedPage.id]?.name ?? "Сохранённый макет", url: asset.url } }));
+        setDesigns((current) => ({ ...current, [selectedPage.id]: { name: current[selectedPage.id]?.name ?? t("Сохранённый макет"), url: asset.url } }));
         timer = setTimeout(refresh, Math.max(30, asset.expiresInSeconds - 30) * 1000);
       } catch (error) {
-        if (active) setMessage(error instanceof Error ? error.message : "Не удалось открыть сохранённый макет.");
+        if (active) setMessage(error instanceof Error ? error.message : t("Не удалось открыть сохранённый макет."));
       }
     };
     void refresh();
@@ -422,7 +423,7 @@ export default function ReviewPage() {
 
 
   const previewTitle = useMemo(() => {
-    if (!selectedPage) return "Предпросмотр сайта";
+    if (!selectedPage) return t("Предпросмотр сайта");
     return selectedPage.label + " · " + selectedPage.route;
   }, [selectedPage]);
 
@@ -439,15 +440,15 @@ export default function ReviewPage() {
         ...current,
         [selectedPage.id]: { ...current[selectedPage.id], aiAnalysis: result.analysis },
       }));
-      setMessage(result.reused ? "Показан сохранённый ИИ-разбор." : "ИИ-разбор готов. Проверьте каждое замечание вручную.");
+      setMessage(result.reused ? t("Показан сохранённый ИИ-разбор.") : t("ИИ-разбор готов. Проверьте каждое замечание вручную."));
       void loadReport();
     } catch (error) {
       const detail = error instanceof Error ? error.message : "";
       setMessage(detail.includes("AI_REVIEW_NOT_CONFIGURED")
-        ? "ИИ-анализ не настроен на сервере. Добавьте AI_REVIEW_OPENAI_API_KEY и AI_REVIEW_OPENAI_MODEL."
+        ? t("ИИ-анализ не настроен на сервере. Добавьте AI_REVIEW_OPENAI_API_KEY и AI_REVIEW_OPENAI_MODEL.")
         : detail.includes("AI_REVIEW_IN_PROGRESS")
-          ? "Разбор этой страницы уже выполняется."
-          : detail || "Не удалось выполнить ИИ-разбор.");
+          ? t("Разбор этой страницы уже выполняется.")
+          : detail || t("Не удалось выполнить ИИ-разбор."));
     } finally {
       setAiAnalysisBusy(false);
     }
@@ -464,15 +465,15 @@ export default function ReviewPage() {
       const normalizedUrl = new URL(siteUrl).toString();
       let selectedProject = projects.find((item) => item.id === projectId);
       if (!selectedProject) {
-        if (!workspaceId) throw new Error("Сначала выберите рабочее пространство.");
+        if (!workspaceId) throw new Error(t("Сначала выберите рабочее пространство."));
         const host = new URL(normalizedUrl).hostname;
         selectedProject = await api<Project>("/projects", {
           method: "POST",
           body: JSON.stringify({
             workspaceId,
-            name: ("Анализ " + host).slice(0, 120),
+            name: (t("Анализ ") + host).slice(0, 120),
             startMode: "analysis_only",
-            locale: "ru",
+            locale: getLocale(),
           }),
         });
         setProjects((items) => [...items, selectedProject!]);
@@ -482,7 +483,7 @@ export default function ReviewPage() {
       const newReview = await api<Review>(`/projects/${selectedProject.id}/reviews`, {
         method: "POST",
         headers: { "Idempotency-Key": globalThis.crypto.randomUUID() },
-        body: JSON.stringify({ title: ("Проверка " + new URL(normalizedUrl).hostname).slice(0, 120), mode: "site_and_design", locale: "ru" }),
+        body: JSON.stringify({ title: (t("Проверка ") + new URL(normalizedUrl).hostname).slice(0, 120), mode: "site_and_design", locale: getLocale() }),
       });
       setReview(newReview);
       await api<{ jobId: string; status: string }>(`/reviews/${newReview.id}/sources/url`, {
@@ -490,11 +491,11 @@ export default function ReviewPage() {
         headers: { "Idempotency-Key": globalThis.crypto.randomUUID() },
         body: JSON.stringify({ url: normalizedUrl }),
       });
-      setMessage("Ссылка прошла серверную проверку. Страницы будут добавляться по мере работы worker.");
+      setMessage(t("Ссылка прошла серверную проверку. Страницы будут добавляться по мере работы worker."));
     } catch (error) {
       setReview(null);
       if (error instanceof ApiError && error.status === 401) router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`);
-      else setMessage(error instanceof Error ? error.message : "Не удалось запустить проверку.");
+      else setMessage(error instanceof Error ? error.message : t("Не удалось запустить проверку."));
     } finally {
       setBusy(false);
     }
@@ -508,8 +509,8 @@ export default function ReviewPage() {
     } catch (error) {
       const detail = error instanceof Error ? error.message : "";
       setMessage(detail.includes("FIGMA_INTEGRATION_NOT_CONFIGURED")
-        ? "Figma пока не настроена на сервере. Нужны OAuth Client ID, Client Secret, callback URL и ключ шифрования."
-        : detail || "Не удалось открыть подключение Figma.");
+        ? t("Figma пока не настроена на сервере. Нужны OAuth Client ID, Client Secret, callback URL и ключ шифрования.")
+        : detail || t("Не удалось открыть подключение Figma."));
       setFigmaBusy(false);
     }
   }
@@ -519,9 +520,9 @@ export default function ReviewPage() {
     try {
       await api<{ connected: boolean }>("/integrations/figma/connection", { method: "DELETE" });
       setFigmaConnection({ connected: false, figmaUserId: null, expiresAt: null, connectedAt: null });
-      setMessage("Связь с Figma отключена.");
+      setMessage(t("Связь с Figma отключена."));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Не удалось отключить Figma.");
+      setMessage(error instanceof Error ? error.message : t("Не удалось отключить Figma."));
     } finally {
       setFigmaBusy(false);
     }
@@ -542,21 +543,21 @@ export default function ReviewPage() {
         : page));
       setDesigns((current) => ({ ...current, [selectedPage.id]: { name: `Figma · ${imported.nodeId}`, url: asset.url } }));
       setFigmaUrlDraft("");
-      setMessage("Макетный кадр импортирован из Figma, проверен и привязан к странице.");
+      setMessage(t("Макетный кадр импортирован из Figma, проверен и привязан к странице."));
     } catch (error) {
       const detail = error instanceof Error ? error.message : "";
       if (detail.includes("FIGMA_RECONNECT_REQUIRED")) {
         setFigmaConnection((current) => current ? { ...current, connected: false } : current);
-        setMessage("Срок доступа к Figma истёк. Подключите аккаунт заново.");
+        setMessage(t("Срок доступа к Figma истёк. Подключите аккаунт заново."));
       } else if (detail.includes("FIGMA_NOT_CONNECTED")) {
         setFigmaConnection({ connected: false, figmaUserId: null, expiresAt: null, connectedAt: null });
-        setMessage("Сначала подключите аккаунт Figma.");
+        setMessage(t("Сначала подключите аккаунт Figma."));
       } else if (detail.includes("SCANNER_UNAVAILABLE") || detail.includes("SCANNER")) {
-        setMessage("Кадр получен, но серверный сканер ClamAV недоступен. Настройте сканер и повторите импорт.");
+        setMessage(t("Кадр получен, но серверный сканер ClamAV недоступен. Настройте сканер и повторите импорт."));
       } else if (detail.includes("FIGMA_INTEGRATION_NOT_CONFIGURED")) {
-        setMessage("Интеграция Figma ещё не настроена на сервере.");
+        setMessage(t("Интеграция Figma ещё не настроена на сервере."));
       } else {
-        setMessage(detail || "Не удалось импортировать кадр из Figma.");
+        setMessage(detail || t("Не удалось импортировать кадр из Figma."));
       }
     } finally {
       setFigmaBusy(false);
@@ -566,11 +567,11 @@ export default function ReviewPage() {
   async function uploadDesign(file?: File) {
     if (!file || !selectedPage || !review) return;
     if (!["image/png", "image/jpeg"].includes(file.type)) {
-      setMessage("Загрузите макет в формате PNG или JPEG.");
+      setMessage(t("Загрузите макет в формате PNG или JPEG."));
       return;
     }
     if (file.size < 1 || file.size > 20 * 1024 * 1024) {
-      setMessage("Размер макета должен быть не больше 20 МБ.");
+      setMessage(t("Размер макета должен быть не больше 20 МБ."));
       return;
     }
     setMessage("");
@@ -587,7 +588,7 @@ export default function ReviewPage() {
       Object.entries(reservation.requiredFields).forEach(([key, value]) => form.append(key, value));
       form.append("file", file);
       const stored = await fetch(reservation.uploadUrl, { method: reservation.method, body: form });
-      if (!stored.ok) throw new Error("Не удалось загрузить файл в приватное хранилище.");
+      if (!stored.ok) throw new Error(t("Не удалось загрузить файл в приватное хранилище."));
       await api<{ assetId: string; status: string }>(`/reviews/${review.id}/sources/design-upload/${reservation.assetId}/complete`, { method: "POST" });
       await api<Page>(`/reviews/${review.id}/page-mappings/${selectedPage.id}`, {
         method: "PUT",
@@ -602,12 +603,12 @@ export default function ReviewPage() {
         ? { ...page, designAssetId: reservation.assetId, status: "mapped" }
         : page));
       setDesigns((current) => ({ ...current, [selectedPage.id]: { name: file.name, url: asset.url } }));
-      setMessage("Макет проверен, сохранён в приватном хранилище и привязан к странице.");
+      setMessage(t("Макет проверен, сохранён в приватном хранилище и привязан к странице."));
     } catch (error) {
       const detail = error instanceof ApiError ? error.message : error instanceof Error ? error.message : "";
-      if (detail.includes("SCANNER_UNAVAILABLE")) setMessage("Проверка файла пока недоступна: серверный сканер ClamAV не настроен или не отвечает.");
-      else if (detail.includes("STORAGE_NOT_CONFIGURED")) setMessage("Загрузка пока недоступна: приватное хранилище не настроено.");
-      else setMessage(detail || "Не удалось загрузить и проверить макет.");
+      if (detail.includes("SCANNER_UNAVAILABLE")) setMessage(t("Проверка файла пока недоступна: серверный сканер ClamAV не настроен или не отвечает."));
+      else if (detail.includes("STORAGE_NOT_CONFIGURED")) setMessage(t("Загрузка пока недоступна: приватное хранилище не настроено."));
+      else setMessage(detail || t("Не удалось загрузить и проверить макет."));
     } finally {
       setBusy(false);
     }
@@ -615,7 +616,7 @@ export default function ReviewPage() {
 
   async function captureSelectedPage() {
     if (!review || !selectedPage?.designAssetId) {
-      setMessage("Сначала загрузите и привяжите проверенный макет к странице.");
+      setMessage(t("Сначала загрузите и привяжите проверенный макет к странице."));
       return;
     }
     setCaptureBusy(true);
@@ -633,11 +634,11 @@ export default function ReviewPage() {
           viewport: selectedPage.viewport, safeErrorCode: null, capturedAt: null,
         },
       }));
-      setMessage("Снимок поставлен в очередь. Это может занять несколько секунд.");
+      setMessage(t("Снимок поставлен в очередь. Это может занять несколько секунд."));
     } catch (error) {
       const detail = error instanceof ApiError ? error.message : error instanceof Error ? error.message : "";
-      if (detail.includes("CHROMIUM")) setMessage("Для захвата страницы настройте путь к Chromium в worker.");
-      else setMessage(detail || "Не удалось поставить снимок в очередь.");
+      if (detail.includes("CHROMIUM")) setMessage(t("Для захвата страницы настройте путь к Chromium в worker."));
+      else setMessage(detail || t("Не удалось поставить снимок в очередь."));
     } finally {
       setCaptureBusy(false);
     }
@@ -649,7 +650,7 @@ export default function ReviewPage() {
     const titles = requirementDraft.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
     if (titles.length === 0) return;
     if (titles.length > 100 || titles.some((title) => title.length > 500)) {
-      setMessage("Можно добавить до 100 требований за раз, по одному на строку; длина пункта — до 500 символов.");
+      setMessage(t("Можно добавить до 100 требований за раз, по одному на строку; длина пункта — до 500 символов."));
       return;
     }
     setRequirementBusy(true);
@@ -665,13 +666,13 @@ export default function ReviewPage() {
       }
       setRequirements((current) => [...current, ...created]);
       setRequirementDraft("");
-      setMessage(`Добавлено требований: ${created.length}. Отметка «Выполнено» потребует снимок страницы.`);
+      setMessage(t("Добавлено требований: {0}. Отметка «Выполнено» потребует снимок страницы.", [created.length]));
     } catch (error) {
       try {
         const latest = await api<Requirement[]>(`/reviews/${review.id}/pages/${selectedPage.id}/requirements`);
         setRequirements(latest);
       } catch { /* Preserve the original save error for the user. */ }
-      setMessage(error instanceof Error ? error.message : "Не удалось сохранить требования.");
+      setMessage(error instanceof Error ? error.message : t("Не удалось сохранить требования."));
     } finally {
       setRequirementBusy(false);
     }
@@ -690,7 +691,7 @@ export default function ReviewPage() {
       });
       setRequirements((current) => current.map((item) => item.id === updated.id ? updated : item));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Не удалось обновить статус требования.");
+      setMessage(error instanceof Error ? error.message : t("Не удалось обновить статус требования."));
     } finally {
       setRequirementStatusBusy(null);
     }
@@ -716,9 +717,9 @@ export default function ReviewPage() {
       setPages((current) => current.map((page) => page.id === selectedPage.id ? { ...page, findingCount: page.findingCount + 1 } : page));
       setFindingSummary("");
       setFindingPoint(null);
-      setMessage("Замечание сохранено с привязкой к снимку страницы" + (findingPoint ? " и отмеченной точкой." : "."));
+      setMessage(t("Замечание сохранено с привязкой к снимку страницы") + (findingPoint ? t(" и отмеченной точкой.") : "."));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Не удалось сохранить замечание.");
+      setMessage(error instanceof Error ? error.message : t("Не удалось сохранить замечание."));
     } finally {
       setFindingBusy(false);
     }
@@ -734,7 +735,7 @@ export default function ReviewPage() {
       });
       setFindings((current) => current.map((item) => item.id === updated.id ? updated : item));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Не удалось обновить статус замечания.");
+      setMessage(error instanceof Error ? error.message : t("Не удалось обновить статус замечания."));
     } finally {
       setFindingStatusBusy(null);
     }
@@ -748,7 +749,7 @@ export default function ReviewPage() {
       setReportData(report);
       return report;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Не удалось загрузить сводку проверки.");
+      setMessage(error instanceof Error ? error.message : t("Не удалось загрузить сводку проверки."));
       return null;
     } finally {
       setReportBusy(false);
@@ -765,7 +766,7 @@ export default function ReviewPage() {
     link.download = `buildpath-review-${review.id}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    setMessage("JSON-отчёт сохранён. Его можно приложить к задаче или передать разработчику.");
+    setMessage(t("JSON-отчёт сохранён. Его можно приложить к задаче или передать разработчику."));
   }
 
   async function downloadHtmlReport() {
@@ -778,7 +779,7 @@ export default function ReviewPage() {
     link.download = `buildpath-review-${report.review.id}.html`;
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setMessage("HTML-отчёт сохранён. Его можно открыть в браузере или передать команде.");
+    setMessage(t("HTML-отчёт сохранён. Его можно открыть в браузере или передать команде."));
   }
 
   async function logout() {
@@ -788,36 +789,36 @@ export default function ReviewPage() {
   return <main className={styles.page}>
     <header className={styles.topbar}>
       <a className={styles.brand} href="/"><span className={styles.logo}>B</span> BuildPath</a>
-      <nav aria-label="Навигация"><a href="/">Проект</a><a className={styles.current} href="/review">Сверка</a></nav>
-      <div className={styles.account}>{user?.email && <span>{user.email}</span>}<button onClick={logout}>Выйти</button></div>
+      <nav aria-label={t("Навигация")}><a href="/">{t("Проект")}</a><a className={styles.current} href="/review">{t("Сверка")}</a></nav>
+      <div className={styles.account}>{user?.email && <span>{user.email}</span>}<button onClick={logout}>{t("Выйти")}</button></div>
     </header>
 
     <section className={styles.intro}>
-      <div><p className={styles.eyebrow}>Проверка реализации</p><h1>Сверьте сайт с ТЗ и макетом</h1>
-        <p className={styles.subhead}>Найдите страницы, откройте работающий сайт и сопоставьте его с макетом. Проверка не меняет исходный сайт.</p>
+      <div><p className={styles.eyebrow}>{t("Проверка реализации")}</p><h1>{t("Сверьте сайт с ТЗ и макетом")}</h1>
+        <p className={styles.subhead}>{t("Найдите страницы, откройте работающий сайт и сопоставьте его с макетом. Проверка не меняет исходный сайт.")}</p>
       </div>
-      {review && <div className={styles.progressCard}><span>Состояние проверки</span><strong>{statusText[review.status] ?? review.status}</strong>
+      {review && <div className={styles.progressCard}><span>{t("Состояние проверки")}</span><strong>{statusText[review.status] ?? review.status}</strong>
         <div className={styles.progress}><i className={review.status === "ready" ? styles.complete : ""} /></div>
-        <small>{pages.length} страниц найдено</small>
+        <small>{pages.length}{" "}{t("страниц найдено")}</small>
       </div>}
     </section>
 
     <form className={styles.sourcebar} onSubmit={startScan}>
-      <label className={styles.urlField}><span>Ссылка на публичный сайт</span><input type="url" required placeholder="https://example.com" value={siteUrl} onChange={(event) => setSiteUrl(event.target.value)} aria-label="Ссылка на сайт" /></label>
-      {workspaces.length > 1 && <label className={styles.selectField}><span>Рабочее пространство</span><select value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)}>{workspaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
-      {projects.length > 0 && <label className={styles.selectField}><span>Проект</span><select value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">Новый проект</option>{projects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
-      <button className={styles.primary} disabled={busy || loading}>{busy ? "Запускаем…" : "Сканировать страницы"}</button>
+      <label className={styles.urlField}><span>{t("Ссылка на публичный сайт")}</span><input type="url" required placeholder="https://example.com" value={siteUrl} onChange={(event) => setSiteUrl(event.target.value)} aria-label={t("Ссылка на сайт")} /></label>
+      {workspaces.length > 1 && <label className={styles.selectField}><span>{t("Рабочее пространство")}</span><select value={workspaceId} onChange={(event) => setWorkspaceId(event.target.value)}>{workspaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+      {projects.length > 0 && <label className={styles.selectField}><span>{t("Проект")}</span><select value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">{t("Новый проект")}</option>{projects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+      <button className={styles.primary} disabled={busy || loading}>{busy ? t("Запускаем…") : t("Сканировать страницы")}</button>
     </form>
 
-    {loading && <div className={styles.notice}>Загружаем рабочее пространство…</div>}
+    {loading && <div className={styles.notice}>{t("Загружаем рабочее пространство…")}</div>}
     {!loading && message && <div className={styles.notice} role="status"><span>i</span>{message}</div>}
 
     <section className={styles.workspace}>
       <aside className={styles.sidebar}>
-        <div className={styles.sideTitle}><strong>Найденные страницы</strong><span>{pages.length}</span></div>
-        <p className={styles.sideHelp}>{review ? statusText[review.status] ?? review.status : "Сначала запустите проверку сайта."}</p>
+        <div className={styles.sideTitle}><strong>{t("Найденные страницы")}</strong><span>{pages.length}</span></div>
+        <p className={styles.sideHelp}>{review ? statusText[review.status] ?? review.status : t("Сначала запустите проверку сайта.")}</p>
         {pages.length === 0
-          ? <div className={styles.emptyPages}>{review?.status === "failed" ? "Не удалось найти доступные страницы. Проверьте ссылку и попробуйте снова." : review ? "Worker ищет страницы на этом сайте…" : "Список появится после сканирования."}</div>
+          ? <div className={styles.emptyPages}>{review?.status === "failed" ? t("Не удалось найти доступные страницы. Проверьте ссылку и попробуйте снова.") : review ? t("Worker ищет страницы на этом сайте…") : t("Список появится после сканирования.")}</div>
           : <div className={styles.pageList}>{pages.map((page) =>
             <button key={page.id} onClick={() => { setSelectedPageId(page.id); setPreviewBlocked(false); setShowDiff(false); }} className={page.id === selectedPageId ? styles.pageSelected : styles.pageButton}>
               <span className={styles.pageIcon}>{page.status === "failed" ? "!" : "▤"}</span>
@@ -825,67 +826,67 @@ export default function ReviewPage() {
               {page.findingCount > 0 && <span className={styles.findingCount}>{page.findingCount}</span>}
             </button>)}</div>}
         {selectedPage && <div className={styles.mapping}>
-          <div className={styles.mappingInfo}><strong>Макет для этой страницы</strong><small>{selectedDesign?.name ?? (selectedPage.designAssetId ? "Назначен в проекте" : "Макет не выбран")}</small></div>
-          <label className={styles.smallUpload}>{busy ? "Проверяем…" : "Загрузить PNG/JPEG"}<input type="file" accept="image/png,image/jpeg" disabled={busy || !review} onChange={(event) => { void uploadDesign(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
+          <div className={styles.mappingInfo}><strong>{t("Макет для этой страницы")}</strong><small>{selectedDesign?.name ?? (selectedPage.designAssetId ? t("Назначен в проекте") : t("Макет не выбран"))}</small></div>
+          <label className={styles.smallUpload}>{busy ? t("Проверяем…") : t("Загрузить PNG/JPEG")}<input type="file" accept="image/png,image/jpeg" disabled={busy || !review} onChange={(event) => { void uploadDesign(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
           <div className={styles.figmaImport}>
-            <strong>Импорт из Figma</strong>
+            <strong>{t("Импорт из Figma")}</strong>
             {figmaConnection?.connected ? <>
-              <input type="url" value={figmaUrlDraft} onChange={(event) => setFigmaUrlDraft(event.target.value)} placeholder="Ссылка на кадр с node-id" aria-label="Ссылка на кадр Figma" />
-              <button type="button" disabled={figmaBusy || !figmaUrlDraft.trim()} onClick={() => void importFigmaDesign()}>{figmaBusy ? "Импортируем…" : "Импортировать кадр"}</button>
-              <button type="button" className={styles.figmaDisconnect} disabled={figmaBusy} onClick={() => void disconnectFigma()}>Отключить Figma</button>
-            </> : <button type="button" disabled={figmaBusy} onClick={() => void connectFigma()}>{figmaBusy ? "Подключаем…" : "Подключить аккаунт Figma"}</button>}
+              <input type="url" value={figmaUrlDraft} onChange={(event) => setFigmaUrlDraft(event.target.value)} placeholder={t("Ссылка на кадр с node-id")} aria-label={t("Ссылка на кадр Figma")} />
+              <button type="button" disabled={figmaBusy || !figmaUrlDraft.trim()} onClick={() => void importFigmaDesign()}>{figmaBusy ? t("Импортируем…") : t("Импортировать кадр")}</button>
+              <button type="button" className={styles.figmaDisconnect} disabled={figmaBusy} onClick={() => void disconnectFigma()}>{t("Отключить Figma")}</button>
+            </> : <button type="button" disabled={figmaBusy} onClick={() => void connectFigma()}>{figmaBusy ? t("Подключаем…") : t("Подключить аккаунт Figma")}</button>}
           </div>
         </div>}
-        <p className={styles.localOnly}>Импортированный кадр хранится приватно, проходит ClamAV и привязывается к выбранной странице.</p>
+        <p className={styles.localOnly}>{t("Импортированный кадр хранится приватно, проходит ClamAV и привязывается к выбранной странице.")}</p>
       </aside>
 
       <div className={styles.review}>
         <div className={styles.reviewHeader}>
-          <div><h2>{previewTitle}</h2><p>{selectedPage ? "Откройте страницу и сравните её с макетом." : "После сканирования выберите страницу из списка."}</p></div>
-          <label className={styles.viewport}>Режим<select value={mode} onChange={(event) => setMode(event.target.value as CompareMode)}><option value="side">Рядом</option><option value="overlay">Наложение</option><option value="wipe">Сдвижная граница</option></select></label>
+          <div><h2>{previewTitle}</h2><p>{selectedPage ? t("Откройте страницу и сравните её с макетом.") : t("После сканирования выберите страницу из списка.")}</p></div>
+          <label className={styles.viewport}>{t("Режим")}<select value={mode} onChange={(event) => setMode(event.target.value as CompareMode)}><option value="side">{t("Рядом")}</option><option value="overlay">{t("Наложение")}</option><option value="wipe">{t("Сдвижная граница")}</option></select></label>
         </div>
         <div className={styles.controls}>
-          <span className={styles.readOnly}>Только просмотр · страница сайта не изменяется</span>
-          {review && <button className={styles.captureButton} disabled={reportBusy} onClick={() => reportData ? setReportData(null) : void loadReport()}>{reportBusy ? "Загружаем…" : reportData ? "Скрыть сводку" : "Показать сводку"}</button>}
-          {review && <button className={styles.captureButton} disabled={reportBusy} onClick={() => void downloadReport()}>Скачать отчёт JSON</button>}
-          <button className={styles.captureButton} disabled={!selectedPage?.designAssetId || captureBusy || selectedCapture?.status === "queued"} onClick={() => void captureSelectedPage()}>{captureBusy || selectedCapture?.status === "queued" ? "Снимок готовится…" : selectedCapture?.status === "captured" ? "Обновить снимок" : "Сделать снимок"}</button>
-          {selectedCapture?.visualDiff?.status === "ready" && <button className={styles.captureButton} onClick={() => setShowDiff((value) => !value)}>{showDiff ? "Обычный снимок" : "Показать зоны отличий"}</button>}
-          {mode !== "side" && <label className={styles.opacity}>Смешивание<input type="range" min="10" max="90" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} /></label>}
+          <span className={styles.readOnly}>{t("Только просмотр · страница сайта не изменяется")}</span>
+          {review && <button className={styles.captureButton} disabled={reportBusy} onClick={() => reportData ? setReportData(null) : void loadReport()}>{reportBusy ? t("Загружаем…") : reportData ? t("Скрыть сводку") : t("Показать сводку")}</button>}
+          {review && <button className={styles.captureButton} disabled={reportBusy} onClick={() => void downloadReport()}>{t("Скачать отчёт JSON")}</button>}
+          <button className={styles.captureButton} disabled={!selectedPage?.designAssetId || captureBusy || selectedCapture?.status === "queued"} onClick={() => void captureSelectedPage()}>{captureBusy || selectedCapture?.status === "queued" ? t("Снимок готовится…") : selectedCapture?.status === "captured" ? t("Обновить снимок") : t("Сделать снимок")}</button>
+          {selectedCapture?.visualDiff?.status === "ready" && <button className={styles.captureButton} onClick={() => setShowDiff((value) => !value)}>{showDiff ? t("Обычный снимок") : t("Показать зоны отличий")}</button>}
+          {mode !== "side" && <label className={styles.opacity}>{t("Смешивание")}<input type="range" min="10" max="90" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} /></label>}
           {mode === "side" && selectedDesign && selectedCapture?.status === "captured" && <div className={styles.compareZoomControls}>
-            <label>Масштаб <input type="range" min="75" max="200" step="25" value={compareZoom} onChange={(event) => { setCompareZoom(Number(event.target.value)); setFindingPoint(null); }} /> {compareZoom}%</label>
-            <label className={styles.syncToggle}><input type="checkbox" checked={syncCompareScroll} onChange={(event) => setSyncCompareScroll(event.target.checked)} /> Синхр. прокрутка</label>
+            <label>{t("Масштаб")}{" "}<input type="range" min="75" max="200" step="25" value={compareZoom} onChange={(event) => { setCompareZoom(Number(event.target.value)); setFindingPoint(null); }} /> {compareZoom}%</label>
+            <label className={styles.syncToggle}><input type="checkbox" checked={syncCompareScroll} onChange={(event) => setSyncCompareScroll(event.target.checked)} />{" "}{t("Синхр. прокрутка")}</label>
             <button type="button" onClick={() => { setCompareZoom(100); setFindingPoint(null); }}>100%</button>
           </div>}
         </div>
         {reportData && <section className={styles.reportSummary} aria-live="polite">
           <div className={styles.reportHeading}>
-            <div><h3>Сводка проверки</h3><small>{reportData.review.title} · сформировано {new Date(reportData.generatedAt).toLocaleString("ru-RU")}</small></div>
+            <div><h3>{t("Сводка проверки")}</h3><small>{reportData.review.title}{" "}{t("· сформировано")}{" "}{new Date(reportData.generatedAt).toLocaleString(dateLocale())}</small></div>
             <div className={styles.reportActions}>
-              <button className={styles.reportPrint} onClick={downloadHtmlReport} disabled={reportBusy}>Скачать HTML</button>
-              <button className={styles.reportPrint} onClick={() => window.print()}>Печать / PDF</button>
-              <button className={styles.reportClose} onClick={() => setReportData(null)} aria-label="Скрыть сводку">×</button>
+              <button className={styles.reportPrint} onClick={downloadHtmlReport} disabled={reportBusy}>{t("Скачать HTML")}</button>
+              <button className={styles.reportPrint} onClick={() => window.print()}>{t("Печать / PDF")}</button>
+              <button className={styles.reportClose} onClick={() => setReportData(null)} aria-label={t("Скрыть сводку")}>×</button>
             </div>
           </div>
           <div className={styles.reportMetrics}>
-            <div><strong>{reportData.summary.pages.total}</strong><span>страниц</span></div>
-            <div><strong>{reportData.summary.pages.mapped}</strong><span>с макетом</span></div>
-            <div><strong>{reportData.summary.pages.captured}</strong><span>снимков готово</span></div>
-            <div><strong>{reportData.summary.requirements.total}</strong><span>пунктов ТЗ</span></div>
-            <div><strong>{reportData.summary.findings.total}</strong><span>замечаний</span></div>
-            <div><strong>{reportData.summary.apiChecks.passedRecent}/{reportData.summary.apiChecks.totalRecent}</strong><span>API-проверок пройдено</span></div>
-            <div><strong>{reportData.summary.coverage.backend.checked}/{reportData.summary.coverage.backend.total}</strong><span>backend-ТЗ с API-проверкой</span></div>
-            <div><strong>{reportData.summary.visualDiff.averageChangedPercent === null ? "—" : `${reportData.summary.visualDiff.averageChangedPercent}%`}</strong><span>среднее отличие</span></div>
-            <div><strong>{reportData.summary.aiReview.analyzedCaptures}</strong><span>ИИ-разборов</span></div>
+            <div><strong>{reportData.summary.pages.total}</strong><span>{t("страниц")}</span></div>
+            <div><strong>{reportData.summary.pages.mapped}</strong><span>{t("с макетом")}</span></div>
+            <div><strong>{reportData.summary.pages.captured}</strong><span>{t("снимков готово")}</span></div>
+            <div><strong>{reportData.summary.requirements.total}</strong><span>{t("пунктов ТЗ")}</span></div>
+            <div><strong>{reportData.summary.findings.total}</strong><span>{t("замечаний")}</span></div>
+            <div><strong>{reportData.summary.apiChecks.passedRecent}/{reportData.summary.apiChecks.totalRecent}</strong><span>{t("API-проверок пройдено")}</span></div>
+            <div><strong>{reportData.summary.coverage.backend.checked}/{reportData.summary.coverage.backend.total}</strong><span>{t("backend-ТЗ с API-проверкой")}</span></div>
+            <div><strong>{reportData.summary.visualDiff.averageChangedPercent === null ? "—" : `${reportData.summary.visualDiff.averageChangedPercent}%`}</strong><span>{t("среднее отличие")}</span></div>
+            <div><strong>{reportData.summary.aiReview.analyzedCaptures}</strong><span>{t("ИИ-разборов")}</span></div>
           </div>
-          <section className={styles.reportCoverage} aria-label="Покрытие проверки">
+          <section className={styles.reportCoverage} aria-label={t("Покрытие проверки")}>
             <div className={styles.reportCoverageHeading}>
-              <h4>Покрытие проверки</h4>
-              <p>Показывает, какие части проекта уже проверены по собранным данным.</p>
+              <h4>{t("Покрытие проверки")}</h4>
+              <p>{t("Показывает, какие части проекта уже проверены по собранным данным.")}</p>
             </div>
             <ul>{reviewCoverage.map((item) => {
               const percentage = item.total > 0 ? Math.min(100, Math.round((item.done / item.total) * 100)) : 0;
               return <li key={item.label}>
-                <div className={styles.reportCoverageLabel}><strong>{item.label}</strong><span>{item.total > 0 ? `${item.done}/${item.total} · ${percentage}%` : "Нет данных"}</span></div>
+                <div className={styles.reportCoverageLabel}><strong>{item.label}</strong><span>{item.total > 0 ? `${item.done}/${item.total} · ${percentage}%` : t("Нет данных")}</span></div>
                 <div className={styles.reportCoverageTrack} role="progressbar" aria-label={item.label} aria-valuemin={0} aria-valuemax={item.total} aria-valuenow={Math.min(item.done, item.total)}><i style={{ width: `${percentage}%` }} /></div>
                 <small>{item.detail}</small>
               </li>;
@@ -893,199 +894,199 @@ export default function ReviewPage() {
           </section>
           <section className={styles.reportQualityGate} data-status={reportData.qualityGate.status} aria-label="Quality gate">
             <div className={styles.reportQualityHeading}>
-              <div><h4>Quality gate: {({ not_configured: "профиль не настроен", invalid_configuration: "ошибка профиля", not_assessed: "недостаточно данных", blocked: "есть блокирующие условия", passed: "проверки пройдены" } as Record<QualityGate["status"], string>)[reportData.qualityGate.status]}</h4>
-                <p>{reportData.qualityGate.profile ? `${reportData.qualityGate.profile.name} · версия ${reportData.qualityGate.profile.version}` : "Для этой проверки не был выбран активный профиль."}</p></div>
-              <span>{reportData.qualityGate.requirementCoverage.actualPercent === null ? "ТЗ: нет данных" : `ТЗ: ${reportData.qualityGate.requirementCoverage.actualPercent}% / ${reportData.qualityGate.requirementCoverage.minimumPercent}%`} · API: {reportData.qualityGate.apiChecks.failed} ошибок из {reportData.qualityGate.apiChecks.checked}</span>
+              <div><h4>Quality gate: {({ not_configured: t("профиль не настроен"), invalid_configuration: t("ошибка профиля"), not_assessed: t("недостаточно данных"), blocked: t("есть блокирующие условия"), passed: t("проверки пройдены") } as Record<QualityGate["status"], string>)[reportData.qualityGate.status]}</h4>
+                <p>{reportData.qualityGate.profile ? t("{0} · версия {1}", [reportData.qualityGate.profile.name, reportData.qualityGate.profile.version]) : t("Для этой проверки не был выбран активный профиль.")}</p></div>
+              <span>{reportData.qualityGate.requirementCoverage.actualPercent === null ? t("ТЗ: нет данных") : t("ТЗ: {0}% / {1}%", [reportData.qualityGate.requirementCoverage.actualPercent, reportData.qualityGate.requirementCoverage.minimumPercent])} · API: {reportData.qualityGate.apiChecks.failed}{" "}{t("ошибок из")}{" "}{reportData.qualityGate.apiChecks.checked}</span>
             </div>
             {reportData.qualityGate.categories.length > 0 && <ul>{reportData.qualityGate.categories.map((category) =>
               <li key={category.id} data-status={category.status}>
-                <div><strong>{({ security: "Безопасность", accessibility: "Доступность", performance: "Производительность", seo: "SEO" } as Record<QualityGate["categories"][number]["id"], string>)[category.id]}</strong><small>{category.required ? "Обязательная" : "Необязательная"} · {category.evidence.checked}/{category.evidence.total} страниц · замечания critical {category.issues.critical}, high {category.issues.high}, medium {category.issues.medium}</small></div>
-                <span>{({ disabled: "Выключено", not_assessed: "Нет данных", blocked: "Блок", passed: "Проверено" } as Record<QualityGate["categories"][number]["status"], string>)[category.status]}</span>
+                <div><strong>{({ security: t("Безопасность"), accessibility: t("Доступность"), performance: t("Производительность"), seo: "SEO" } as Record<QualityGate["categories"][number]["id"], string>)[category.id]}</strong><small>{category.required ? t("Обязательная") : t("Необязательная")} · {category.evidence.checked}/{category.evidence.total}{" "}{t("страниц · замечания critical")}{" "}{category.issues.critical}, high {category.issues.high}, medium {category.issues.medium}</small></div>
+                <span>{({ disabled: t("Выключено"), not_assessed: t("Нет данных"), blocked: t("Блок"), passed: t("Проверено") } as Record<QualityGate["categories"][number]["status"], string>)[category.status]}</span>
               </li>)}</ul>}
-            {reportData.qualityGate.blockingReasons.length > 0 && <div className={styles.reportQualityReasons}><strong>Причины</strong><ul>{reportData.qualityGate.blockingReasons.map((reason) => <li key={reason}>{formatQualityGateReason(reason)}</li>)}</ul></div>}
-            <small>Оценка использует только доступные данные. Полные security/performance проверки и публикационная блокировка пока не реализованы.</small>
+            {reportData.qualityGate.blockingReasons.length > 0 && <div className={styles.reportQualityReasons}><strong>{t("Причины")}</strong><ul>{reportData.qualityGate.blockingReasons.map((reason) => <li key={reason}>{formatQualityGateReason(reason)}</li>)}</ul></div>}
+            <small>{t("Оценка использует только доступные данные. Полные security/performance проверки и публикационная блокировка пока не реализованы.")}</small>
           </section>
-          {reportData.summary.aiReview.analyzedCaptures > 0 && <p className={styles.captureInfo}>ИИ-предложений: {reportData.summary.aiReview.totalSuggestions} · высокая уверенность: {reportData.summary.aiReview.byConfidence.high ?? 0} · средняя: {reportData.summary.aiReview.byConfidence.medium ?? 0} · низкая: {reportData.summary.aiReview.byConfidence.low ?? 0}</p>}
-          <section className={styles.reportSignals} aria-label="Автоматические сигналы проверки">
+          {reportData.summary.aiReview.analyzedCaptures > 0 && <p className={styles.captureInfo}>{t("ИИ-предложений:")}{" "}{reportData.summary.aiReview.totalSuggestions}{" "}{t("· высокая уверенность:")}{" "}{reportData.summary.aiReview.byConfidence.high ?? 0}{" "}{t("· средняя:")}{" "}{reportData.summary.aiReview.byConfidence.medium ?? 0}{" "}{t("· низкая:")}{" "}{reportData.summary.aiReview.byConfidence.low ?? 0}</p>}
+          <section className={styles.reportSignals} aria-label={t("Автоматические сигналы проверки")}>
             <div className={styles.reportSignalsHeading}>
-              <div><h4>Что требует внимания</h4><p>Правила подсвечивают пробелы в данных и результатах. Это не ИИ-оценка макета.</p></div>
+              <div><h4>{t("Что требует внимания")}</h4><p>{t("Правила подсвечивают пробелы в данных и результатах. Это не ИИ-оценка макета.")}</p></div>
               <div className={styles.reportSignalCounts}>
-                <span data-level="high">{reportData.summary.analysis.bySeverity.high ?? 0} важных</span>
-                <span data-level="medium">{reportData.summary.analysis.bySeverity.medium ?? 0} требуют проверки</span>
+                <span data-level="high">{reportData.summary.analysis.bySeverity.high ?? 0}{" "}{t("важных")}</span>
+                <span data-level="medium">{reportData.summary.analysis.bySeverity.medium ?? 0}{" "}{t("требуют проверки")}</span>
               </div>
             </div>
-            {reportData.signals.length === 0 ? <p className={styles.reportSignalsEmpty}>По текущим данным автоматические сигналы не найдены.</p> :
+            {reportData.signals.length === 0 ? <p className={styles.reportSignalsEmpty}>{t("По текущим данным автоматические сигналы не найдены.")}</p> :
               <ul>{reportData.signals.slice(0, 40).map((signal) => {
                 const page = reportData.pages.find((item) => item.id === signal.pageId);
                 return <li key={signal.id} data-level={signal.severity}>
-                  <div><strong>{signal.title}</strong><small>{page?.title || page?.route || "Страница"}</small></div>
+                  <div><strong>{signal.title}</strong><small>{page?.title || page?.route || t("Страница")}</small></div>
                   <p>{signal.details}</p>
-                  <button type="button" onClick={() => setSelectedPageId(signal.pageId)}>Открыть страницу</button>
+                  <button type="button" onClick={() => setSelectedPageId(signal.pageId)}>{t("Открыть страницу")}</button>
                 </li>;
               })}</ul>}
-            {reportData.signals.length > 40 && <small className={styles.reportSignalsMore}>Показаны первые 40 из {reportData.signals.length} сигналов. Все сигналы сохранены в JSON-отчёте.</small>}
+            {reportData.signals.length > 40 && <small className={styles.reportSignalsMore}>{t("Показаны первые 40 из")}{" "}{reportData.signals.length}{" "}{t("сигналов. Все сигналы сохранены в JSON-отчёте.")}</small>}
           </section>
           <div className={styles.reportColumns}>
-            <section><h4>Статусы требований</h4>
-              {Object.keys(reportData.summary.requirements.byStatus).length === 0 ? <p>Требования ещё не добавлены.</p> :
-                <ul>{Object.entries(reportData.summary.requirements.byStatus).map(([status, count]) => <li key={status}><span>{({ pending: "Ожидает проверки", satisfied: "Выполнено", failed: "Не выполнено", blocked: "Заблокировано", unknown: "Неизвестно" } as Record<string, string>)[status] ?? status}</span><strong>{count}</strong></li>)}</ul>}
+            <section><h4>{t("Статусы требований")}</h4>
+              {Object.keys(reportData.summary.requirements.byStatus).length === 0 ? <p>{t("Требования ещё не добавлены.")}</p> :
+                <ul>{Object.entries(reportData.summary.requirements.byStatus).map(([status, count]) => <li key={status}><span>{({ pending: t("Ожидает проверки"), satisfied: t("Выполнено"), failed: t("Не выполнено"), blocked: t("Заблокировано"), unknown: t("Неизвестно") } as Record<string, string>)[status] ?? status}</span><strong>{count}</strong></li>)}</ul>}
             </section>
-            <section><h4>Статусы замечаний</h4>
-              {Object.keys(reportData.summary.findings.byStatus).length === 0 ? <p>Замечаний ещё нет.</p> :
-                <ul>{Object.entries(reportData.summary.findings.byStatus).map(([status, count]) => <li key={status}><span>{({ open: "Открыто", accepted: "Принято", dismissed: "Отклонено", fixed: "Исправлено", unknown: "Не проверено" } as Record<string, string>)[status] ?? status}</span><strong>{count}</strong></li>)}</ul>}
+            <section><h4>{t("Статусы замечаний")}</h4>
+              {Object.keys(reportData.summary.findings.byStatus).length === 0 ? <p>{t("Замечаний ещё нет.")}</p> :
+                <ul>{Object.entries(reportData.summary.findings.byStatus).map(([status, count]) => <li key={status}><span>{({ open: t("Открыто"), accepted: t("Принято"), dismissed: t("Отклонено"), fixed: t("Исправлено"), unknown: t("Не проверено") } as Record<string, string>)[status] ?? status}</span><strong>{count}</strong></li>)}</ul>}
             </section>
           </div>
-          <h4 className={styles.reportPagesTitle}>По страницам</h4>
+          <h4 className={styles.reportPagesTitle}>{t("По страницам")}</h4>
           <ul className={styles.reportPageList}>{reportData.pages.map((page) =>
             <li key={page.id}>
               <div><strong>{page.title || page.route}</strong><small>{page.route}</small></div>
-              <span className={page.designMapped ? styles.reportGood : styles.reportPending}>{page.designMapped ? "Макет есть" : "Нет макета"}</span>
-              <span className={page.latestCapture?.status === "captured" ? styles.reportGood : styles.reportPending}>{page.latestCapture?.status === "captured" ? "Снимок готов" : page.latestCapture?.status === "queued" ? "Снимок в очереди" : page.latestCapture?.status === "failed" ? "Снимок с ошибкой" : "Нет снимка"}</span>
-              <span className={page.latestCapture?.visualDiff?.status === "ready" ? styles.reportGood : styles.reportPending}>{page.latestCapture?.visualDiff?.status === "ready" ? page.latestCapture.visualDiff.changedPercent === null ? "Сравнение готово" : `Отличие ${page.latestCapture.visualDiff.changedPercent}%` : page.latestCapture?.visualDiff?.status === "failed" ? "Сравнение недоступно" : "Нет сравнения"}</span>
-              <small>{page.requirements.length} требований · {page.findings.length} замечаний · {page.apiChecks.length} API-проверок</small>
+              <span className={page.designMapped ? styles.reportGood : styles.reportPending}>{page.designMapped ? t("Макет есть") : t("Нет макета")}</span>
+              <span className={page.latestCapture?.status === "captured" ? styles.reportGood : styles.reportPending}>{page.latestCapture?.status === "captured" ? t("Снимок готов") : page.latestCapture?.status === "queued" ? t("Снимок в очереди") : page.latestCapture?.status === "failed" ? t("Снимок с ошибкой") : t("Нет снимка")}</span>
+              <span className={page.latestCapture?.visualDiff?.status === "ready" ? styles.reportGood : styles.reportPending}>{page.latestCapture?.visualDiff?.status === "ready" ? page.latestCapture.visualDiff.changedPercent === null ? t("Сравнение готово") : t("Отличие {0}%", [page.latestCapture.visualDiff.changedPercent]) : page.latestCapture?.visualDiff?.status === "failed" ? t("Сравнение недоступно") : t("Нет сравнения")}</span>
+              <small>{page.requirements.length}{" "}{t("требований ·")}{" "}{page.findings.length}{" "}{t("замечаний ·")}{" "}{page.apiChecks.length}{" "}{t("API-проверок")}</small>
               {page.latestCapture?.qualityAudit && <details className={styles.reportPageChecks}>
-                <summary>Проверка доступности и структуры страницы</summary>
+                <summary>{t("Проверка доступности и структуры страницы")}</summary>
                 <ul>{(() => {
                   const audit = page.latestCapture!.qualityAudit!;
                   const checks = [
-                    ["Заголовок вкладки", audit.pageTitlePresent ? "Есть" : "Не найдено"],
-                    ["Язык документа", audit.languagePresent ? "Указан" : "Не указан"],
-                    ["Заголовок H1", audit.h1Count > 0 ? "Найдено: " + audit.h1Count : "Не найден"],
-                    ["Изображения без alt", String(audit.imagesMissingAlt)],
-                    ["Ссылки без подписи", String(audit.linksMissingName)],
-                    ["Кнопки без подписи", String(audit.buttonsMissingName)],
-                    ["Поля формы без подписи", String(audit.formControlsMissingLabel)],
-                    ["HTTPS", audit.security ? (audit.security.isHttps ? "Да" : "Нет") : "Нет данных"],
-                    ["HSTS", audit.security?.hsts === null || !audit.security ? "Не применяется" : (audit.security.hsts ? "Есть" : "Не найдено")],
-                    ["Content-Security-Policy", audit.security ? (audit.security.contentSecurityPolicy ? "Есть" : "Не найдено") : "Нет данных"],
-                    ["Защита от встраивания во frame", audit.security ? (audit.security.frameProtection ? "Есть" : "Не найдена") : "Нет данных"],
-                    ["Время навигации", audit.performance?.navigationMs === null || !audit.performance ? "Нет данных" : audit.performance.navigationMs + " мс"],
-                    ["TTFB", audit.performance?.ttfbMs === null || !audit.performance ? "Нет данных" : audit.performance.ttfbMs + " мс"],
-                    ["Передача ресурсов", audit.performance ? Math.round(audit.performance.transferBytes / 1024) + " КБ · " + audit.performance.resourceCount + " ресурсов" : "Нет данных"],
+                    [t("Заголовок вкладки"), audit.pageTitlePresent ? t("Есть") : t("Не найдено")],
+                    [t("Язык документа"), audit.languagePresent ? t("Указан") : t("Не указан")],
+                    [t("Заголовок H1"), audit.h1Count > 0 ? t("Найдено: ") + audit.h1Count : t("Не найден")],
+                    [t("Изображения без alt"), String(audit.imagesMissingAlt)],
+                    [t("Ссылки без подписи"), String(audit.linksMissingName)],
+                    [t("Кнопки без подписи"), String(audit.buttonsMissingName)],
+                    [t("Поля формы без подписи"), String(audit.formControlsMissingLabel)],
+                    ["HTTPS", audit.security ? (audit.security.isHttps ? t("Да") : t("Нет")) : t("Нет данных")],
+                    ["HSTS", audit.security?.hsts === null || !audit.security ? t("Не применяется") : (audit.security.hsts ? t("Есть") : t("Не найдено"))],
+                    ["Content-Security-Policy", audit.security ? (audit.security.contentSecurityPolicy ? t("Есть") : t("Не найдено")) : t("Нет данных")],
+                    [t("Защита от встраивания во frame"), audit.security ? (audit.security.frameProtection ? t("Есть") : t("Не найдена")) : t("Нет данных")],
+                    [t("Время навигации"), audit.performance?.navigationMs === null || !audit.performance ? t("Нет данных") : audit.performance.navigationMs + t(" мс")],
+                    ["TTFB", audit.performance?.ttfbMs === null || !audit.performance ? t("Нет данных") : audit.performance.ttfbMs + t(" мс")],
+                    [t("Передача ресурсов"), audit.performance ? Math.round(audit.performance.transferBytes / 1024) + t(" КБ · ") + audit.performance.resourceCount + t(" ресурсов") : t("Нет данных")],
                   ];
                   return checks.map(([label, value], index) => <li key={index}><span>{label}</span><strong>{value}</strong></li>);
                 })()}</ul>
-                {page.latestCapture.qualityAudit.checkedAt && <small>Проверено {new Date(page.latestCapture.qualityAudit.checkedAt).toLocaleString("ru-RU")}</small>}
+                {page.latestCapture.qualityAudit.checkedAt && <small>{t("Проверено")}{" "}{new Date(page.latestCapture.qualityAudit.checkedAt).toLocaleString(dateLocale())}</small>}
               </details>}
               {page.latestCapture?.aiAnalysis && <details className={styles.reportPageChecks}>
-                <summary>ИИ-анализ · {page.latestCapture.aiAnalysis.findings.length} предложений</summary>
+                <summary>{t("ИИ-анализ ·")}{" "}{page.latestCapture.aiAnalysis.findings.length}{" "}{t("предложений")}</summary>
                 <p>{page.latestCapture.aiAnalysis.summary}</p>
                 <ul>{page.latestCapture.aiAnalysis.findings.map((item, index) => <li key={index}>
-                  <strong>{item.summary} · {item.confidence}</strong><span>{item.details}</span><small>Доказательство: {item.evidence}</small>
+                  <strong>{item.summary} · {item.confidence}</strong><span>{item.details}</span><small>{t("Доказательство:")}{" "}{item.evidence}</small>
                 </li>)}</ul>
                 <small>{page.latestCapture.aiAnalysis.limitation}</small>
               </details>}
               {page.requirements.some((item) => item.category === "backend") && <details className={styles.reportPageChecks}>
-                <summary>Backend-ТЗ · {page.requirements.filter((item) => item.category === "backend" && page.apiChecks.some((check) => check.requirementId === item.id)).length}/{page.requirements.filter((item) => item.category === "backend").length} с API-проверкой</summary>
+                <summary>{t("Backend-ТЗ ·")}{" "}{page.requirements.filter((item) => item.category === "backend" && page.apiChecks.some((check) => check.requirementId === item.id)).length}/{page.requirements.filter((item) => item.category === "backend").length}{" "}{t("с API-проверкой")}</summary>
                 <ul>{page.requirements.filter((item) => item.category === "backend").map((requirement) => {
                   const latestCheck = page.apiChecks.find((check) => check.requirementId === requirement.id);
-                  const labels: Record<string, string> = { pending: "Ожидает проверки", satisfied: "Выполнено", failed: "Не выполнено", blocked: "Заблокировано", unknown: "Неизвестно" };
+                  const labels: Record<string, string> = { pending: t("Ожидает проверки"), satisfied: t("Выполнено"), failed: t("Не выполнено"), blocked: t("Заблокировано"), unknown: t("Неизвестно") };
                   return <li key={requirement.id}>
                     <strong className={requirement.status === "satisfied" ? styles.reportGood : requirement.status === "failed" ? styles.reportBad : styles.reportPending}>{labels[requirement.status] ?? requirement.status}</strong>
                     <span>{requirement.title}</span>
-                    <small>{latestCheck ? latestCheck.passed ? "Последняя API-проверка пройдена" : "Последняя API-проверка не пройдена" : "API-проверка не привязана"}</small>
-                    {requirement.verificationNote && <small>Комментарий: {requirement.verificationNote}</small>}
+                    <small>{latestCheck ? latestCheck.passed ? t("Последняя API-проверка пройдена") : t("Последняя API-проверка не пройдена") : t("API-проверка не привязана")}</small>
+                    {requirement.verificationNote && <small>{t("Комментарий:")}{" "}{requirement.verificationNote}</small>}
                   </li>;
                 })}</ul>
               </details>}
               {page.apiChecks.length > 0 && <details className={styles.reportPageChecks}>
-                <summary>Проверки Backend / API</summary>
+                <summary>{t("Проверки Backend / API")}</summary>
                 <ul>{page.apiChecks.map((check) => {
                   const requirement = page.requirements.find((item) => item.id === check.requirementId);
                   return <li key={check.id}>
-                    <strong className={check.passed ? styles.reportGood : styles.reportPending}>{check.passed ? "Пройдена" : "Не пройдена"}</strong>
-                    <span>{requirement ? "ТЗ: " + requirement.title : "Без привязки к пункту ТЗ"}</span>
+                    <strong className={check.passed ? styles.reportGood : styles.reportPending}>{check.passed ? t("Пройдена") : t("Не пройдена")}</strong>
+                    <span>{requirement ? t("ТЗ: ") + requirement.title : t("Без привязки к пункту ТЗ")}</span>
                     <code>{check.method} {check.endpoint}</code>
-                    <small>HTTP {check.actualStatus ?? "—"} / ожидался {check.expectedStatus} · {check.durationMs} мс · {new Date(check.checkedAt).toLocaleString("ru-RU")}</small>
+                    <small>HTTP {check.actualStatus ?? "—"}{" "}{t("/ ожидался")}{" "}{check.expectedStatus} · {check.durationMs}{" "}{t("мс ·")}{" "}{new Date(check.checkedAt).toLocaleString(dateLocale())}</small>
                   </li>;
                 })}</ul>
               </details>}
             </li>)}</ul>
-          <details className={styles.reportLimitations}><summary>Границы этой проверки</summary><ul>{reportData.limitations.map((item) => <li key={item}>{item}</li>)}</ul></details>
+          <details className={styles.reportLimitations}><summary>{t("Границы этой проверки")}</summary><ul>{reportData.limitations.map((item) => <li key={item}>{item}</li>)}</ul></details>
         </section>}
-        {!selectedPage ? <div className={styles.previewEmpty}>{review ? "Ожидаем результаты обнаружения страниц." : "Здесь появится выбранная страница и её макет."}</div>
+        {!selectedPage ? <div className={styles.previewEmpty}>{review ? t("Ожидаем результаты обнаружения страниц.") : t("Здесь появится выбранная страница и её макет.")}</div>
           : mode === "side" ? <div className={styles.compareSide}>
-            <PreviewPanel title={selectedDesign ? "Макет · " + selectedDesign.name : "Макет не выбран"} designUrl={selectedDesign?.url}
+            <PreviewPanel title={selectedDesign ? t("Макет · ") + selectedDesign.name : t("Макет не выбран")} designUrl={selectedDesign?.url}
               zoom={compareZoom / 100} viewportRef={designViewportRef}
               onViewportScroll={(source) => { setFindingPoint(null); syncCompareViewport(source, siteViewportRef.current); }} />
-            <SitePanel title={showDiff ? "Пиксельные отличия · " + selectedPage.label : selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={(showDiff ? selectedCapture?.visualDiff?.diffOverlayUrl : selectedCapture?.screenshotUrl) ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} point={findingPoint} onPoint={selectedCapture?.status === "captured" ? setFindingPoint : undefined}
+            <SitePanel title={showDiff ? t("Пиксельные отличия · ") + selectedPage.label : selectedCapture?.status === "captured" ? t("Снимок сайта · ") + selectedPage.label : t("Рабочий сайт · ") + selectedPage.label} url={previewUrl} screenshotUrl={(showDiff ? selectedCapture?.visualDiff?.diffOverlayUrl : selectedCapture?.screenshotUrl) ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} point={findingPoint} onPoint={selectedCapture?.status === "captured" ? setFindingPoint : undefined}
               zoom={compareZoom / 100} viewportRef={siteViewportRef}
               onViewportScroll={(source) => { setFindingPoint(null); syncCompareViewport(source, designViewportRef.current); }} />
           </div>
           : <div className={styles.compareLayer}>
-            <SitePanel title={selectedCapture?.status === "captured" ? "Снимок сайта · " + selectedPage.label : "Рабочий сайт · " + selectedPage.label} url={previewUrl} screenshotUrl={selectedCapture?.screenshotUrl ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} point={findingPoint} onPoint={selectedCapture?.status === "captured" ? setFindingPoint : undefined} />
+            <SitePanel title={selectedCapture?.status === "captured" ? t("Снимок сайта · ") + selectedPage.label : t("Рабочий сайт · ") + selectedPage.label} url={previewUrl} screenshotUrl={selectedCapture?.screenshotUrl ?? undefined} blocked={previewBlocked} onBlocked={() => setPreviewBlocked(true)} point={findingPoint} onPoint={selectedCapture?.status === "captured" ? setFindingPoint : undefined} />
             {selectedDesign && <div className={mode === "overlay" ? styles.overlay : styles.wipe} style={mode === "overlay" ? { opacity: opacity / 100 } : { clipPath: "inset(0 " + (100 - opacity) + "% 0 0)" }}><PreviewPanel title="" designUrl={selectedDesign.url} /></div>}
-            {!selectedDesign && <div className={styles.layerHint}>Загрузите PNG/JPEG макета слева, чтобы включить наложение.</div>}
+            {!selectedDesign && <div className={styles.layerHint}>{t("Загрузите PNG/JPEG макета слева, чтобы включить наложение.")}</div>}
           </div>}
-        <p className={styles.captureInfo}>{selectedPage ? `Маршрут: ${selectedPage.route} · Статус: ${selectedPage.status} · Найдено замечаний: ${selectedPage.findingCount}` : "Снимок страницы пока не создавался."}</p>
+        <p className={styles.captureInfo}>{selectedPage ? t("Маршрут: {0} · Статус: {1} · Найдено замечаний: {2}", [selectedPage.route, selectedPage.status, selectedPage.findingCount]) : t("Снимок страницы пока не создавался.")}</p>
         {selectedCapture?.visualDiff?.status === "ready" && <>
-          <p className={styles.captureInfo}>Пиксельно отличаются {selectedCapture.visualDiff.changedPercent ?? 0}% области · найдено зон: {selectedCapture.visualDiff.regions?.length ?? 0}. Это визуальная метрика, не оценка соответствия ТЗ. Отличия могут включать смещение, масштаб и сглаживание шрифтов.</p>
+          <p className={styles.captureInfo}>{t("Пиксельно отличаются")}{" "}{selectedCapture.visualDiff.changedPercent ?? 0}{t("% области · найдено зон:")}{" "}{selectedCapture.visualDiff.regions?.length ?? 0}{t(". Это визуальная метрика, не оценка соответствия ТЗ. Отличия могут включать смещение, масштаб и сглаживание шрифтов.")}</p>
           {(selectedCapture.visualDiff.regions?.length ?? 0) > 0 && <details className={styles.diffRegions}>
-            <summary>Где отличия заметнее всего</summary>
+            <summary>{t("Где отличия заметнее всего")}</summary>
             <ol>{selectedCapture.visualDiff.regions?.slice(0, 8).map((region, index) => <li key={index}>
-              <span>Участок {index + 1}</span>
-              <small>{region.y < 0.33 ? "сверху" : region.y < 0.67 ? "в середине" : "снизу"}, {region.x < 0.33 ? "слева" : region.x < 0.67 ? "по центру" : "справа"}</small>
-              <strong>{region.changedPercent}% пикселей отличаются</strong>
+              <span>{t("Участок")}{" "}{index + 1}</span>
+              <small>{region.y < 0.33 ? t("сверху") : region.y < 0.67 ? t("в середине") : t("снизу")}, {region.x < 0.33 ? t("слева") : region.x < 0.67 ? t("по центру") : t("справа")}</small>
+              <strong>{region.changedPercent}{t("% пикселей отличаются")}</strong>
             </li>)}</ol>
           </details>}
         </>}
         {selectedPage && <ApiCheckPanel reviewId={review?.id ?? ""} pageId={selectedPage.id} />}
         {selectedPage && <section className={styles.requirements}>
-          <h3>Требования для этой страницы</h3>
-          <p>Добавьте пункты ТЗ по одному на строку. Статус «Выполнено» можно поставить только со снимком-доказательством.</p>
+          <h3>{t("Требования для этой страницы")}</h3>
+          <p>{t("Добавьте пункты ТЗ по одному на строку. Статус «Выполнено» можно поставить только со снимком-доказательством.")}</p>
           <form onSubmit={(event) => void saveRequirements(event)}>
-            <textarea value={requirementDraft} onChange={(event) => setRequirementDraft(event.target.value)} maxLength={50_000} rows={3} placeholder={"Например:\nВ шапке есть кнопка входа\nФорма показывает ошибку при неверном email"} aria-label="Требования к странице, по одному на строку" />
+            <textarea value={requirementDraft} onChange={(event) => setRequirementDraft(event.target.value)} maxLength={50_000} rows={3} placeholder={t("Например:\nВ шапке есть кнопка входа\nФорма показывает ошибку при неверном email")} aria-label={t("Требования к странице, по одному на строку")} />
             <div>
-              <label>Тип<select value={requirementCategory} onChange={(event) => setRequirementCategory(event.target.value)}><option value="requirement">ТЗ</option><option value="design">Дизайн</option><option value="backend">Backend/API</option><option value="accessibility">Доступность</option><option value="performance">Производительность</option><option value="seo">SEO</option><option value="security">Безопасность</option></select></label>
-              <button type="submit" disabled={requirementBusy || !requirementDraft.trim()}>{requirementBusy ? "Сохраняем…" : "Добавить в чеклист"}</button>
+              <label>{t("Тип")}<select value={requirementCategory} onChange={(event) => setRequirementCategory(event.target.value)}><option value="requirement">{t("ТЗ")}</option><option value="design">{t("Дизайн")}</option><option value="backend">Backend/API</option><option value="accessibility">{t("Доступность")}</option><option value="performance">{t("Производительность")}</option><option value="seo">SEO</option><option value="security">{t("Безопасность")}</option></select></label>
+              <button type="submit" disabled={requirementBusy || !requirementDraft.trim()}>{requirementBusy ? t("Сохраняем…") : t("Добавить в чеклист")}</button>
             </div>
           </form>
           {requirements.length > 0 && <ul>{requirements.map((item) => <li key={item.id}>
             <span className={styles.requirementCategory}>{item.category}</span><span>{item.title}</span>
-            <select aria-label={`Статус требования: ${item.title}`} value={item.status} disabled={requirementStatusBusy === item.id || (item.status === "pending" && !selectedCapture)} onChange={(event) => void updateRequirementStatus(item.id, event.target.value as Requirement["status"])}>
-              <option value="pending">Ожидает проверки</option><option value="satisfied" disabled={selectedCapture?.status !== "captured"}>Выполнено</option><option value="failed">Не выполнено</option><option value="blocked">Заблокировано</option><option value="unknown">Неизвестно</option>
+            <select aria-label={t("Статус требования: {0}", [item.title])} value={item.status} disabled={requirementStatusBusy === item.id || (item.status === "pending" && !selectedCapture)} onChange={(event) => void updateRequirementStatus(item.id, event.target.value as Requirement["status"])}>
+              <option value="pending">{t("Ожидает проверки")}</option><option value="satisfied" disabled={selectedCapture?.status !== "captured"}>{t("Выполнено")}</option><option value="failed">{t("Не выполнено")}</option><option value="blocked">{t("Заблокировано")}</option><option value="unknown">{t("Неизвестно")}</option>
             </select>
-            <small>{item.evidenceCaptureId ? "Есть снимок-доказательство" : "Пока без доказательства"}</small>
+            <small>{item.evidenceCaptureId ? t("Есть снимок-доказательство") : t("Пока без доказательства")}</small>
           </li>)}</ul>}
         </section>}
         {selectedCapture?.status === "captured" && selectedDesign && <section className={styles.findings}>
-          <h3>ИИ-сверка макета и сайта</h3>
-          <p>При запуске сохранённый снимок и выбранный макет будут отправлены в настроенный OpenAI сервис; запрос может тарифицироваться провайдером. Результат — предложения для проверки, а не подтверждение соответствия.</p>
+          <h3>{t("ИИ-сверка макета и сайта")}</h3>
+          <p>{t("При запуске сохранённый снимок и выбранный макет будут отправлены в настроенный OpenAI сервис; запрос может тарифицироваться провайдером. Результат — предложения для проверки, а не подтверждение соответствия.")}</p>
           <button type="button" onClick={() => void analyzeSelectedCapture()} disabled={aiAnalysisBusy}>
-            {aiAnalysisBusy ? "Анализируем…" : selectedCapture.aiAnalysis ? "Показать сохранённый разбор" : "Сравнить с помощью ИИ"}
+            {aiAnalysisBusy ? t("Анализируем…") : selectedCapture.aiAnalysis ? t("Показать сохранённый разбор") : t("Сравнить с помощью ИИ")}
           </button>
           {selectedCapture.aiAnalysis && <div className={styles.reportSignals}>
             <p>{selectedCapture.aiAnalysis.summary}</p>
-            {selectedCapture.aiAnalysis.findings.length === 0 ? <p>ИИ не нашёл конкретных расхождений. Это не гарантирует полное соответствие макету.</p> :
+            {selectedCapture.aiAnalysis.findings.length === 0 ? <p>{t("ИИ не нашёл конкретных расхождений. Это не гарантирует полное соответствие макету.")}</p> :
               <ul>{selectedCapture.aiAnalysis.findings.map((item, index) => <li key={index} data-level={item.severity}>
-                <div><strong>{item.summary}</strong><small>{item.category} · уверенность: {item.confidence}</small></div>
-                <p>{item.details}</p><small>Доказательство: {item.evidence}</small>
+                <div><strong>{item.summary}</strong><small>{item.category}{" "}{t("· уверенность:")}{" "}{item.confidence}</small></div>
+                <p>{item.details}</p><small>{t("Доказательство:")}{" "}{item.evidence}</small>
               </li>)}</ul>}
-            <small>{selectedCapture.aiAnalysis.limitation} · {selectedCapture.aiAnalysis.model} · {new Date(selectedCapture.aiAnalysis.createdAt).toLocaleString("ru-RU")}</small>
+            <small>{selectedCapture.aiAnalysis.limitation} · {selectedCapture.aiAnalysis.model} · {new Date(selectedCapture.aiAnalysis.createdAt).toLocaleString(dateLocale())}</small>
           </div>}
         </section>}
         {selectedCapture?.status === "captured" && <section className={styles.findings}>
-          <h3>Замечания по этой странице</h3>
+          <h3>{t("Замечания по этой странице")}</h3>
           <form onSubmit={(event) => void saveFinding(event)}>
-            <small className={styles.pointHint}>{findingPoint ? `Точка отмечена: ${(findingPoint.x * 100).toFixed(0)}%, ${(findingPoint.y * 100).toFixed(0)}%` : "Чтобы привязать замечание к месту, нажмите на снимок сайта."}</small>
-            <input value={findingSummary} onChange={(event) => setFindingSummary(event.target.value)} maxLength={500} placeholder="Опишите, что нужно проверить или исправить" aria-label="Текст замечания" required />
+            <small className={styles.pointHint}>{findingPoint ? t("Точка отмечена: {0}%, {1}%", [(findingPoint.x * 100).toFixed(0), (findingPoint.y * 100).toFixed(0)]) : t("Чтобы привязать замечание к месту, нажмите на снимок сайта.")}</small>
+            <input value={findingSummary} onChange={(event) => setFindingSummary(event.target.value)} maxLength={500} placeholder={t("Опишите, что нужно проверить или исправить")} aria-label={t("Текст замечания")} required />
             <div>
-              <label>Категория<select value={findingCategory} onChange={(event) => setFindingCategory(event.target.value)}><option value="design">Макет</option><option value="requirement">Требование</option><option value="backend">Backend/API</option><option value="accessibility">Доступность</option><option value="performance">Производительность</option><option value="seo">SEO</option><option value="security">Безопасность</option></select></label>
-              <label>Приоритет<select value={findingSeverity} onChange={(event) => setFindingSeverity(event.target.value)}><option value="critical">Критичный</option><option value="high">Высокий</option><option value="medium">Средний</option><option value="low">Низкий</option><option value="info">Информация</option></select></label>
-              <button type="submit" disabled={findingBusy || !findingSummary.trim()}>{findingBusy ? "Сохраняем…" : "Добавить замечание"}</button>
+              <label>{t("Категория")}<select value={findingCategory} onChange={(event) => setFindingCategory(event.target.value)}><option value="design">{t("Макет")}</option><option value="requirement">{t("Требование")}</option><option value="backend">Backend/API</option><option value="accessibility">{t("Доступность")}</option><option value="performance">{t("Производительность")}</option><option value="seo">SEO</option><option value="security">{t("Безопасность")}</option></select></label>
+              <label>{t("Приоритет")}<select value={findingSeverity} onChange={(event) => setFindingSeverity(event.target.value)}><option value="critical">{t("Критичный")}</option><option value="high">{t("Высокий")}</option><option value="medium">{t("Средний")}</option><option value="low">{t("Низкий")}</option><option value="info">{t("Информация")}</option></select></label>
+              <button type="submit" disabled={findingBusy || !findingSummary.trim()}>{findingBusy ? t("Сохраняем…") : t("Добавить замечание")}</button>
             </div>
           </form>
           {findings.length > 0 && <ul>{findings.slice(0, 8).map((finding) => <li key={finding.id}>
             <span className={styles.findingBadge}>{finding.severity}</span><span>{finding.summary}</span>
-            <small>{finding.category}{finding.coordinates ? ` · точка ${Math.round(finding.coordinates.x * 100)}%, ${Math.round(finding.coordinates.y * 100)}%` : ""}</small>
-            <select aria-label={`Статус замечания: ${finding.summary}`} value={finding.status} disabled={findingStatusBusy === finding.id} onChange={(event) => void updateFindingStatus(finding.id, event.target.value)}>
-              <option value="open">Открыто</option><option value="accepted">Принято</option><option value="dismissed">Отклонено</option><option value="fixed">Исправлено</option><option value="unknown">Не проверено</option>
+            <small>{finding.category}{finding.coordinates ? t(" · точка {0}%, {1}%", [Math.round(finding.coordinates.x * 100), Math.round(finding.coordinates.y * 100)]) : ""}</small>
+            <select aria-label={t("Статус замечания: {0}", [finding.summary])} value={finding.status} disabled={findingStatusBusy === finding.id} onChange={(event) => void updateFindingStatus(finding.id, event.target.value)}>
+              <option value="open">{t("Открыто")}</option><option value="accepted">{t("Принято")}</option><option value="dismissed">{t("Отклонено")}</option><option value="fixed">{t("Исправлено")}</option><option value="unknown">{t("Не проверено")}</option>
             </select>
           </li>)}</ul>}
         </section>}
         <div className={styles.notReady}>
-          <strong>ИИ-разбор доступен для сохранённого снимка с привязанным макетом</strong>
-          <p>Пиксельное сравнение и DOM-аудит остаются отдельными техническими сигналами. ИИ-замечания не проверяют backend/API и требуют подтверждения ревьюером.</p>
+          <strong>{t("ИИ-разбор доступен для сохранённого снимка с привязанным макетом")}</strong>
+          <p>{t("Пиксельное сравнение и DOM-аудит остаются отдельными техническими сигналами. ИИ-замечания не проверяют backend/API и требуют подтверждения ревьюером.")}</p>
         </div>
       </div>
     </section>
@@ -1106,8 +1107,8 @@ function PreviewPanel({ title, designUrl, zoom = 1, viewportRef, onViewportScrol
   return <section className={styles.previewPanel}>
     <div className={styles.panelTitle}>{title}</div>
     {designUrl ? <div className={styles.compareViewport} ref={viewportRef} onScroll={(event) => onViewportScroll?.(event.currentTarget)}>
-      <img className={styles.designImage} src={designUrl} alt="Локально выбранный макет страницы" style={{ transform: `scale(${zoom})` }} />
-    </div> : <div className={styles.noDesign}><span>◫</span><strong>Добавьте макет страницы</strong><small>PNG или JPEG · приватный макет</small></div>}
+      <img className={styles.designImage} src={designUrl} alt={t("Локально выбранный макет страницы")} style={{ transform: `scale(${zoom})` }} />
+    </div> : <div className={styles.noDesign}><span>◫</span><strong>{t("Добавьте макет страницы")}</strong><small>{t("PNG или JPEG · приватный макет")}</small></div>}
   </section>;
 }
 
@@ -1150,7 +1151,7 @@ function SitePanel({ title, url, screenshotUrl, blocked, onBlocked, point, onPoi
         <img
           className={styles.captureScreenshot}
           src={screenshotUrl}
-          alt="Снимок выбранной страницы сайта. Нажмите, чтобы отметить точку замечания."
+          alt={t("Снимок выбранной страницы сайта. Нажмите, чтобы отметить точку замечания.")}
           role={onPoint ? "button" : undefined}
           tabIndex={onPoint ? 0 : undefined}
           onClick={(event) => setPointFromImage(event.currentTarget, event.clientX, event.clientY)}
@@ -1165,7 +1166,7 @@ function SitePanel({ title, url, screenshotUrl, blocked, onBlocked, point, onPoi
         />
       </div>
       {point && <span className={styles.capturePoint} style={{ left: point.left, top: point.top }} aria-hidden="true" />}
-    </div> : blocked ? <div className={styles.noDesign}><strong>Сайт запрещает встроенный просмотр</strong><small>Откройте его в новой вкладке, чтобы сравнить вручную.</small><a href={url} target="_blank" rel="noreferrer">Открыть сайт ↗</a></div>
+    </div> : blocked ? <div className={styles.noDesign}><strong>{t("Сайт запрещает встроенный просмотр")}</strong><small>{t("Откройте его в новой вкладке, чтобы сравнить вручную.")}</small><a href={url} target="_blank" rel="noreferrer">{t("Открыть сайт ↗")}</a></div>
       : <iframe className={styles.siteFrame} title={title} src={url} sandbox="allow-scripts allow-forms allow-popups" referrerPolicy="no-referrer" onError={onBlocked} />}
   </section>;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
@@ -13,9 +14,9 @@ import WalletCard from "./wallet-card";
 type ResultPackage = { generatedAt: string; complete: boolean; openItems: string[]; siteReady: boolean; files: Array<{ name: string; mimeType: string; content: string }> };
 
 const fileLabels: Record<string, string> = {
-  "site.html": "Готовая страница сайта (откройте в браузере или загрузите на хостинг)",
-  "project.md": "Паспорт проекта и все тексты (удобно читать и пересылать)",
-  "project.json": "Все данные проекта (для разработчика или переноса)",
+  "site.html": t("Готовая страница сайта (откройте в браузере или загрузите на хостинг)"),
+  "project.md": t("Паспорт проекта и все тексты (удобно читать и пересылать)"),
+  "project.json": t("Все данные проекта (для разработчика или переноса)"),
 };
 
 export default function JourneyPage() {
@@ -45,7 +46,7 @@ export default function JourneyPage() {
   }
 
   async function setStatus(action: "complete" | "resume" | "archive" | "unarchive") {
-    if (action === "archive" && !window.confirm("Отправить проект в архив? Он перестанет занимать место в тарифе. Специалисты потеряют доступ. Вернуть проект можно в любой момент.")) return;
+    if (action === "archive" && !window.confirm(t("Отправить проект в архив? Он перестанет занимать место в тарифе. Специалисты потеряют доступ. Вернуть проект можно в любой момент."))) return;
     setBusy(true);
     setError("");
     try { setJourney(await api<Journey>(`/projects/${projectId}/${action}`, { method: "POST" })); } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
@@ -59,57 +60,57 @@ export default function JourneyPage() {
   return (
     <div className={styles.shell}>
       <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.back} href="/projects">← Проекты</a>
+        <a className={styles.back} href="/projects">{t("← Проекты")}</a>
         <span className={styles.topTitle}>{journey?.project.name ?? ""}</span>
       </div></header>
       <main className={styles.container}>
-        {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>Открыть тариф →</a></>}</p>}
-        {!journey && !error && <p className={styles.muted}>Загружаем проект…</p>}
+        {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>{t("Открыть тариф →")}</a></>}</p>}
+        {!journey && !error && <p className={styles.muted}>{t("Загружаем проект…")}</p>}
         {journey && (
           <>
             <p className={styles.kicker}>{journey.project.typeTitle}</p>
             <h1 className={styles.h1}>{journey.project.name}</h1>
-            <div className={styles.progress} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={journey.progress.percent} aria-label="Готовность проекта">
+            <div className={styles.progress} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={journey.progress.percent} aria-label={t("Готовность проекта")}>
               <span style={{ width: `${journey.progress.percent}%` }} />
             </div>
-            <p className={styles.small} style={{ margin: "0 0 18px" }}>Принято этапов: {journey.progress.accepted} из {journey.progress.total}</p>
+            <p className={styles.small} style={{ margin: "0 0 18px" }}>{t("Принято этапов:")}{" "}{journey.progress.accepted}{" "}{t("из")}{" "}{journey.progress.total}</p>
             {specialist && (
-              <p className={`${styles.notice} ${styles.info}`}>Вы приглашены в этот проект как специалист. Вам видны только ваши этапы и то, что для них нужно. Принимает работу владелец проекта.</p>
+              <p className={`${styles.notice} ${styles.info}`}>{t("Вы приглашены в этот проект как специалист. Вам видны только ваши этапы и то, что для них нужно. Принимает работу владелец проекта.")}</p>
             )}
 
             {archived ? (
               <div className={`${styles.notice} ${styles.info}`}>
-                Проект в архиве: его можно смотреть и скачивать, но не менять. Он не занимает место в тарифе.
-                {journey.project.role === "owner" && <div style={{ marginTop: 10 }}><button className={styles.secondary} disabled={busy} onClick={() => setStatus("unarchive")}>Вернуть из архива</button></div>}
+                {t("Проект в архиве: его можно смотреть и скачивать, но не менять. Он не занимает место в тарифе.")}
+                {journey.project.role === "owner" && <div style={{ marginTop: 10 }}><button className={styles.secondary} disabled={busy} onClick={() => setStatus("unarchive")}>{t("Вернуть из архива")}</button></div>}
               </div>
             ) : completed ? (
               <div className={`${styles.notice} ${styles.success}`}>
-                Проект завершён. Скачайте результат ниже или продолжите проект, если хотите что-то изменить.
-                <div style={{ marginTop: 10 }}><button className={styles.secondary} disabled={busy} onClick={() => setStatus("resume")}>Продолжить проект</button></div>
+                {t("Проект завершён. Скачайте результат ниже или продолжите проект, если хотите что-то изменить.")}
+                <div style={{ marginTop: 10 }}><button className={styles.secondary} disabled={busy} onClick={() => setStatus("resume")}>{t("Продолжить проект")}</button></div>
               </div>
             ) : (
               <section className={styles.card} aria-labelledby="next-title">
-                <p className={styles.kicker}>Что дальше</p>
+                <p className={styles.kicker}>{t("Что дальше")}</p>
                 <h2 id="next-title" className={styles.h2}>{journey.nextAction.title}</h2>
                 <p style={{ margin: "0 0 12px" }}>{journey.nextAction.text}</p>
-                {journey.nextAction.stageKey && <a className={`${styles.button} ${styles.block}`} href={`/projects/${projectId}/stages/${journey.nextAction.stageKey}`}>Открыть этап</a>}
+                {journey.nextAction.stageKey && <a className={`${styles.button} ${styles.block}`} href={`/projects/${projectId}/stages/${journey.nextAction.stageKey}`}>{t("Открыть этап")}</a>}
               </section>
             )}
 
             <p className={styles.small} style={{ margin: "0 0 14px" }} hidden={specialist}>
               {journey.ai.configured
-                ? `ИИ подключён: на каждом этапе он делает черновик, а вы говорите, что поменять.${journey.ai.month ? ` Запросов по тарифу «${journey.ai.month.planTitle}» в этом месяце: осталось ${journey.ai.month.left} из ${journey.ai.month.limit}.` : ""}`
-                : "ИИ пока не подключён: этапы заполняются вручную, а тексты и стиль можно получить по готовому шаблону."}
+                ? t("ИИ подключён: на каждом этапе он делает черновик, а вы говорите, что поменять.{0}", [journey.ai.month ? t(" Запросов по тарифу «{0}» в этом месяце: осталось {1} из {2}.", [journey.ai.month.planTitle, journey.ai.month.left, journey.ai.month.limit]) : ""])
+                : t("ИИ пока не подключён: этапы заполняются вручную, а тексты и стиль можно получить по готовому шаблону.")}
             </p>
 
-            <h2 className={styles.h2}>{specialist ? "Ваши этапы" : "Карта проекта"}</h2>
-            <p className={styles.small} style={{ margin: "0 0 10px" }}>Этап открывается, когда приняты те, от которых он зависит. Этапы в одной строке делаются одновременно: они построены на общем утверждённом контракте. Принятый этап можно изменить позже — следующие этапы получат уведомление.</p>
+            <h2 className={styles.h2}>{specialist ? t("Ваши этапы") : t("Карта проекта")}</h2>
+            <p className={styles.small} style={{ margin: "0 0 10px" }}>{t("Этап открывается, когда приняты те, от которых он зависит. Этапы в одной строке делаются одновременно: они построены на общем утверждённом контракте. Принятый этап можно изменить позже — следующие этапы получат уведомление.")}</p>
             {!specialist && ["owner", "manager"].includes(journey.project.role) && journey.project.changeResponseDays && (
               <ResponseDays projectId={projectId} value={journey.project.changeResponseDays} />
             )}
-            <div className={styles.viewToggle} role="group" aria-label="Вид">
-              <button type="button" aria-pressed={view === "map"} onClick={() => setView("map")}>Карта</button>
-              <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>Список</button>
+            <div className={styles.viewToggle} role="group" aria-label={t("Вид")}>
+              <button type="button" aria-pressed={view === "map"} onClick={() => setView("map")}>{t("Карта")}</button>
+              <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>{t("Список")}</button>
             </div>
             {view === "map" && <ProjectMap projectId={projectId} stages={journey.stages} aiOn={journey.ai.configured} />}
             {view === "list" && <ol className={styles.stageList}>
@@ -125,7 +126,7 @@ export default function JourneyPage() {
                         <strong>{stage.title}</strong>
                         <span className={styles.small}>{stage.outcome}</span><br />
                         <span className={`${styles.chip} ${styles[tone]}`}>{stage.statusLabel}</span>
-                        {locked && waiting.length > 0 && <span className={styles.small}> · сначала: {waiting.join(", ")}</span>}
+                        {locked && waiting.length > 0 && <span className={styles.small}>{" "}{t("· сначала:")}{" "}{waiting.join(", ")}</span>}
                         {stage.status === "stale" && <span className={styles.small}> · {stage.statusExplanation}</span>}
                       </span>
                     </a>
@@ -134,15 +135,15 @@ export default function JourneyPage() {
               })}
             </ol>}
 
-            <p style={{ margin: "4px 0 0" }}><a className={styles.back} href={`/projects/${projectId}/history`}>История запросов к ИИ →</a></p>
+            <p style={{ margin: "4px 0 0" }}><a className={styles.back} href={`/projects/${projectId}/history`}>{t("История запросов к ИИ →")}</a></p>
             {!specialist && <>
             <div style={{ height: 22 }} />
             {journey.project.projectType === "booking" && (
               <section className={styles.card} aria-labelledby="bookings-title">
-                <p className={styles.kicker}>Онлайн-запись</p>
-                <h2 id="bookings-title" className={styles.h2}>Записи клиентов</h2>
-                <p style={{ margin: "0 0 10px" }}>Кто, когда и к какому мастеру записался. Отменяйте записи и отмечайте, пришёл ли клиент.</p>
-                <a className={styles.secondary} href={`/projects/${projectId}/bookings`}>Открыть записи</a>
+                <p className={styles.kicker}>{t("Онлайн-запись")}</p>
+                <h2 id="bookings-title" className={styles.h2}>{t("Записи клиентов")}</h2>
+                <p style={{ margin: "0 0 10px" }}>{t("Кто, когда и к какому мастеру записался. Отменяйте записи и отмечайте, пришёл ли клиент.")}</p>
+                <a className={styles.secondary} href={`/projects/${projectId}/bookings`}>{t("Открыть записи")}</a>
               </section>
             )}
             <WalletCard projectId={projectId} />
@@ -150,28 +151,28 @@ export default function JourneyPage() {
             <PublishCard projectId={projectId} onChange={() => void load()} />
 
             <section className={styles.card} aria-labelledby="code-title">
-              <p className={styles.kicker}>Решения</p>
-              <h2 id="code-title" className={styles.h2}>Технологии, код и адрес</h2>
-              <p style={{ margin: "0 0 8px" }}>На чём делать сайт: BuildPath соберёт его сам, а для личного кабинета или оплаты онлайн понадобится разработчик со своим стеком. Сравним варианты.</p>
-              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/technologies`}>Технологии</a>
-              <p style={{ margin: "14px 0 8px" }}>Сайт работает на BuildPath и без этого. Копия у вас — страховка: можно переехать, отдать разработчику или восстановить. Выберите вариант — мы объясним, что сделать.</p>
-              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/code_hosting`}>Выбрать, где хранить код</a>
-              <p style={{ margin: "14px 0 8px" }}>Сайт можно разместить не только на BuildPath: на своём сервере или в GitHub Pages. Мы проведём по шагам и проверим, что он открывается.</p>
-              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/deployment`}>Где будет работать сайт</a>
-              <p style={{ margin: "14px 0 8px" }}>Свой домен вроде barber-usy.com вместо адреса BuildPath — объясним, где купить и что вписать у регистратора.</p>
-              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/domain`}>Адрес сайта</a>
+              <p className={styles.kicker}>{t("Решения")}</p>
+              <h2 id="code-title" className={styles.h2}>{t("Технологии, код и адрес")}</h2>
+              <p style={{ margin: "0 0 8px" }}>{t("На чём делать сайт: BuildPath соберёт его сам, а для личного кабинета или оплаты онлайн понадобится разработчик со своим стеком. Сравним варианты.")}</p>
+              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/technologies`}>{t("Технологии")}</a>
+              <p style={{ margin: "14px 0 8px" }}>{t("Сайт работает на BuildPath и без этого. Копия у вас — страховка: можно переехать, отдать разработчику или восстановить. Выберите вариант — мы объясним, что сделать.")}</p>
+              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/code_hosting`}>{t("Выбрать, где хранить код")}</a>
+              <p style={{ margin: "14px 0 8px" }}>{t("Сайт можно разместить не только на BuildPath: на своём сервере или в GitHub Pages. Мы проведём по шагам и проверим, что он открывается.")}</p>
+              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/deployment`}>{t("Где будет работать сайт")}</a>
+              <p style={{ margin: "14px 0 8px" }}>{t("Свой домен вроде barber-usy.com вместо адреса BuildPath — объясним, где купить и что вписать у регистратора.")}</p>
+              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/domain`}>{t("Адрес сайта")}</a>
             </section>
 
             <section className={styles.card} aria-labelledby="result-title">
-              <p className={styles.kicker}>Результат</p>
-              <h2 id="result-title" className={styles.h2}>Забрать результат можно на любом этапе</h2>
-              <p style={{ margin: "0 0 12px" }}>{journey.project.resultExplanation} В файлы попадёт только то, что вы приняли.</p>
-              {!result && <button className={`${styles.secondary} ${styles.block}`} disabled={busy} onClick={prepareResult}>{busy ? "Готовим…" : "Подготовить файлы"}</button>}
+              <p className={styles.kicker}>{t("Результат")}</p>
+              <h2 id="result-title" className={styles.h2}>{t("Забрать результат можно на любом этапе")}</h2>
+              <p style={{ margin: "0 0 12px" }}>{journey.project.resultExplanation}{" "}{t("В файлы попадёт только то, что вы приняли.")}</p>
+              {!result && <button className={`${styles.secondary} ${styles.block}`} disabled={busy} onClick={prepareResult}>{busy ? t("Готовим…") : t("Подготовить файлы")}</button>}
               {result && (
                 <>
                   {result.openItems.length > 0 && (
                     <div className={`${styles.notice} ${styles.warn}`}>
-                      Ещё не сделано:
+                      {t("Ещё не сделано:")}
                       <ul className={styles.list}>{result.openItems.map((item) => <li key={item}>{item}</li>)}</ul>
                     </div>
                   )}
@@ -182,14 +183,14 @@ export default function JourneyPage() {
                       </button>
                     ))}
                   </div>
-                  <p className={styles.small} style={{ marginTop: 10 }}>Файл site.html можно загрузить на любой хостинг статических сайтов. Форма заявок работает только на сайте, опубликованном через BuildPath.</p>
+                  <p className={styles.small} style={{ marginTop: 10 }}>{t("Файл site.html можно загрузить на любой хостинг статических сайтов. Форма заявок работает только на сайте, опубликованном через BuildPath.")}</p>
                 </>
               )}
               {!archived && !live && journey.project.role === "owner" && (
-                <button className={styles.ghost} style={{ marginTop: 12, marginLeft: 8 }} disabled={busy} onClick={() => setStatus("archive")}>Отправить в архив</button>
+                <button className={styles.ghost} style={{ marginTop: 12, marginLeft: 8 }} disabled={busy} onClick={() => setStatus("archive")}>{t("Отправить в архив")}</button>
               )}
               {!completed && !live && !archived && journey.project.role === "owner" && (
-                <button className={styles.ghost} style={{ marginTop: 12 }} disabled={busy} onClick={() => setStatus("complete")}>Завершить проект на этом этапе</button>
+                <button className={styles.ghost} style={{ marginTop: 12 }} disabled={busy} onClick={() => setStatus("complete")}>{t("Завершить проект на этом этапе")}</button>
               )}
             </section>
             </>}
@@ -210,11 +211,11 @@ function ResponseDays({ projectId, value }: { projectId: string; value: number }
   }
   return (
     <label className={styles.small} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "0 0 10px" }}>
-      <span>Срок ответа на изменения:</span>
+      <span>{t("Срок ответа на изменения:")}</span>
       <select className={styles.input} style={{ width: "auto", minHeight: 36, padding: "4px 8px" }} value={days} onChange={(event) => void save(Number(event.target.value))}>
-        {[1, 2, 3, 5, 7, 14].map((item) => <option key={item} value={item}>{item} дн.</option>)}
+        {[1, 2, 3, 5, 7, 14].map((item) => <option key={item} value={item}>{item}{" "}{t("дн.")}</option>)}
       </select>
-      <span>{saved ? "Сохранено." : "Потом — напоминание, а ещё через 2 дня вы сможете решить за этап."}</span>
+      <span>{saved ? t("Сохранено.") : t("Потом — напоминание, а ещё через 2 дня вы сможете решить за этап.")}</span>
     </label>
   );
 }

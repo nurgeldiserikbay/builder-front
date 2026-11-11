@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { explainError, images, shrinkPhoto, type Content, type Design, type FieldDefinition, type Offer, type Preset, type ProjectImage, type Section, type SectionType } from "@/lib/journey";
 import styles from "../../../journey.module.css";
@@ -12,8 +13,8 @@ function LockBadge({ lockKey, lockedKeys, onToggleLock, canLock }: LockProps & {
   if (!canLock || !locked) return null;
   return (
     <button type="button" className={`${styles.lockBadge} ${locked ? "" : styles.unlocked}`} onClick={() => onToggleLock(lockKey, !locked)}
-      title="Вы правили это вручную — ИИ не будет переписывать без вашей просьбы. Нажмите, чтобы разрешить ИИ менять это место." >
-      🔒 Защищено от ИИ · снять
+      title={t("Вы правили это вручную — ИИ не будет переписывать без вашей просьбы. Нажмите, чтобы разрешить ИИ менять это место.")} >
+      {t("🔒 Защищено от ИИ · снять")}
     </button>
   );
 }
@@ -30,11 +31,11 @@ export function FieldsForm({ fields, value, onChange, issueKeys, disabled, ...lo
         return (
           <div key={field.key} className={styles.field}>
             <div className={styles.row}>
-              <label htmlFor={id} className={styles.label}>{field.label}{field.required ? "" : " (необязательно)"}</label>
+              <label htmlFor={id} className={styles.label}>{field.label}{field.required ? "" : t(" (необязательно)")}</label>
               <div className={styles.spacer} />
               {value[field.key] ? <LockBadge lockKey={field.key} {...lock} /> : null}
             </div>
-            <p className={styles.why}>{field.why} <span>Например: {field.example}</span></p>
+            <p className={styles.why}>{field.why} <span>{t("Например:")}{" "}{field.example}</span></p>
             {field.kind === "text" && (
               <input id={id} className={styles.input} value={(value[field.key] as string | null) ?? ""} maxLength={field.maxLength} disabled={disabled}
                 aria-invalid={hasIssue} onChange={(event) => set(field.key, event.target.value)} />
@@ -57,7 +58,7 @@ export function FieldsForm({ fields, value, onChange, issueKeys, disabled, ...lo
             {field.kind === "list" && (
               <ListField field={field} items={(value[field.key] as Offer["services"] | undefined) ?? []} disabled={disabled} onChange={(items) => set(field.key, items)} />
             )}
-            {hasIssue && <p className={styles.why} style={{ color: "#8a1f1f" }}>Это поле нужно заполнить.</p>}
+            {hasIssue && <p className={styles.why} style={{ color: "#8a1f1f" }}>{t("Это поле нужно заполнить.")}</p>}
           </div>
         );
       })}
@@ -76,12 +77,12 @@ function ListField({ field, items, onChange, disabled }: { field: FieldDefinitio
             <input key={itemField.key} className={styles.input} aria-label={`${itemField.label} ${index + 1}`} placeholder={`${itemField.label}: ${itemField.placeholder}`}
               maxLength={itemField.maxLength} disabled={disabled} value={item[itemField.key] ?? ""} onChange={(event) => update(index, itemField.key, event.target.value)} />
           ))}
-          <button type="button" className={styles.danger} style={{ minHeight: 40 }} disabled={disabled} onClick={() => onChange(items.filter((_, current) => current !== index))}>Убрать</button>
+          <button type="button" className={styles.danger} style={{ minHeight: 40 }} disabled={disabled} onClick={() => onChange(items.filter((_, current) => current !== index))}>{t("Убрать")}</button>
         </div>
       ))}
       {items.length < (field.maxItems ?? 12) && (
         <button type="button" className={styles.secondary} disabled={disabled}
-          onClick={() => onChange([...items, Object.fromEntries(itemFields.map((itemField) => [itemField.key, null]))])}>+ Добавить</button>
+          onClick={() => onChange([...items, Object.fromEntries(itemFields.map((itemField) => [itemField.key, null]))])}>{t("+ Добавить")}</button>
       )}
     </div>
   );
@@ -150,67 +151,67 @@ function PhotoControl({ projectId, library, imageId, onSelect, disabled, section
     try { library.apply(await images.setAlt(projectId, current.id, altDraft.trim())); } catch (problem) { setError(explainError(problem)); }
   };
   const remove = async (id: string) => {
-    if (!window.confirm("Удалить фото из проекта? Вернуть его будет нельзя — только загрузить заново.")) return;
+    if (!window.confirm(t("Удалить фото из проекта? Вернуть его будет нельзя — только загрузить заново."))) return;
     try { library.apply(await images.remove(projectId, id)); } catch (problem) { setError(explainError(problem)); }
   };
 
   if (imageId && !open) {
     return (
       <div className={styles.field}>
-        <span className={styles.label}>Фото</span>
+        <span className={styles.label}>{t("Фото")}</span>
         {current ? (
           <div className={styles.photoCurrent}>
             {library.urls[current.id] ? <img src={library.urls[current.id]} alt={current.alt} className={styles.photoThumb} /> : <div className={styles.photoThumb} />}
-            <label className={styles.field} style={{ marginBottom: 0 }}><span className={styles.why}>Что на фото? Это описание слышат незрячие посетители и видят поисковики.</span>
-              <input className={styles.input} value={altDraft} maxLength={200} disabled={disabled} placeholder="Например: торт с ягодами на день рождения"
+            <label className={styles.field} style={{ marginBottom: 0 }}><span className={styles.why}>{t("Что на фото? Это описание слышат незрячие посетители и видят поисковики.")}</span>
+              <input className={styles.input} value={altDraft} maxLength={200} disabled={disabled} placeholder={t("Например: торт с ягодами на день рождения")}
                 onChange={(event) => setAltDraft(event.target.value)} onBlur={saveAlt} /></label>
           </div>
-        ) : <p className={`${styles.notice} ${styles.warn}`}>Это фото удалено из проекта. Уберите его или выберите другое.</p>}
+        ) : <p className={`${styles.notice} ${styles.warn}`}>{t("Это фото удалено из проекта. Уберите его или выберите другое.")}</p>}
         {error && <p className={`${styles.notice} ${styles.warn}`} role="alert">{error}</p>}
         {!disabled && (
           <div className={styles.row}>
-            <button type="button" className={styles.secondary} onClick={() => setOpen(true)}>Заменить</button>
-            <button type="button" className={styles.danger} onClick={() => onSelect(null)}>Убрать фото из блока</button>
+            <button type="button" className={styles.secondary} onClick={() => setOpen(true)}>{t("Заменить")}</button>
+            <button type="button" className={styles.danger} onClick={() => onSelect(null)}>{t("Убрать фото из блока")}</button>
           </div>
         )}
       </div>
     );
   }
   if (disabled) return null;
-  if (!open) return <button type="button" className={styles.secondary} onClick={() => setOpen(true)}>+ Добавить фото</button>;
+  if (!open) return <button type="button" className={styles.secondary} onClick={() => setOpen(true)}>{t("+ Добавить фото")}</button>;
   const others = (library.items ?? []).filter((item) => item.id !== imageId);
   return (
-    <div className={styles.photoPanel} aria-label={`Фото для блока «${sectionLabel}»`}>
-      <p className={styles.why}>Лучше всего — ваши настоящие фото: работы, товар, место, команда. Фото подстроится под ширину экрана, а скрытые данные (например, место съёмки) удалятся.</p>
+    <div className={styles.photoPanel} aria-label={t("Фото для блока «{0}»", [sectionLabel])}>
+      <p className={styles.why}>{t("Лучше всего — ваши настоящие фото: работы, товар, место, команда. Фото подстроится под ширину экрана, а скрытые данные (например, место съёмки) удалятся.")}</p>
       {pending ? (
         <div>
           <img src={pending.url} alt="" className={styles.photoThumb} />
-          <label className={styles.field}><span className={styles.label}>Что на фото?</span>
-            <span className={styles.why}>Коротко, 3–8 слов. Нужно для незрячих посетителей и поисковиков.</span>
-            <input className={styles.input} value={alt} maxLength={200} autoFocus placeholder="Например: мастер укладывает плитку в ванной" onChange={(event) => setAlt(event.target.value)} /></label>
+          <label className={styles.field}><span className={styles.label}>{t("Что на фото?")}</span>
+            <span className={styles.why}>{t("Коротко, 3–8 слов. Нужно для незрячих посетителей и поисковиков.")}</span>
+            <input className={styles.input} value={alt} maxLength={200} autoFocus placeholder={t("Например: мастер укладывает плитку в ванной")} onChange={(event) => setAlt(event.target.value)} /></label>
           <div className={styles.row}>
-            <button type="button" className={styles.button} disabled={busy || !alt.trim()} onClick={upload}>{busy ? "Загружаем…" : "Добавить фото"}</button>
-            <button type="button" className={styles.secondary} disabled={busy} onClick={() => setPending(null)}>Другое фото</button>
+            <button type="button" className={styles.button} disabled={busy || !alt.trim()} onClick={upload}>{busy ? t("Загружаем…") : t("Добавить фото")}</button>
+            <button type="button" className={styles.secondary} disabled={busy} onClick={() => setPending(null)}>{t("Другое фото")}</button>
           </div>
         </div>
       ) : (
         <>
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/*" hidden onChange={(event) => { void pick(event.target.files?.[0]); event.target.value = ""; }} />
           <div className={styles.row}>
-            <button type="button" className={styles.button} disabled={others.length >= library.limit} onClick={() => fileRef.current?.click()}>Загрузить с телефона</button>
-            <button type="button" className={styles.secondary} onClick={() => setOpen(false)}>Отмена</button>
+            <button type="button" className={styles.button} disabled={others.length >= library.limit} onClick={() => fileRef.current?.click()}>{t("Загрузить с телефона")}</button>
+            <button type="button" className={styles.secondary} onClick={() => setOpen(false)}>{t("Отмена")}</button>
           </div>
-          {others.length >= library.limit && <p className={styles.why}>В проекте уже {library.limit} фото — удалите ненужные ниже.</p>}
+          {others.length >= library.limit && <p className={styles.why}>{t("В проекте уже")}{" "}{library.limit}{" "}{t("фото — удалите ненужные ниже.")}</p>}
           {others.length > 0 && (
             <>
-              <p className={styles.label} style={{ marginTop: 12 }}>Или выберите из загруженных</p>
+              <p className={styles.label} style={{ marginTop: 12 }}>{t("Или выберите из загруженных")}</p>
               <div className={styles.photoGrid}>
                 {others.map((item) => (
                   <div key={item.id} className={styles.photoCell}>
-                    <button type="button" className={styles.photoPick} onClick={() => { onSelect(item.id); setOpen(false); }} aria-label={`Выбрать фото: ${item.alt || "без описания"}`}>
+                    <button type="button" className={styles.photoPick} onClick={() => { onSelect(item.id); setOpen(false); }} aria-label={t("Выбрать фото: {0}", [item.alt || t("без описания")])}>
                       {library.urls[item.id] ? <img src={library.urls[item.id]} alt="" /> : null}
                     </button>
-                    {!item.inUse && <button type="button" className={styles.photoDelete} onClick={() => remove(item.id)} aria-label={`Удалить фото: ${item.alt || "без описания"}`}>Удалить</button>}
+                    {!item.inUse && <button type="button" className={styles.photoDelete} onClick={() => remove(item.id)} aria-label={t("Удалить фото: {0}", [item.alt || t("без описания")])}>{t("Удалить")}</button>}
                   </div>
                 ))}
               </div>
@@ -253,35 +254,35 @@ export function ContentEditor({ projectId, content, onChange, sectionTypes, disa
             <span className={styles.sectionType}>{sectionTypes[section.type]}</span>
             <LockBadge lockKey={section.key} {...lock} />
             <div className={styles.spacer} />
-            <button type="button" className={styles.iconButton} disabled={disabled || index === 0} aria-label="Поднять блок выше" onClick={() => move(index, -1)}>↑</button>
-            <button type="button" className={styles.iconButton} disabled={disabled || index === content.sections.length - 1} aria-label="Опустить блок ниже" onClick={() => move(index, 1)}>↓</button>
-            <button type="button" className={styles.iconButton} disabled={disabled || content.sections.length <= 1} aria-label="Удалить блок"
-              onClick={() => { if (window.confirm(`Удалить блок «${section.title || sectionTypes[section.type]}»? Его можно вернуть из истории версий.`)) onChange({ ...content, sections: content.sections.filter((item) => item.key !== section.key) }); }}>✕</button>
+            <button type="button" className={styles.iconButton} disabled={disabled || index === 0} aria-label={t("Поднять блок выше")} onClick={() => move(index, -1)}>↑</button>
+            <button type="button" className={styles.iconButton} disabled={disabled || index === content.sections.length - 1} aria-label={t("Опустить блок ниже")} onClick={() => move(index, 1)}>↓</button>
+            <button type="button" className={styles.iconButton} disabled={disabled || content.sections.length <= 1} aria-label={t("Удалить блок")}
+              onClick={() => { if (window.confirm(t("Удалить блок «{0}»? Его можно вернуть из истории версий.", [section.title || sectionTypes[section.type]]))) onChange({ ...content, sections: content.sections.filter((item) => item.key !== section.key) }); }}>✕</button>
           </div>
-          {issueKeys.includes(section.key) && <p className={`${styles.notice} ${styles.warn}`}>Замените места в [квадратных скобках] своими данными.</p>}
-          <label className={styles.field}><span className={styles.label}>Заголовок</span>
+          {issueKeys.includes(section.key) && <p className={`${styles.notice} ${styles.warn}`}>{t("Замените места в [квадратных скобках] своими данными.")}</p>}
+          <label className={styles.field}><span className={styles.label}>{t("Заголовок")}</span>
             <input className={styles.input} value={section.title} maxLength={120} disabled={disabled} onChange={(event) => updateSection(section.key, { title: event.target.value })} /></label>
-          <label className={styles.field}><span className={styles.label}>Текст</span>
+          <label className={styles.field}><span className={styles.label}>{t("Текст")}</span>
             <textarea className={styles.textarea} value={section.text} maxLength={1200} disabled={disabled} onChange={(event) => updateSection(section.key, { text: event.target.value })} /></label>
           {(itemTypes.includes(section.type) || section.items.length > 0) && (
             <div className={styles.field}>
-              <span className={styles.label}>{section.type === "faq" ? "Вопросы и ответы" : "Пункты"}</span>
+              <span className={styles.label}>{section.type === "faq" ? t("Вопросы и ответы") : t("Пункты")}</span>
               {section.items.map((item, itemIndex) => (
                 <div key={itemIndex} className={styles.item}>
-                  <input className={styles.input} aria-label={`Заголовок пункта ${itemIndex + 1}`} value={item.title} maxLength={100} disabled={disabled}
+                  <input className={styles.input} aria-label={t("Заголовок пункта {0}", [itemIndex + 1])} value={item.title} maxLength={100} disabled={disabled}
                     onChange={(event) => updateSection(section.key, { items: section.items.map((current, position) => (position === itemIndex ? { ...current, title: event.target.value } : current)) })} />
-                  <textarea className={styles.textarea} style={{ minHeight: 64 }} aria-label={`Текст пункта ${itemIndex + 1}`} value={item.text} maxLength={400} disabled={disabled}
+                  <textarea className={styles.textarea} style={{ minHeight: 64 }} aria-label={t("Текст пункта {0}", [itemIndex + 1])} value={item.text} maxLength={400} disabled={disabled}
                     onChange={(event) => updateSection(section.key, { items: section.items.map((current, position) => (position === itemIndex ? { ...current, text: event.target.value } : current)) })} />
                   <button type="button" className={styles.danger} style={{ minHeight: 40 }} disabled={disabled}
-                    onClick={() => updateSection(section.key, { items: section.items.filter((_, position) => position !== itemIndex) })}>Убрать пункт</button>
+                    onClick={() => updateSection(section.key, { items: section.items.filter((_, position) => position !== itemIndex) })}>{t("Убрать пункт")}</button>
                 </div>
               ))}
-              {section.items.length < 12 && <button type="button" className={styles.secondary} disabled={disabled} onClick={() => updateSection(section.key, { items: [...section.items, { title: "", text: "" }] })}>+ Добавить пункт</button>}
+              {section.items.length < 12 && <button type="button" className={styles.secondary} disabled={disabled} onClick={() => updateSection(section.key, { items: [...section.items, { title: "", text: "" }] })}>{t("+ Добавить пункт")}</button>}
             </div>
           )}
           {buttonTypes.includes(section.type) && (
-            <label className={styles.field}><span className={styles.label}>Текст на кнопке</span>
-              <span className={styles.why}>Кнопка ведёт к главному действию из паспорта проекта.</span>
+            <label className={styles.field}><span className={styles.label}>{t("Текст на кнопке")}</span>
+              <span className={styles.why}>{t("Кнопка ведёт к главному действию из паспорта проекта.")}</span>
               <input className={styles.input} value={section.buttonLabel ?? ""} maxLength={40} disabled={disabled} onChange={(event) => updateSection(section.key, { buttonLabel: event.target.value || null })} /></label>
           )}
           {(photoTypes.includes(section.type) || section.imageId) && (
@@ -293,21 +294,21 @@ export function ContentEditor({ projectId, content, onChange, sectionTypes, disa
       ))}
       {!disabled && content.sections.length < 12 && (
         <div className={styles.card}>
-          <p className={styles.cardTitle}>Добавить блок</p>
+          <p className={styles.cardTitle}>{t("Добавить блок")}</p>
           <div className={styles.row}>
-            <select className={styles.select} style={{ flex: "1 1 200px" }} value={newType} aria-label="Тип блока" onChange={(event) => setNewType(event.target.value as SectionType)}>
+            <select className={styles.select} style={{ flex: "1 1 200px" }} value={newType} aria-label={t("Тип блока")} onChange={(event) => setNewType(event.target.value as SectionType)}>
               {(Object.keys(sectionTypes) as SectionType[]).filter((type) => type !== "hero").map((type) => <option key={type} value={type}>{sectionTypes[type]}</option>)}
             </select>
-            <button type="button" className={styles.secondary} onClick={addSection}>Добавить</button>
+            <button type="button" className={styles.secondary} onClick={addSection}>{t("Добавить")}</button>
           </div>
         </div>
       )}
-      <article className={styles.section} aria-label="Для поисковиков">
-        <div className={styles.sectionHead}><span className={styles.sectionType}>Для поисковиков</span><LockBadge lockKey="seo" {...lock} /></div>
-        <p className={styles.why} style={{ marginBottom: 10 }}>Так сайт будет выглядеть в результатах Google и Яндекса. Посетители на странице это не видят.</p>
-        <label className={styles.field}><span className={styles.label}>Заголовок ({content.seo.title.length}/70)</span>
+      <article className={styles.section} aria-label={t("Для поисковиков")}>
+        <div className={styles.sectionHead}><span className={styles.sectionType}>{t("Для поисковиков")}</span><LockBadge lockKey="seo" {...lock} /></div>
+        <p className={styles.why} style={{ marginBottom: 10 }}>{t("Так сайт будет выглядеть в результатах Google и Яндекса. Посетители на странице это не видят.")}</p>
+        <label className={styles.field}><span className={styles.label}>{t("Заголовок (")}{content.seo.title.length}/70)</span>
           <input className={styles.input} value={content.seo.title} maxLength={70} disabled={disabled} onChange={(event) => onChange({ ...content, seo: { ...content.seo, title: event.target.value } })} /></label>
-        <label className={styles.field}><span className={styles.label}>Описание ({content.seo.description.length}/160)</span>
+        <label className={styles.field}><span className={styles.label}>{t("Описание (")}{content.seo.description.length}/160)</span>
           <textarea className={styles.textarea} value={content.seo.description} maxLength={160} disabled={disabled} onChange={(event) => onChange({ ...content, seo: { ...content.seo, description: event.target.value } })} /></label>
       </article>
     </div>
@@ -318,17 +319,17 @@ function AskAiInline({ onAsk }: { onAsk: (instruction: string) => Promise<void> 
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  if (!open) return <button type="button" className={styles.ghost} onClick={() => setOpen(true)}>✨ Изменить этот блок с ИИ</button>;
+  if (!open) return <button type="button" className={styles.ghost} onClick={() => setOpen(true)}>{t("✨ Изменить этот блок с ИИ")}</button>;
   return (
     <div className={styles.field} style={{ margin: 0 }}>
-      <label className={styles.label}>Что изменить в этом блоке?
-        <input className={styles.input} value={text} maxLength={1000} placeholder="Например: короче и теплее" autoFocus onChange={(event) => setText(event.target.value)} /></label>
+      <label className={styles.label}>{t("Что изменить в этом блоке?")}
+        <input className={styles.input} value={text} maxLength={1000} placeholder={t("Например: короче и теплее")} autoFocus onChange={(event) => setText(event.target.value)} /></label>
       <div className={styles.row}>
         <button type="button" className={styles.button} disabled={busy || text.trim().length < 2}
-          onClick={async () => { setBusy(true); try { await onAsk(text.trim()); setText(""); setOpen(false); } finally { setBusy(false); } }}>{busy ? "ИИ работает…" : "Попросить ИИ"}</button>
-        <button type="button" className={styles.ghost} onClick={() => setOpen(false)}>Отмена</button>
+          onClick={async () => { setBusy(true); try { await onAsk(text.trim()); setText(""); setOpen(false); } finally { setBusy(false); } }}>{busy ? t("ИИ работает…") : t("Попросить ИИ")}</button>
+        <button type="button" className={styles.ghost} onClick={() => setOpen(false)}>{t("Отмена")}</button>
       </div>
-      <p className={styles.why}>ИИ изменит только этот блок. Остальные останутся как есть.</p>
+      <p className={styles.why}>{t("ИИ изменит только этот блок. Остальные останутся как есть.")}</p>
     </div>
   );
 }
@@ -354,10 +355,10 @@ export function DesignPicker({ design, onChange, options, disabled }: {
   );
   return (
     <div>
-      {group("Цвета", "Все палитры проверены: текст хорошо читается на телефоне.", options.palettes, "palette", true)}
-      {group("Шрифт", "Шрифты встроены в устройство посетителя — сайт загружается быстро.", options.fonts, "font")}
-      {group("Форма кнопок и карточек", "Влияет на общее настроение.", options.corners, "corners")}
-      {group("Первый экран", "Как расположить заголовок и кнопку.", options.heroLayouts, "heroLayout")}
+      {group(t("Цвета"), t("Все палитры проверены: текст хорошо читается на телефоне."), options.palettes, "palette", true)}
+      {group(t("Шрифт"), t("Шрифты встроены в устройство посетителя — сайт загружается быстро."), options.fonts, "font")}
+      {group(t("Форма кнопок и карточек"), t("Влияет на общее настроение."), options.corners, "corners")}
+      {group(t("Первый экран"), t("Как расположить заголовок и кнопку."), options.heroLayouts, "heroLayout")}
     </div>
   );
 }

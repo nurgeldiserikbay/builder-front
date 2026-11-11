@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
@@ -39,39 +40,39 @@ export default function MasterInvitePage() {
       <header className={styles.top}><div className={styles.topInner}><a className={styles.brand} href="/"><span aria-hidden="true">B</span>BuildPath</a></div></header>
       <main className={styles.container}>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
-        {!invite && !error && <p className={styles.muted}>Загружаем приглашение…</p>}
+        {!invite && !error && <p className={styles.muted}>{t("Загружаем приглашение…")}</p>}
         {invite && (
           <>
-            <p className={styles.kicker}>Приглашение мастеру</p>
-            <h1 className={styles.h1}>Ваши записи в «{invite.projectName}»</h1>
+            <p className={styles.kicker}>{t("Приглашение мастеру")}</p>
+            <h1 className={styles.h1}>{t("Ваши записи в «")}{invite.projectName}»</h1>
             <section className={styles.card}>
-              <p style={{ margin: "0 0 8px" }}>{invite.invitedBy} приглашает вас видеть записи клиентов{invite.masterName ? <> к мастеру <strong>{invite.masterName}</strong></> : null}.</p>
-              <p className={styles.cardTitle}>Что вы увидите</p>
+              <p style={{ margin: "0 0 8px" }}>{invite.invitedBy}{" "}{t("приглашает вас видеть записи клиентов")}{invite.masterName ? <>{" "}{t("к мастеру")}{" "}<strong>{invite.masterName}</strong></> : null}.</p>
+              <p className={styles.cardTitle}>{t("Что вы увидите")}</p>
               <ul className={styles.list}>
-                <li>Только записи к вам: день, время, услугу.</li>
-                <li>Имя, телефон и комментарий клиента — чтобы связаться по записи.</li>
-                <li>Новые записи и отмены — в Telegram или на почту.</li>
+                <li>{t("Только записи к вам: день, время, услугу.")}</li>
+                <li>{t("Имя, телефон и комментарий клиента — чтобы связаться по записи.")}</li>
+                <li>{t("Новые записи и отмены — в Telegram или на почту.")}</li>
               </ul>
-              <p className={styles.cardTitle} style={{ marginTop: 12 }}>Что останется у владельца</p>
+              <p className={styles.cardTitle} style={{ marginTop: 12 }}>{t("Что останется у владельца")}</p>
               <ul className={styles.list}>
-                <li>Записи других мастеров, сайт, проект и настройки.</li>
-                <li>Отмена записей. Вы отмечаете только, пришёл ли клиент.</li>
+                <li>{t("Записи других мастеров, сайт, проект и настройки.")}</li>
+                <li>{t("Отмена записей. Вы отмечаете только, пришёл ли клиент.")}</li>
               </ul>
             </section>
-            {invite.status === "active" && <a className={`${styles.button} ${styles.block}`} href="/master">Открыть мои записи</a>}
-            {(invite.expired || invite.status === "revoked") && <p className={`${styles.notice} ${styles.warn}`}>{invite.expired ? "Срок приглашения истёк. Попросите владельца прислать новое." : "Приглашение больше не действует."}</p>}
+            {invite.status === "active" && <a className={`${styles.button} ${styles.block}`} href="/master">{t("Открыть мои записи")}</a>}
+            {(invite.expired || invite.status === "revoked") && <p className={`${styles.notice} ${styles.warn}`}>{invite.expired ? t("Срок приглашения истёк. Попросите владельца прислать новое.") : t("Приглашение больше не действует.")}</p>}
             {invite.status === "invited" && !invite.expired && (signedIn === false ? (
               <section className={styles.card}>
-                <p style={{ margin: "0 0 10px" }}>Приглашение отправлено на {invite.email}. Войдите или зарегистрируйтесь с этой почтой и вернитесь по этой же ссылке.</p>
-                <a className={`${styles.button} ${styles.block}`} href={`/login?next=${encodeURIComponent(`/master-invite/${token}`)}`}>Войти или зарегистрироваться</a>
+                <p style={{ margin: "0 0 10px" }}>{t("Приглашение отправлено на")}{" "}{invite.email}{t(". Войдите или зарегистрируйтесь с этой почтой и вернитесь по этой же ссылке.")}</p>
+                <a className={`${styles.button} ${styles.block}`} href={`/login?next=${encodeURIComponent(`/master-invite/${token}`)}`}>{t("Войти или зарегистрироваться")}</a>
               </section>
             ) : (
               <>
                 <label style={{ display: "flex", gap: 10, alignItems: "flex-start", margin: "0 0 14px" }}>
                   <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} style={{ width: 22, height: 22, flex: "none" }} />
-                  <span>Я использую данные клиентов только для работы по записи и никому их не передаю</span>
+                  <span>{t("Я использую данные клиентов только для работы по записи и никому их не передаю")}</span>
                 </label>
-                <button className={`${styles.button} ${styles.block}`} disabled={!agreed || busy || signedIn === null} onClick={accept}>{busy ? "Подключаем…" : "Принять приглашение"}</button>
+                <button className={`${styles.button} ${styles.block}`} disabled={!agreed || busy || signedIn === null} onClick={accept}>{busy ? t("Подключаем…") : t("Принять приглашение")}</button>
               </>
             ))}
           </>

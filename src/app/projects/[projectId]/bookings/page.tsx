@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import styles from "../../journey.module.css";
+import { MastersPanel } from "./masters-panel";
 
 type Booking = {
   id: string; serviceName: string; minutes: number; price: string | null; masterName: string; startsAt: string; endsAt: string; timezone: string;
@@ -131,6 +132,7 @@ export default function BookingsPage() {
             })}
           </section>
         ))}
+        <MastersPanel projectId={projectId} />
       </main>
     </div>
   );

@@ -26,15 +26,18 @@ export default function ProjectsPage() {
   const [name, setName] = useState("");
   const [start, setStart] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const [masterPlaces, setMasterPlaces] = useState(0);
 
   useEffect(() => {
     (async () => {
       try {
-        const [workspaces, catalog, mine] = await Promise.all([
+        const [workspaces, catalog, mine, master] = await Promise.all([
           api<Workspace[]>("/workspaces"),
           api<{ version: string; projectTypes: CatalogType[] }>("/journey/catalog"),
           api<Assignment[]>("/me/assignments"),
+          api<{ places: Array<{ accessId: string }> }>("/me/master-bookings").catch(() => ({ places: [] })),
         ]);
+        setMasterPlaces(master.places.length);
         setTypes(catalog.projectTypes);
         setAssignments(mine);
         const first = workspaces[0] ?? null;
@@ -42,7 +45,7 @@ export default function ProjectsPage() {
         if (first) {
           const list = await api<Project[]>(`/projects?workspaceId=${encodeURIComponent(first.id)}`);
           setProjects(list.filter((project) => project.projectType));
-          if (!list.some((project) => project.projectType) && mine.length === 0) setCreating(true);
+          if (!list.some((project) => project.projectType) && mine.length === 0 && master.places.length === 0) setCreating(true);
         }
       } catch (caught) {
         if (caught instanceof ApiError && caught.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return; }
@@ -103,6 +106,12 @@ export default function ProjectsPage() {
                   <a key={project.id} className={styles.projectCard} href={`/projects/${project.id}`}><strong>{project.name}</strong></a>
                 ))}
               </details>
+            )}
+            {masterPlaces > 0 && (
+              <a className={styles.projectCard} href="/master" style={{ marginTop: 14 }}>
+                <strong style={{ fontSize: 17 }}>Мои записи как мастера</strong>
+                <div className={styles.small}>Клиенты, которые записались к вам{masterPlaces > 1 ? ` — в ${masterPlaces} местах` : ""}</div>
+              </a>
             )}
             {assignments.length > 0 && (
               <>

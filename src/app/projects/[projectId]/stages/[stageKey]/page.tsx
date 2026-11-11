@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import {
-  explainError, isPlanMessage, originLabels, statusTone, type Content, type Design, type Journey, type Offer, type SiteCheck, type StageDetail, type Sitemap,
+  explainError, isPlanMessage, originLabels, statusTone, type Content, type Design, type Journey, type Offer, type SiteCheck, type StageDetail, type Sitemap, type Catalog,
 } from "@/lib/journey";
 import { ContentEditor, DesignPicker, FieldsForm } from "./editors";
 import { SpecialistsPanel, SuggestionsPanel } from "./specialists";
@@ -15,6 +15,7 @@ import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
 import { ProcessEditor, blankProcess, type BusinessProcess } from "./process-editor";
 import { SitemapEditor, blankSitemap } from "./sitemap-editor";
+import { CatalogEditor } from "./catalog-editor";
 import { formatTenge } from "@/lib/money";
 import styles from "../../../journey.module.css";
 
@@ -339,6 +340,18 @@ export default function StagePage() {
           </div>
           {!stage.inputsReady && <p className={styles.small}>{t("Черновик от ИИ станет доступен, когда будет принят паспорт проекта. Описать процесс самому можно уже сейчас.")}</p>}
         </section>
+      )}
+      {/* Starting point for an empty catalogue */}
+      {stage.artifactType === "catalog" && !detail.current && draft === null && stage.canEdit && detail.options.catalog && (
+        <section className={styles.card} aria-label={t("Как начать")}>
+          <p className={styles.cardTitle}>{t("Как начнём каталог?")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{t("Если список товаров уже есть, вставьте его ниже, в «У меня уже есть готовое». Или заполните каталог по одному товару.")}</p>
+          <button className={styles.button} onClick={() => edit(detail.options.catalog!.template)}>{t("Заполнить вручную")}</button>
+        </section>
+      )}
+      {stage.artifactType === "catalog" && stage.status !== "locked" && draft !== null && detail.options.catalog && (
+        <CatalogEditor projectId={projectId} value={draft as Catalog} onChange={edit} options={detail.options.catalog} disabled={!stage.canEdit}
+          issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
       )}
       {/* Starting point for an empty sitemap */}
       {stage.artifactType === "sitemap" && !detail.current && draft === null && stage.canEdit && (

@@ -94,7 +94,7 @@ const itemTypes: SectionType[] = ["services", "benefits", "steps", "faq"];
 const photoTypes: SectionType[] = ["hero", "about", "services", "benefits", "cta"];
 
 /** Loads processed photos with the session cookie and keeps object URLs for thumbnails. */
-function usePhotoLibrary(projectId: string) {
+export function usePhotoLibrary(projectId: string) {
   const [items, setItems] = useState<ProjectImage[] | null>(null);
   const [limit, setLimit] = useState(30);
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -115,7 +115,7 @@ function usePhotoLibrary(projectId: string) {
 }
 type PhotoLibrary = ReturnType<typeof usePhotoLibrary>;
 
-function PhotoControl({ projectId, library, imageId, onSelect, disabled, sectionLabel }: {
+export function PhotoControl({ projectId, library, imageId, onSelect, disabled, sectionLabel }: {
   projectId: string; library: PhotoLibrary; imageId: string | null; onSelect: (id: string | null) => void; disabled: boolean; sectionLabel: string;
 }) {
   const [open, setOpen] = useState(false);

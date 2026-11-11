@@ -26,6 +26,7 @@ export default function ProjectsPage() {
   const [typeKey, setTypeKey] = useState<CatalogType["key"] | null>(null);
   const [name, setName] = useState("");
   const [start, setStart] = useState<string>("");
+  const [siteLocale, setSiteLocale] = useState<"ru" | "en">(() => (getLocale() === "en" ? "en" : "ru"));
   const [busy, setBusy] = useState(false);
   const [masterPlaces, setMasterPlaces] = useState(0);
 
@@ -67,7 +68,7 @@ export default function ProjectsPage() {
     try {
       const project = await api<Project>("/projects", {
         method: "POST",
-        body: JSON.stringify({ workspaceId: workspace.id, name: name.trim(), startMode: "build", locale: getLocale(), projectType: type.key, ...(start ? { startStageKey: start } : {}) }),
+        body: JSON.stringify({ workspaceId: workspace.id, name: name.trim(), startMode: "build", locale: siteLocale, projectType: type.key, ...(start ? { startStageKey: start } : {}) }),
       });
       router.push(`/projects/${project.id}`);
     } catch (caught) {
@@ -162,6 +163,17 @@ export default function ProjectsPage() {
                   <span className={styles.label}>{t("Название проекта")}</span>
                   <input className={styles.input} value={name} maxLength={120} autoFocus placeholder={t("Например: Сайт для тортов")} onChange={(event) => setName(event.target.value)} />
                 </label>
+                <fieldset className={styles.field} style={{ border: 0, padding: 0, margin: "16px 0 20px" }}>
+                  <legend className={styles.label}>{t("Язык сайта")}</legend>
+                  <div className={styles.row} role="radiogroup" aria-label={t("Язык сайта")}>
+                    {(["ru", "en"] as const).map((code) => (
+                      <button key={code} type="button" role="radio" aria-checked={siteLocale === code} className={siteLocale === code ? styles.button : styles.ghost} onClick={() => setSiteLocale(code)}>
+                        {code === "ru" ? "Русский" : "English"}
+                      </button>
+                    ))}
+                  </div>
+                  <span className={styles.small}>{t("На этом языке будут кнопки, формы и страницы записи на сайте, письма вашим клиентам, шаблоны и черновики ИИ. Интерфейс BuildPath остаётся на вашем языке. Поменять язык сайта после создания пока нельзя.")}</span>
+                </fieldset>
                 <div className={styles.row}>
                   <button className={styles.ghost} onClick={() => setStep(1)}>{t("Назад")}</button>
                   <div className={styles.spacer} />

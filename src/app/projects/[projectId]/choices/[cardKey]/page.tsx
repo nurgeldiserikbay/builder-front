@@ -1,5 +1,6 @@
 "use client";
 
+import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
@@ -22,34 +23,34 @@ type CardState = {
 };
 type Verification = { url: string | null; status: "matches" | "outdated" | "different" | "unreachable" | "not_allowed" | "not_published"; checkedAt: string; httpStatus: number | null };
 const verificationText: Record<Verification["status"], string> = {
-  matches: "Сайт открывается, и это последняя принятая версия.",
-  outdated: "Сайт открывается, но это старая версия. Отправьте или загрузите последнюю и проверьте ещё раз.",
-  different: "По этому адресу открывается другая страница. Проверьте адрес и что загружен файл index.html из BuildPath.",
-  unreachable: "Сайт не открылся. Если вы только что всё настроили, подождите несколько минут и проверьте снова.",
-  not_allowed: "Этот адрес проверить нельзя: нужен обычный адрес сайта в интернете, начинающийся с https://.",
-  not_published: "Сайт ещё не опубликован на BuildPath.",
+  matches: t("Сайт открывается, и это последняя принятая версия."),
+  outdated: t("Сайт открывается, но это старая версия. Отправьте или загрузите последнюю и проверьте ещё раз."),
+  different: t("По этому адресу открывается другая страница. Проверьте адрес и что загружен файл index.html из BuildPath."),
+  unreachable: t("Сайт не открылся. Если вы только что всё настроили, подождите несколько минут и проверьте снова."),
+  not_allowed: t("Этот адрес проверить нельзя: нужен обычный адрес сайта в интернете, начинающийся с https://."),
+  not_published: t("Сайт ещё не опубликован на BuildPath."),
 };
 type Preview = { branch: string; files: Array<{ path: string; bytes: number }>; siteIncluded: boolean; complete: boolean };
 
 const errors: Record<string, string> = {
-  REPO_TOKEN_INVALID: "Ключ не подошёл: проверьте, что скопировали его целиком и срок не истёк.",
-  REPO_ACCESS_DENIED: "Ключу не хватает прав. Проверьте, что выбран нужный репозиторий и разрешена запись.",
-  REPO_NOT_FOUND: "Репозиторий не найден. Проверьте адрес и что ключ выдан именно для него.",
-  REPO_WRITE_NOT_ALLOWED: "Ключ видит репозиторий, но не может в него записывать. Дайте ключу право записи (Contents: Read and write или роль Developer).",
-  REPO_URL_INVALID: "Не похоже на адрес репозитория. Скопируйте адрес из браузера, например https://github.com/имя/my-site.",
-  REPO_URL_NOT_GITHUB: "Это не адрес GitHub. Для GitLab выберите вариант «GitLab».",
-  REPO_HOST_NOT_ALLOWED: "Этот сервер недоступен из интернета, подключить его нельзя.",
-  REPO_PROVIDER_UNAVAILABLE: "Сервис не ответил. Попробуйте ещё раз через минуту.",
-  REPO_PROVIDER_FAILED: "Сервис вернул ошибку. Попробуйте ещё раз позже.",
-  REPO_CONNECT_NOT_CONFIGURED: "Подключение репозиториев пока не включено на этом сервере BuildPath. Можно скачать архив.",
-  REPO_RECONNECT_REQUIRED: "Сохранённый ключ больше не читается. Подключите репозиторий заново.",
-  CHOICE_FORBIDDEN: "Решение принимает владелец проекта.",
-  CHOICE_REQUIREMENT_NOT_MET: "Для этого варианта сначала нужно другое решение — смотрите подсказку у варианта.",
-  SITE_NOT_ACCEPTED: "Сначала примите этап «Сборка и проверка»: проверять и выкладывать можно только принятую версию сайта.",
-  SITE_URL_REQUIRED: "Вставьте адрес сайта.",
+  REPO_TOKEN_INVALID: t("Ключ не подошёл: проверьте, что скопировали его целиком и срок не истёк."),
+  REPO_ACCESS_DENIED: t("Ключу не хватает прав. Проверьте, что выбран нужный репозиторий и разрешена запись."),
+  REPO_NOT_FOUND: t("Репозиторий не найден. Проверьте адрес и что ключ выдан именно для него."),
+  REPO_WRITE_NOT_ALLOWED: t("Ключ видит репозиторий, но не может в него записывать. Дайте ключу право записи (Contents: Read and write или роль Developer)."),
+  REPO_URL_INVALID: t("Не похоже на адрес репозитория. Скопируйте адрес из браузера, например https://github.com/имя/my-site."),
+  REPO_URL_NOT_GITHUB: t("Это не адрес GitHub. Для GitLab выберите вариант «GitLab»."),
+  REPO_HOST_NOT_ALLOWED: t("Этот сервер недоступен из интернета, подключить его нельзя."),
+  REPO_PROVIDER_UNAVAILABLE: t("Сервис не ответил. Попробуйте ещё раз через минуту."),
+  REPO_PROVIDER_FAILED: t("Сервис вернул ошибку. Попробуйте ещё раз позже."),
+  REPO_CONNECT_NOT_CONFIGURED: t("Подключение репозиториев пока не включено на этом сервере BuildPath. Можно скачать архив."),
+  REPO_RECONNECT_REQUIRED: t("Сохранённый ключ больше не читается. Подключите репозиторий заново."),
+  CHOICE_FORBIDDEN: t("Решение принимает владелец проекта."),
+  CHOICE_REQUIREMENT_NOT_MET: t("Для этого варианта сначала нужно другое решение — смотрите подсказку у варианта."),
+  SITE_NOT_ACCEPTED: t("Сначала примите этап «Сборка и проверка»: проверять и выкладывать можно только принятую версию сайта."),
+  SITE_URL_REQUIRED: t("Вставьте адрес сайта."),
 };
 const message = (caught: unknown) => (caught instanceof ApiError && errors[caught.message]) || explainError(caught);
-const date = (value: string) => new Date(value).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+const date = (value: string) => new Date(value).toLocaleString(dateLocale(), { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
 export default function ChoicePage() {
   const router = useRouter();
@@ -77,24 +78,24 @@ export default function ChoicePage() {
     try { const next = await action(); if (next) setState(next); } catch (caught) { setError(message(caught)); } finally { setBusy(""); }
   }
 
-  if (!state) return <Shell projectId={projectId}>{error ? <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p> : <p className={styles.muted}>Загружаем…</p>}</Shell>;
+  if (!state) return <Shell projectId={projectId}>{error ? <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p> : <p className={styles.muted}>{t("Загружаем…")}</p>}</Shell>;
   const { card, recommendation, choice, repository } = state;
   const chosen = choice ? card.options.find((option) => option.key === choice.optionKey) ?? null : null;
   const showOptions = !chosen || picking;
   const tokenForm = chosen ? (
 
-                        <form onSubmit={(event) => { event.preventDefault(); void run("connect", async () => { const next = await api<CardState>(`/projects/${projectId}/repository`, { method: "POST", body: JSON.stringify({ provider: chosen.key, repoUrl, token }) }); setToken(""); setDone("Готово: BuildPath может записывать в репозиторий. Ничего не отправлено — отправка только по вашей кнопке."); return next; }); }}>
-                          <label className={styles.label} htmlFor="repo-url">Адрес репозитория</label>
-                          <input id="repo-url" className={styles.input} inputMode="url" required maxLength={500} placeholder={chosen.key === "github" ? "https://github.com/имя/my-site" : "https://gitlab.com/имя/my-site"} value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} />
-                          <label className={styles.label} htmlFor="repo-token">Ключ доступа</label>
+                        <form onSubmit={(event) => { event.preventDefault(); void run("connect", async () => { const next = await api<CardState>(`/projects/${projectId}/repository`, { method: "POST", body: JSON.stringify({ provider: chosen.key, repoUrl, token }) }); setToken(""); setDone(t("Готово: BuildPath может записывать в репозиторий. Ничего не отправлено — отправка только по вашей кнопке.")); return next; }); }}>
+                          <label className={styles.label} htmlFor="repo-url">{t("Адрес репозитория")}</label>
+                          <input id="repo-url" className={styles.input} inputMode="url" required maxLength={500} placeholder={chosen.key === "github" ? t("https://github.com/имя/my-site") : t("https://gitlab.com/имя/my-site")} value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} />
+                          <label className={styles.label} htmlFor="repo-token">{t("Ключ доступа")}</label>
                           <input id="repo-token" className={styles.input} type="password" autoComplete="off" required maxLength={400} value={token} onChange={(event) => setToken(event.target.value)} />
-                          <button className={styles.button} style={{ marginTop: 8 }} disabled={Boolean(busy)}>{busy === "connect" ? "Проверяем…" : "Проверить и подключить"}</button>
+                          <button className={styles.button} style={{ marginTop: 8 }} disabled={Boolean(busy)}>{busy === "connect" ? t("Проверяем…") : t("Проверить и подключить")}</button>
                         </form>
   ) : null;
 
   return (
     <Shell projectId={projectId}>
-      <p className={styles.kicker}>Решение по проекту</p>
+      <p className={styles.kicker}>{t("Решение по проекту")}</p>
       <h1 className={styles.h1}>{card.title}</h1>
       <p style={{ marginTop: 0 }}>{card.why}</p>
       {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
@@ -107,37 +108,37 @@ export default function ChoicePage() {
             const recommended = option.key === recommendation.optionKey;
             return (
               <section key={option.key} className={styles.card} style={recommended ? { boxShadow: "0 0 0 2px #255b42" } : undefined} aria-label={option.title}>
-                {recommended && <span className={styles.mapBadge}>Рекомендуем</span>}
+                {recommended && <span className={styles.mapBadge}>{t("Рекомендуем")}</span>}
                 <p className={styles.cardTitle} style={{ marginTop: recommended ? 8 : 0 }}>{option.title}</p>
                 <p style={{ margin: "0 0 8px" }}>{option.summary}</p>
-                {recommended && <p className={styles.small} style={{ margin: "0 0 8px" }}><strong>Почему:</strong> {recommendation.reason}</p>}
-                <p className={styles.small} style={{ margin: "0 0 4px" }}><strong>Плюсы</strong></p>
+                {recommended && <p className={styles.small} style={{ margin: "0 0 8px" }}><strong>{t("Почему:")}</strong> {recommendation.reason}</p>}
+                <p className={styles.small} style={{ margin: "0 0 4px" }}><strong>{t("Плюсы")}</strong></p>
                 <ul className={styles.list} style={{ marginTop: 0 }}>{option.pros.map((item) => <li key={item}>{item}</li>)}</ul>
-                <p className={styles.small} style={{ margin: "0 0 4px" }}><strong>Ограничения</strong></p>
+                <p className={styles.small} style={{ margin: "0 0 4px" }}><strong>{t("Ограничения")}</strong></p>
                 <ul className={styles.list} style={{ marginTop: 0 }}>{option.limits.map((item) => <li key={item}>{item}</li>)}</ul>
-                <p className={styles.small} style={{ margin: "0 0 4px" }}><strong>Цена:</strong> {option.cost}. <strong>Что делать потом:</strong> {option.upkeep}. <strong>Если захотите уйти:</strong> {option.leaving}.</p>
-                {option.requires && state.available?.[option.key] === false && <p className={`${styles.notice} ${styles.info}`}>{option.requires.explanation} <a href={`/projects/${projectId}/choices/${option.requires.card}`}>Открыть →</a></p>}
+                <p className={styles.small} style={{ margin: "0 0 4px" }}><strong>{t("Цена:")}</strong> {option.cost}. <strong>{t("Что делать потом:")}</strong> {option.upkeep}. <strong>{t("Если захотите уйти:")}</strong> {option.leaving}.</p>
+                {option.requires && state.available?.[option.key] === false && <p className={`${styles.notice} ${styles.info}`}>{option.requires.explanation} <a href={`/projects/${projectId}/choices/${option.requires.card}`}>{t("Открыть →")}</a></p>}
                 {state.canDecide && <button className={recommended ? styles.button : styles.secondary} disabled={Boolean(busy) || state.available?.[option.key] === false}
                   onClick={() => run(option.key, async () => { const next = await api<CardState>(`/projects/${projectId}/choices/${cardKey}`, { method: "POST", body: JSON.stringify({ optionKey: option.key }) }); setPicking(false); return next; })}>
-                  {busy === option.key ? "Сохраняем…" : choice?.optionKey === option.key ? "Оставить этот вариант" : "Выбрать"}
+                  {busy === option.key ? t("Сохраняем…") : choice?.optionKey === option.key ? t("Оставить этот вариант") : t("Выбрать")}
                 </button>}
               </section>
             );
           })}
-          <p className={styles.small}>Сведения о сервисах проверены {new Date(card.checkedAt).toLocaleDateString("ru-RU", { dateStyle: "long" })}.</p>
+          <p className={styles.small}>{t("Сведения о сервисах проверены")}{" "}{new Date(card.checkedAt).toLocaleDateString(dateLocale(), { dateStyle: "long" })}.</p>
         </>
       )}
 
       {chosen && !picking && (
         <>
           <section className={styles.card}>
-            <p className={styles.kicker}>Ваш выбор</p>
+            <p className={styles.kicker}>{t("Ваш выбор")}</p>
             <p className={styles.cardTitle} style={{ marginTop: 0 }}>{chosen.title}</p>
-            <p className={styles.small} style={{ margin: 0 }}>Выбрано {date(choice!.chosenAt)}.{chosen.key !== recommendation.optionKey ? " Это не рекомендованный вариант — так тоже можно." : ""}</p>
-            {state.canDecide && <button className={styles.ghost} style={{ marginTop: 8 }} onClick={() => setPicking(true)}>Выбрать другой вариант</button>}
+            <p className={styles.small} style={{ margin: 0 }}>{t("Выбрано")}{" "}{date(choice!.chosenAt)}.{chosen.key !== recommendation.optionKey ? t(" Это не рекомендованный вариант — так тоже можно.") : ""}</p>
+            {state.canDecide && <button className={styles.ghost} style={{ marginTop: 8 }} onClick={() => setPicking(true)}>{t("Выбрать другой вариант")}</button>}
           </section>
 
-          <h2 className={styles.h2}>Что нужно от вас</h2>
+          <h2 className={styles.h2}>{t("Что нужно от вас")}</h2>
           <ol className={styles.stageList}>
             {chosen.steps.map((step, index) => {
               const stepDone = choice!.stepsDone.includes(step.key) || (step.kind === "domain" && state.context?.publication?.domainStatus === "active");
@@ -147,9 +148,9 @@ export default function ChoicePage() {
                     <strong className={styles.mapTitle}>{stepDone ? "✓ " : `${index + 1}. `}{step.title}</strong>
                     {step.text.map((line) => <span key={line} className={styles.small} style={{ display: "block" }}>{line}</span>)}
                     {step.link && <a href={step.link.url} target="_blank" rel="noreferrer">{step.link.label} →</a>}
-                    {step.kind === "download" && <a href={`/projects/${projectId}#result-title`}>Перейти к файлам →</a>}
-                    {step.kind === "publish" && <span className={styles.small}>{state.context?.publication?.status === "live" ? `Сайт опубликован${state.context.publication.upToDate ? "" : ", но это не последняя принятая версия — обновите публикацию"}.` : "Сайт ещё не опубликован."} <a href={`/projects/${projectId}#publish-title`}>Открыть публикацию →</a></span>}
-                    {step.kind === "push" && <span className={styles.small}>{state.context?.repository?.pushedAt ? `Последняя отправка в ${state.context.repository.repoPath}: ${date(state.context.repository.pushedAt)}.` : "Ещё не отправляли."} <a href={`/projects/${projectId}/choices/code_hosting`}>Открыть «Где хранить код» →</a></span>}
+                    {step.kind === "download" && <a href={`/projects/${projectId}#result-title`}>{t("Перейти к файлам →")}</a>}
+                    {step.kind === "publish" && <span className={styles.small}>{state.context?.publication?.status === "live" ? t("Сайт опубликован{0}.", [state.context.publication.upToDate ? "" : t(", но это не последняя принятая версия — обновите публикацию")]) : t("Сайт ещё не опубликован.")} <a href={`/projects/${projectId}#publish-title`}>{t("Открыть публикацию →")}</a></span>}
+                    {step.kind === "push" && <span className={styles.small}>{state.context?.repository?.pushedAt ? t("Последняя отправка в {0}: {1}.", [state.context.repository.repoPath, date(state.context.repository.pushedAt)]) : t("Ещё не отправляли.")} <a href={`/projects/${projectId}/choices/code_hosting`}>{t("Открыть «Где хранить код» →")}</a></span>}
                     {step.kind === "domain" && <DomainConnect projectId={projectId} canDecide={state.canDecide} onChange={() => void load()} />}
                     {step.kind === "package" && state.canDecide && (
                       <button className={styles.secondary} style={{ marginTop: 4 }} disabled={Boolean(busy)} onClick={() => run("package", async () => {
@@ -158,15 +159,15 @@ export default function ChoicePage() {
                         const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${pack.folder}.zip`; document.body.appendChild(link); link.click(); link.remove();
                         await api(`/projects/${projectId}/choices/${cardKey}/steps`, { method: "POST", body: JSON.stringify({ stepKey: step.key, done: true }) });
                         return api<CardState>(`/projects/${projectId}/choices/${cardKey}`);
-                      })}>{busy === "package" ? "Готовим…" : "Скачать пакет (zip)"}</button>
+                      })}>{busy === "package" ? t("Готовим…") : t("Скачать пакет (zip)")}</button>
                     )}
                     {step.kind === "verify" && state.canDecide && (
                       <form onSubmit={(event) => { event.preventDefault(); void run("verify", () => api<CardState>(`/projects/${projectId}/deployment/verify`, { method: "POST", body: JSON.stringify({ url: chosen.key === "buildpath" ? null : siteUrl }) })); }}>
-                        {chosen.key !== "buildpath" && <input className={styles.input} inputMode="url" required maxLength={500} placeholder={chosen.key === "github_pages" ? "https://имя.github.io/my-site/" : "https://ваш-домен.kz"} value={siteUrl} onChange={(event) => setSiteUrl(event.target.value)} />}
-                        <button className={styles.button} style={{ marginTop: 6 }} disabled={Boolean(busy)}>{busy === "verify" ? "Проверяем…" : "Проверить"}</button>
+                        {chosen.key !== "buildpath" && <input className={styles.input} inputMode="url" required maxLength={500} placeholder={chosen.key === "github_pages" ? t("https://имя.github.io/my-site/") : t("https://ваш-домен.kz")} value={siteUrl} onChange={(event) => setSiteUrl(event.target.value)} />}
+                        <button className={styles.button} style={{ marginTop: 6 }} disabled={Boolean(busy)}>{busy === "verify" ? t("Проверяем…") : t("Проверить")}</button>
                         {choice?.verification && <p className={`${styles.notice} ${choice.verification.status === "matches" ? styles.success : styles.warn}`} style={{ marginTop: 8 }}>
-                          {verificationText[choice.verification.status]}{choice.verification.httpStatus && choice.verification.status === "unreachable" ? ` (ответ сервера: ${choice.verification.httpStatus})` : ""}
-                          <br /><span className={styles.small}>{choice.verification.url ? `${choice.verification.url} · ` : ""}проверено {date(choice.verification.checkedAt)}</span>
+                          {verificationText[choice.verification.status]}{choice.verification.httpStatus && choice.verification.status === "unreachable" ? t(" (ответ сервера: {0})", [choice.verification.httpStatus]) : ""}
+                          <br /><span className={styles.small}>{choice.verification.url ? `${choice.verification.url} · ` : ""}{t("проверено")}{" "}{date(choice.verification.checkedAt)}</span>
                         </p>}
                       </form>
                     )}
@@ -174,14 +175,14 @@ export default function ChoicePage() {
                       <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
                         <input type="checkbox" checked={stepDone} disabled={Boolean(busy)} style={{ width: 20, height: 20 }}
                           onChange={(event) => run(step.key, () => api<CardState>(`/projects/${projectId}/choices/${cardKey}/steps`, { method: "POST", body: JSON.stringify({ stepKey: step.key, done: event.target.checked }) }))} />
-                        <span className={styles.small}>Готово</span>
+                        <span className={styles.small}>{t("Готово")}</span>
                       </label>
                     )}
                     {step.kind === "connect" && !repository && state.canDecide && (
                       state.connectAvailable ? (
                         chosen.key === "github" ? (
                           <GithubConnect projectId={projectId} projectName={state.context?.publication?.slug ?? ""} fallback={tokenForm}
-                            onConnected={(next) => { setState(next as CardState); setDone("Готово: репозиторий подключён. Ничего не отправлено — отправка только по вашей кнопке."); }} />
+                            onConnected={(next) => { setState(next as CardState); setDone(t("Готово: репозиторий подключён. Ничего не отправлено — отправка только по вашей кнопке.")); }} />
                         ) : tokenForm
                       ) : <p className={`${styles.notice} ${styles.info}`}>{errors.REPO_CONNECT_NOT_CONFIGURED}</p>
                     )}
@@ -192,29 +193,29 @@ export default function ChoicePage() {
           </ol>
 
           {repository && (
-            <section className={styles.card} aria-label="Репозиторий">
-              <p className={styles.kicker}>Подключено</p>
+            <section className={styles.card} aria-label={t("Репозиторий")}>
+              <p className={styles.kicker}>{t("Подключено")}</p>
               <p className={styles.cardTitle} style={{ marginTop: 0 }}><a href={repository.webUrl} target="_blank" rel="noreferrer">{repository.repoPath}</a></p>
               <p className={styles.small} style={{ margin: "0 0 8px" }}>
-                {repository.isPrivate ? "Закрытый репозиторий" : "Открытый репозиторий — код видят все"} · ветка {repository.defaultBranch} · {repository.connectedVia === "oauth" ? "через ваш аккаунт GitHub" : `ключ ${repository.tokenHint}`} · проверено {date(repository.verifiedAt)}
-                {repository.lastPushAt && <><br />Последняя отправка: {date(repository.lastPushAt)}{repository.lastCommitUrl && <> · <a href={repository.lastCommitUrl} target="_blank" rel="noreferrer">посмотреть</a></>}</>}
-                {repository.lastError && <><br />Последняя попытка не удалась: {errors[repository.lastError] ?? repository.lastError}</>}
+                {repository.isPrivate ? t("Закрытый репозиторий") : t("Открытый репозиторий — код видят все")}{" "}{t("· ветка")}{" "}{repository.defaultBranch} · {repository.connectedVia === "oauth" ? t("через ваш аккаунт GitHub") : t("ключ {0}", [repository.tokenHint])}{" "}{t("· проверено")}{" "}{date(repository.verifiedAt)}
+                {repository.lastPushAt && <><br />{t("Последняя отправка:")}{" "}{date(repository.lastPushAt)}{repository.lastCommitUrl && <> · <a href={repository.lastCommitUrl} target="_blank" rel="noreferrer">{t("посмотреть")}</a></>}</>}
+                {repository.lastError && <><br />{t("Последняя попытка не удалась:")}{" "}{errors[repository.lastError] ?? repository.lastError}</>}
               </p>
-              {state.canDecide && !preview && <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("preview", async () => { setPreview(await api<Preview>(`/projects/${projectId}/repository/push`)); })}>Отправить в репозиторий…</button>}
+              {state.canDecide && !preview && <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("preview", async () => { setPreview(await api<Preview>(`/projects/${projectId}/repository/push`)); })}>{t("Отправить в репозиторий…")}</button>}
               {preview && (
                 <div className={`${styles.notice} ${styles.info}`}>
-                  <p style={{ margin: "0 0 6px" }}>В ветку <strong>{preview.branch}</strong> одним изменением уйдут только принятые результаты:</p>
-                  <ul className={styles.list} style={{ margin: "0 0 6px" }}>{preview.files.map((file) => <li key={file.path}>{file.path} ({Math.max(1, Math.round(file.bytes / 1024))} КБ)</li>)}</ul>
-                  {!preview.siteIncluded && <p style={{ margin: "0 0 6px" }}>Сайт ещё не собран и не принят — уйдёт только описание проекта.</p>}
-                  <p style={{ margin: "0 0 8px" }}>Эти файлы в репозитории будут заменены. Остальные файлы не тронем.</p>
+                  <p style={{ margin: "0 0 6px" }}>{t("В ветку")}{" "}<strong>{preview.branch}</strong>{" "}{t("одним изменением уйдут только принятые результаты:")}</p>
+                  <ul className={styles.list} style={{ margin: "0 0 6px" }}>{preview.files.map((file) => <li key={file.path}>{file.path} ({Math.max(1, Math.round(file.bytes / 1024))}{" "}{t("КБ)")}</li>)}</ul>
+                  {!preview.siteIncluded && <p style={{ margin: "0 0 6px" }}>{t("Сайт ещё не собран и не принят — уйдёт только описание проекта.")}</p>}
+                  <p style={{ margin: "0 0 8px" }}>{t("Эти файлы в репозитории будут заменены. Остальные файлы не тронем.")}</p>
                   <div className={styles.row} style={{ gap: 8, flexWrap: "wrap" }}>
-                    <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("push", async () => { const next = await api<CardState>(`/projects/${projectId}/repository/push`, { method: "POST", body: JSON.stringify({ confirm: true }) }); setPreview(null); setDone("Отправлено в репозиторий."); return next; })}>{busy === "push" ? "Отправляем…" : "Подтверждаю, отправить"}</button>
-                    <button className={styles.ghost} onClick={() => setPreview(null)}>Отмена</button>
+                    <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("push", async () => { const next = await api<CardState>(`/projects/${projectId}/repository/push`, { method: "POST", body: JSON.stringify({ confirm: true }) }); setPreview(null); setDone(t("Отправлено в репозиторий.")); return next; })}>{busy === "push" ? t("Отправляем…") : t("Подтверждаю, отправить")}</button>
+                    <button className={styles.ghost} onClick={() => setPreview(null)}>{t("Отмена")}</button>
                   </div>
                 </div>
               )}
               {state.canDecide && <button className={styles.ghost} style={{ marginTop: 8 }} disabled={Boolean(busy)}
-                onClick={() => { if (window.confirm("Отключить репозиторий? Сохранённый ключ будет удалён. Сам репозиторий и файлы в нём останутся.")) void run("disconnect", () => api<CardState>(`/projects/${projectId}/repository`, { method: "DELETE" })); }}>Отключить</button>}
+                onClick={() => { if (window.confirm(t("Отключить репозиторий? Сохранённый ключ будет удалён. Сам репозиторий и файлы в нём останутся."))) void run("disconnect", () => api<CardState>(`/projects/${projectId}/repository`, { method: "DELETE" })); }}>{t("Отключить")}</button>}
             </section>
           )}
         </>
@@ -227,8 +228,8 @@ function Shell({ projectId, children }: { projectId: string; children: React.Rea
   return (
     <div className={styles.shell}>
       <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.back} href={`/projects/${projectId}`}>← Проект</a>
-        <span className={styles.topTitle}>Решение</span>
+        <a className={styles.back} href={`/projects/${projectId}`}>{t("← Проект")}</a>
+        <span className={styles.topTitle}>{t("Решение")}</span>
       </div></header>
       <main className={styles.container}>{children}</main>
     </div>

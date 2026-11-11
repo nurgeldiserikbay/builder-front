@@ -1,5 +1,6 @@
 "use client";
 
+import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
@@ -13,12 +14,12 @@ type Booking = {
 type Place = { accessId: string; projectId: string; placeName: string; masterName: string | null; archived: boolean; bookings: Booking[] };
 type Telegram = { configured: boolean; linked: boolean; username: string | null };
 
-const statusText: Record<Booking["status"], string> = { booked: "записан", cancelled_by_client: "отменил клиент", cancelled_by_owner: "отменено", done: "пришёл", no_show: "не пришёл" };
+const statusText: Record<Booking["status"], string> = { booked: t("записан"), cancelled_by_client: t("отменил клиент"), cancelled_by_owner: t("отменено"), done: t("пришёл"), no_show: t("не пришёл") };
 const dayOf = (booking: Booking) => {
-  const text = new Date(booking.startsAt).toLocaleDateString("ru-RU", { timeZone: booking.timezone, weekday: "long", day: "numeric", month: "long" });
+  const text = new Date(booking.startsAt).toLocaleDateString(dateLocale(), { timeZone: booking.timezone, weekday: "long", day: "numeric", month: "long" });
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
-const clock = (value: string, timeZone: string) => new Date(value).toLocaleTimeString("ru-RU", { timeZone, hour: "2-digit", minute: "2-digit" });
+const clock = (value: string, timeZone: string) => new Date(value).toLocaleTimeString(dateLocale(), { timeZone, hour: "2-digit", minute: "2-digit" });
 
 /** A master's own bookings in every place that invited them. */
 export default function MasterPage() {
@@ -51,28 +52,28 @@ export default function MasterPage() {
     <div className={styles.shell}>
       <header className={styles.top}><div className={styles.topInner}><a className={styles.brand} href="/projects"><span aria-hidden="true">B</span>BuildPath</a></div></header>
       <main className={styles.container}>
-        <p className={styles.kicker}>Для мастера</p>
-        <h1 className={styles.h1}>Мои записи</h1>
+        <p className={styles.kicker}>{t("Для мастера")}</p>
+        <h1 className={styles.h1}>{t("Мои записи")}</h1>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
-        {!places && !error && <p className={styles.muted}>Загружаем…</p>}
+        {!places && !error && <p className={styles.muted}>{t("Загружаем…")}</p>}
         {telegram?.configured && !telegram.linked && (
           <div className={`${styles.notice} ${styles.info}`}>
-            Новые записи и отмены можно получать в Telegram. Сейчас они приходят на почту.
+            {t("Новые записи и отмены можно получать в Telegram. Сейчас они приходят на почту.")}
             <div className={styles.row} style={{ marginTop: 8 }}>
-              <button className={styles.secondary} onClick={async () => { const link = await api<{ deepLink: string }>("/me/telegram/link", { method: "POST" }); setWaiting(true); window.open(link.deepLink, "_blank", "noopener"); }}>Подключить Telegram</button>
-              {waiting && <button className={styles.ghost} onClick={() => void load().then(() => setWaiting(false))}>Я нажал(а) Start</button>}
+              <button className={styles.secondary} onClick={async () => { const link = await api<{ deepLink: string }>("/me/telegram/link", { method: "POST" }); setWaiting(true); window.open(link.deepLink, "_blank", "noopener"); }}>{t("Подключить Telegram")}</button>
+              {waiting && <button className={styles.ghost} onClick={() => void load().then(() => setWaiting(false))}>{t("Я нажал(а) Start")}</button>}
             </div>
           </div>
         )}
-        {places && places.length === 0 && <div className={`${styles.notice} ${styles.info}`}>Вас пока не пригласили как мастера. Владелец салона может сделать это на странице записей.</div>}
+        {places && places.length === 0 && <div className={`${styles.notice} ${styles.info}`}>{t("Вас пока не пригласили как мастера. Владелец салона может сделать это на странице записей.")}</div>}
         {places?.map((place) => {
           const groups = new Map<string, Booking[]>();
           for (const booking of place.bookings) groups.set(dayOf(booking), [...(groups.get(dayOf(booking)) ?? []), booking]);
           return (
             <section key={place.accessId} aria-label={place.placeName}>
               <h2 className={styles.h2} style={{ marginTop: 18 }}>{place.placeName}</h2>
-              <p className={styles.small} style={{ margin: "0 0 8px" }}>{place.masterName ? `Вы — мастер «${place.masterName}». ` : ""}Записи на 30 дней вперёд. Отменить запись может владелец — позвоните ему, если нужно.</p>
-              {place.bookings.length === 0 && <div className={`${styles.notice} ${styles.info}`}>Записей пока нет.</div>}
+              <p className={styles.small} style={{ margin: "0 0 8px" }}>{place.masterName ? t("Вы — мастер «{0}». ", [place.masterName]) : ""}{t("Записи на 30 дней вперёд. Отменить запись может владелец — позвоните ему, если нужно.")}</p>
+              {place.bookings.length === 0 && <div className={`${styles.notice} ${styles.info}`}>{t("Записей пока нет.")}</div>}
               {[...groups.entries()].map(([day, items]) => (
                 <div key={day}>
                   <h3 className={styles.cardTitle} style={{ margin: "14px 0 8px" }}>{day}</h3>
@@ -91,8 +92,8 @@ export default function MasterPage() {
                         {booking.comment && <p className={styles.small} style={{ margin: "0 0 6px", whiteSpace: "pre-wrap" }}>«{booking.comment}»</p>}
                         {started && ["booked", "done", "no_show"].includes(booking.status) && (
                           <div className={styles.row} style={{ flexWrap: "wrap" }}>
-                            <button className={styles.ghost} aria-pressed={booking.status === "done"} disabled={Boolean(busy)} onClick={() => void mark(booking, "done")}>Пришёл</button>
-                            <button className={styles.ghost} aria-pressed={booking.status === "no_show"} disabled={Boolean(busy)} onClick={() => void mark(booking, "no_show")}>Не пришёл</button>
+                            <button className={styles.ghost} aria-pressed={booking.status === "done"} disabled={Boolean(busy)} onClick={() => void mark(booking, "done")}>{t("Пришёл")}</button>
+                            <button className={styles.ghost} aria-pressed={booking.status === "no_show"} disabled={Boolean(busy)} onClick={() => void mark(booking, "no_show")}>{t("Не пришёл")}</button>
                           </div>
                         )}
                       </article>

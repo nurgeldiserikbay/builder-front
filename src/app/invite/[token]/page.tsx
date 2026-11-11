@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
@@ -45,46 +46,46 @@ export default function InvitePage() {
       <header className={styles.top}><div className={styles.topInner}><a className={styles.brand} href="/"><span aria-hidden="true">B</span>BuildPath</a></div></header>
       <main className={styles.container}>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
-        {!invite && !error && <p className={styles.muted}>Загружаем приглашение…</p>}
+        {!invite && !error && <p className={styles.muted}>{t("Загружаем приглашение…")}</p>}
         {invite && (
           <>
-            <p className={styles.kicker}>Приглашение</p>
-            <h1 className={styles.h1}>{invite.invitedBy} приглашает вас в проект «{invite.projectName}»</h1>
+            <p className={styles.kicker}>{t("Приглашение")}</p>
+            <h1 className={styles.h1}>{invite.invitedBy}{" "}{t("приглашает вас в проект «")}{invite.projectName}»</h1>
             <section className={styles.card}>
-              <p className={styles.cardTitle}>Этап «{invite.stageTitle}» · {invite.roleTitle}</p>
+              <p className={styles.cardTitle}>{t("Этап «")}{invite.stageTitle}» · {invite.roleTitle}</p>
               <p style={{ margin: "0 0 8px" }}>{invite.roleExplanation}</p>
-              <p className={styles.small} style={{ margin: 0 }}>Об этапе: {invite.stagePurpose}</p>
+              <p className={styles.small} style={{ margin: 0 }}>{t("Об этапе:")}{" "}{invite.stagePurpose}</p>
             </section>
             <section className={styles.card}>
-              <p className={styles.cardTitle}>Что вам будет доступно</p>
+              <p className={styles.cardTitle}>{t("Что вам будет доступно")}</p>
               <ul className={styles.list}>{invite.can.map((item) => <li key={item}>{item}</li>)}</ul>
-              {invite.role === "lead" && <p className={styles.small}>{invite.aiBudget === null ? "Запросы к ИИ — в пределах дневного лимита проекта. Их оплачивает владелец." : `Запросов к ИИ: до ${invite.aiBudget}. Их оплачивает владелец проекта.`}</p>}
-              <p className={styles.cardTitle} style={{ marginTop: 14 }}>Что будет недоступно</p>
+              {invite.role === "lead" && <p className={styles.small}>{invite.aiBudget === null ? t("Запросы к ИИ — в пределах дневного лимита проекта. Их оплачивает владелец.") : t("Запросов к ИИ: до {0}. Их оплачивает владелец проекта.", [invite.aiBudget])}</p>}
+              <p className={styles.cardTitle} style={{ marginTop: 14 }}>{t("Что будет недоступно")}</p>
               <ul className={styles.list}>{invite.cannot.map((item) => <li key={item}>{item}</li>)}</ul>
               <div className={`${styles.notice} ${styles.info}`} style={{ marginTop: 12 }}>
-                <strong>Оплата</strong>
+                <strong>{t("Оплата")}</strong>
                 <p style={{ margin: "4px 0 6px" }}>{invite.termsText}</p>
-                <strong>Как считается время</strong>
+                <strong>{t("Как считается время")}</strong>
                 <ul className={styles.list}>{invite.timeRules.map((item) => <li key={item}>{item}</li>)}</ul>
               </div>
-              <p className={styles.small} style={{ marginTop: 12 }}>{invite.afterAcceptance} Результаты этапа принадлежат владельцу проекта.</p>
+              <p className={styles.small} style={{ marginTop: 12 }}>{invite.afterAcceptance}{" "}{t("Результаты этапа принадлежат владельцу проекта.")}</p>
             </section>
 
-            {invite.status === "active" && invite.projectId && <a className={`${styles.button} ${styles.block}`} href={`/projects/${invite.projectId}/stages/${invite.stageKey}`}>Открыть этап</a>}
-            {unavailable && <p className={`${styles.notice} ${styles.warn}`}>{invite.expired ? "Срок приглашения истёк. Попросите владельца проекта прислать новое." : "Приглашение больше не действует."}</p>}
+            {invite.status === "active" && invite.projectId && <a className={`${styles.button} ${styles.block}`} href={`/projects/${invite.projectId}/stages/${invite.stageKey}`}>{t("Открыть этап")}</a>}
+            {unavailable && <p className={`${styles.notice} ${styles.warn}`}>{invite.expired ? t("Срок приглашения истёк. Попросите владельца проекта прислать новое.") : t("Приглашение больше не действует.")}</p>}
             {invite.status === "invited" && !invite.expired && (
               signedIn === false ? (
                 <section className={styles.card}>
-                  <p style={{ margin: "0 0 10px" }}>Приглашение отправлено на {invite.email}. Войдите или зарегистрируйтесь с этой почтой, затем вернитесь по этой же ссылке.</p>
-                  <a className={`${styles.button} ${styles.block}`} href={loginHref}>Войти или зарегистрироваться</a>
+                  <p style={{ margin: "0 0 10px" }}>{t("Приглашение отправлено на")}{" "}{invite.email}{t(". Войдите или зарегистрируйтесь с этой почтой, затем вернитесь по этой же ссылке.")}</p>
+                  <a className={`${styles.button} ${styles.block}`} href={loginHref}>{t("Войти или зарегистрироваться")}</a>
                 </section>
               ) : (
                 <>
                   <label style={{ display: "flex", gap: 10, alignItems: "flex-start", margin: "0 0 14px" }}>
                     <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} style={{ width: 22, height: 22, flex: "none" }} />
-                    <span>Я буду хранить материалы проекта в тайне и использовать их только для работы над этим этапом</span>
+                    <span>{t("Я буду хранить материалы проекта в тайне и использовать их только для работы над этим этапом")}</span>
                   </label>
-                  <button className={`${styles.button} ${styles.block}`} disabled={!agreed || busy || signedIn === null} onClick={accept}>{busy ? "Подключаем…" : "Принять приглашение"}</button>
+                  <button className={`${styles.button} ${styles.block}`} disabled={!agreed || busy || signedIn === null} onClick={accept}>{busy ? t("Подключаем…") : t("Принять приглашение")}</button>
                 </>
               )
             )}

@@ -2,16 +2,23 @@ import type { Metadata } from 'next';
 import './globals.css';
 import TelegramBridge from './telegram-bridge';
 import ConsentGate from './consent-gate';
+import LocaleGate from './locale-gate';
+import { tl } from '@/lib/i18n';
+import { requestLocale } from '@/lib/request-locale';
 
-export const metadata: Metadata = {
-  title: 'BuildPath — создайте сайт шаг за шагом',
-  description: 'Облачная мастерская, которая помогает пройти путь от идеи до готового сайта.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await requestLocale();
+  return {
+    title: tl(locale, 'BuildPath — создайте сайт шаг за шагом'),
+    description: tl(locale, 'Облачная мастерская, которая помогает пройти путь от идеи до готового сайта.'),
+  };
+}
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await requestLocale();
   return (
-    <html lang="ru">
-      <body><TelegramBridge />{children}<ConsentGate /></body>
+    <html lang={locale}>
+      <body><LocaleGate locale={locale}><TelegramBridge />{children}<ConsentGate /></LocaleGate></body>
     </html>
   );
 }

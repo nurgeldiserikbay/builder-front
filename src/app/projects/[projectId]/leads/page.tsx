@@ -1,5 +1,6 @@
 "use client";
 
+import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { API_BASE_URL, ApiError, api } from "@/lib/api";
@@ -7,7 +8,7 @@ import { explainError, type Lead } from "@/lib/journey";
 import styles from "../../journey.module.css";
 
 const channelText: Record<string, string> = {
-  sent: "отправлено", failed: "не удалось отправить", off: "выключено", not_linked: "не подключён", not_configured: "не настроено", pending: "отправляется",
+  sent: t("отправлено"), failed: t("не удалось отправить"), off: t("выключено"), not_linked: t("не подключён"), not_configured: t("не настроено"), pending: t("отправляется"),
 };
 
 function contactHref(contact: string): string | null {
@@ -40,7 +41,7 @@ export default function LeadsPage() {
   useEffect(() => { void load(); }, [load]);
 
   async function remove(lead: Lead) {
-    if (!window.confirm(`Удалить заявку от «${lead.name}»? Её нельзя будет восстановить.`)) return;
+    if (!window.confirm(t("Удалить заявку от «{0}»? Её нельзя будет восстановить.", [lead.name]))) return;
     try {
       await api(`/projects/${projectId}/leads/${lead.id}`, { method: "DELETE" });
       setLeads((current) => current?.filter((item) => item.id !== lead.id) ?? null);
@@ -50,17 +51,17 @@ export default function LeadsPage() {
   return (
     <div className={styles.shell}>
       <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.back} href={`/projects/${projectId}`}>← Проект</a>
-        <span className={styles.topTitle}>Заявки</span>
+        <a className={styles.back} href={`/projects/${projectId}`}>{t("← Проект")}</a>
+        <span className={styles.topTitle}>{t("Заявки")}</span>
       </div></header>
       <main className={styles.container}>
-        <p className={styles.kicker}>С формы на сайте</p>
-        <h1 className={styles.h1}>Заявки</h1>
-        <p className={styles.small} style={{ margin: "0 0 16px" }}>Заявки хранятся 12 месяцев и затем удаляются автоматически. Если человек попросит удалить его данные — удалите заявку здесь.</p>
+        <p className={styles.kicker}>{t("С формы на сайте")}</p>
+        <h1 className={styles.h1}>{t("Заявки")}</h1>
+        <p className={styles.small} style={{ margin: "0 0 16px" }}>{t("Заявки хранятся 12 месяцев и затем удаляются автоматически. Если человек попросит удалить его данные — удалите заявку здесь.")}</p>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
-        {!leads && !error && <p className={styles.muted}>Загружаем…</p>}
+        {!leads && !error && <p className={styles.muted}>{t("Загружаем…")}</p>}
         {leads && leads.length === 0 && (
-          <div className={`${styles.notice} ${styles.info}`}>Заявок пока нет. Они появятся, когда посетители заполнят форму на опубликованном сайте.</div>
+          <div className={`${styles.notice} ${styles.info}`}>{t("Заявок пока нет. Они появятся, когда посетители заполнят форму на опубликованном сайте.")}</div>
         )}
         {leads?.map((lead) => {
           const href = contactHref(lead.contact);
@@ -69,19 +70,19 @@ export default function LeadsPage() {
               <div className={styles.row}>
                 <strong style={{ fontSize: 17 }}>{lead.name}</strong>
                 <div className={styles.spacer} />
-                <span className={styles.small}>{new Date(lead.createdAt).toLocaleString("ru-RU", { dateStyle: "medium", timeStyle: "short" })}</span>
+                <span className={styles.small}>{new Date(lead.createdAt).toLocaleString(dateLocale(), { dateStyle: "medium", timeStyle: "short" })}</span>
               </div>
               <p style={{ margin: "6px 0" }}>{href ? <a href={href} style={{ color: "#255b42", fontWeight: 800 }}>{lead.contact}</a> : <strong>{lead.contact}</strong>}</p>
               {lead.message && <p style={{ margin: "0 0 8px", whiteSpace: "pre-wrap" }}>{lead.message}</p>}
               <p className={styles.small} style={{ margin: "0 0 8px" }}>Telegram: {channelText[lead.telegramStatus] ?? lead.telegramStatus} · Email: {channelText[lead.emailStatus] ?? lead.emailStatus}</p>
               <div className={styles.row}>
-                {href && <a className={styles.secondary} href={href}>{href.startsWith("tel:") ? "Позвонить" : "Написать"}</a>}
-                <button className={styles.danger} onClick={() => void remove(lead)}>Удалить</button>
+                {href && <a className={styles.secondary} href={href}>{href.startsWith("tel:") ? t("Позвонить") : t("Написать")}</a>}
+                <button className={styles.danger} onClick={() => void remove(lead)}>{t("Удалить")}</button>
               </div>
             </article>
           );
         })}
-        {cursor && <button className={`${styles.ghost} ${styles.block}`} onClick={() => void load(cursor)}>Показать ещё</button>}
+        {cursor && <button className={`${styles.ghost} ${styles.block}`} onClick={() => void load(cursor)}>{t("Показать ещё")}</button>}
       </main>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { t } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { api } from "@/lib/api";
@@ -48,13 +49,13 @@ export default function ConsentGate() {
   return (
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-labelledby="consent-title">
       <div className={styles.overlayCard}>
-        <p className={styles.kicker}>Обновление документов</p>
-        <h2 id="consent-title" className={styles.h2} style={{ marginTop: 0 }}>Мы обновили оферту и политику конфиденциальности</h2>
-        <p>Прочитайте новую редакцию: <a href="/legal/terms" target="_blank">оферта</a> и <a href="/legal/privacy" target="_blank">политика конфиденциальности</a>. Чтобы продолжить работу, нужно ваше согласие.</p>
+        <p className={styles.kicker}>{t("Обновление документов")}</p>
+        <h2 id="consent-title" className={styles.h2} style={{ marginTop: 0 }}>{t("Мы обновили оферту и политику конфиденциальности")}</h2>
+        <p>{t("Прочитайте новую редакцию:")}{" "}<a href="/legal/terms" target="_blank">{t("оферта")}</a>{" "}{t("и")}{" "}<a href="/legal/privacy" target="_blank">{t("политика конфиденциальности")}</a>{t(". Чтобы продолжить работу, нужно ваше согласие.")}</p>
         <p className={styles.small}>{info.statement}</p>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
-        <button className={styles.button} onClick={accept} disabled={busy}>{busy ? "Сохраняем…" : "Принимаю"}</button>
-        <p className={styles.small} style={{ marginBottom: 0, marginTop: 14 }}>Не согласны? Вы можете <a href="/account">удалить аккаунт</a>.</p>
+        <button className={styles.button} onClick={accept} disabled={busy}>{busy ? t("Сохраняем…") : t("Принимаю")}</button>
+        <p className={styles.small} style={{ marginBottom: 0, marginTop: 14 }}>{t("Не согласны? Вы можете")}{" "}<a href="/account">{t("удалить аккаунт")}</a>.</p>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { isPlanMessage, explainError, type CatalogType } from "@/lib/journey";
 import styles from "./journey.module.css";
+import AppHeader from "../app-header";
 
 type Workspace = { id: string; name: string; role: string };
 type Assignment = { id: string; projectId: string; projectName: string; stageKey: string; stageTitle: string; stageStatus: string; role: string; roleTitle: string; status: string };
@@ -79,28 +80,29 @@ export default function ProjectsPage() {
 
   return (
     <div className={styles.shell}>
-      <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.brand} href="/"><span aria-hidden="true">B</span>BuildPath</a>
-        <div className={styles.spacer} />
-        <a className={styles.back} href="/account">{t("Аккаунт")}</a>
-        <a className={styles.back} href="/review" style={{ marginLeft: 12 }}>{t("Сверка сайта")}</a>
-      </div></header>
-      <main className={styles.container}>
-        {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>{t("Открыть тариф →")}</a></>}</p>}
+      <AppHeader />
+      <main className={`${styles.container} ${styles.wide}`}>
+        {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть тариф →")}</a></>}</p>}
         {loading && <p className={styles.muted}>{t("Загружаем ваши проекты…")}</p>}
 
         {!loading && !creating && (
           <>
-            <p className={styles.kicker}>{t("Ваши проекты")}</p>
-            <h1 className={styles.h1}>{t("Продолжите с того места, где остановились")}</h1>
-            <button className={`${styles.button} ${styles.block}`} onClick={() => { setCreating(true); setStep(1); }}>{t("+ Новый проект")}</button>
-            <div style={{ height: 18 }} />
-            {projects.filter((project) => project.status !== "archived").map((project) => (
-              <a key={project.id} className={styles.projectCard} href={`/projects/${project.id}`}>
-                <strong style={{ fontSize: 17 }}>{project.name}</strong>
-                <div className={styles.small}>{types.find((item) => item.key === project.projectType)?.title ?? t("Проект")} · {projectStatus[project.status] ?? project.status}</div>
-              </a>
-            ))}
+            <div className={styles.pageHead}>
+              <div>
+                <p className={styles.kicker}>{t("Ваши проекты")}</p>
+                <h1 className={styles.h1} style={{ margin: 0 }}>{t("Продолжите с того места, где остановились")}</h1>
+              </div>
+              <button className={styles.button} onClick={() => { setCreating(true); setStep(1); }}>{t("+ Новый проект")}</button>
+            </div>
+            <div className={styles.projectGrid}>
+              {projects.filter((project) => project.status !== "archived").map((project) => (
+                <a key={project.id} className={styles.projectCard} href={`/projects/${project.id}`}>
+                  <span className={styles.small}>{types.find((item) => item.key === project.projectType)?.title ?? t("Проект")}</span>
+                  <strong>{project.name}</strong>
+                  <span className={`${styles.chip} ${styles[project.status === "live" || project.status === "completed" ? "done" : project.status === "active" ? "active" : "closed"]}`} style={{ alignSelf: "flex-start" }}>{projectStatus[project.status] ?? project.status}</span>
+                </a>
+              ))}
+            </div>
             {projects.some((project) => project.status === "archived") && (
               <details className={`${styles.card} ${styles.details}`} style={{ marginTop: 14 }}>
                 <summary>{t("Архив (")}{projects.filter((project) => project.status === "archived").length})</summary>
@@ -111,7 +113,7 @@ export default function ProjectsPage() {
             )}
             {masterPlaces > 0 && (
               <a className={styles.projectCard} href="/master" style={{ marginTop: 14 }}>
-                <strong style={{ fontSize: 17 }}>{t("Мои записи как мастера")}</strong>
+                <strong>{t("Мои записи как мастера")}</strong>
                 <div className={styles.small}>{t("Клиенты, которые записались к вам")}{masterPlaces > 1 ? t(" — в {0} местах", [masterPlaces]) : ""}</div>
               </a>
             )}
@@ -121,7 +123,7 @@ export default function ProjectsPage() {
                 <p className={styles.small} style={{ margin: "0 0 10px" }}>{t("Сюда попадают этапы, на которые вас пригласили как специалиста.")}</p>
                 {assignments.map((item) => (
                   <a key={item.id} className={styles.projectCard} href={`/projects/${item.projectId}/stages/${item.stageKey}`}>
-                    <strong style={{ fontSize: 17 }}>{item.projectName}</strong>
+                    <strong>{item.projectName}</strong>
                     <div className={styles.small}>{t("Этап «")}{item.stageTitle}» · {item.roleTitle}{item.status === "completed" ? t(" · этап принят") : item.stageStatus === "in_review" ? t(" · на приёмке") : item.stageStatus === "changes_requested" ? t(" · нужны правки") : ""}</div>
                   </a>
                 ))}

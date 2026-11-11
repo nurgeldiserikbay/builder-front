@@ -39,9 +39,9 @@ export default function ReceiptPage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <tbody>
                 {receipt.items.map((item) => (
-                  <tr key={item.title} style={{ borderTop: "1px solid #e3e7e3" }}><td style={{ padding: "8px 8px 8px 0" }}>{item.title}</td><td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{formatTenge(item.amount)}</td></tr>
+                  <tr key={item.title} style={{ borderTop: "1px solid var(--line)" }}><td style={{ padding: "8px 8px 8px 0" }}>{item.title}</td><td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{formatTenge(item.amount)}</td></tr>
                 ))}
-                <tr style={{ borderTop: "2px solid #1c241f" }}><td style={{ padding: "8px 0", fontWeight: 800 }}>{t("Итого оплачено")}</td><td style={{ textAlign: "right", fontWeight: 800, whiteSpace: "nowrap" }}>{formatTenge(receipt.total)}</td></tr>
+                <tr style={{ borderTop: "2px solid var(--ink)" }}><td style={{ padding: "8px 0", fontWeight: 700 }}>{t("Итого оплачено")}</td><td style={{ textAlign: "right", fontWeight: 700, whiteSpace: "nowrap" }}>{formatTenge(receipt.total)}</td></tr>
                 {receipt.refunds.map((refund, index) => (
                   <tr key={index}><td style={{ padding: "4px 0" }}>{t("Возврат")}{refund.at ? ` ${new Date(refund.at).toLocaleDateString(dateLocale())}` : ""}{refund.reference ? ` · ${refund.reference}` : ""}</td><td style={{ textAlign: "right", whiteSpace: "nowrap" }}>−{formatTenge(refund.amount)}</td></tr>
                 ))}

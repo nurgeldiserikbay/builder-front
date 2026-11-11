@@ -37,7 +37,7 @@ export default async function HomePage() {
       <header className="topbar">
         <a className="brand" href="/" aria-label={tl(locale, "BuildPath, главная")}>
           <span className="brand-mark" aria-hidden="true">B</span>
-          <span>buildpath</span>
+          <span>BuildPath</span>
         </a>
         <LanguageSwitch /><a className="top-cta" href="/projects">{tl(locale, "Мои проекты")}</a>
       </header>
@@ -68,10 +68,10 @@ export default async function HomePage() {
         <div className="mode-grid">{modes.map((mode) => <article className="mode-card" key={mode.number}><div className="mode-top"><span>{mode.number}</span><span className="mode-tag">{mode.tag}</span></div><h3>{mode.title}</h3><p>{mode.description}</p></article>)}</div>
       </section>
 
-      <section style={{ padding: '0 0 32px' }} aria-labelledby="review-tool-title">
-        <a href="/review" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, padding: '22px 24px', border: '1px solid #e4e0ed', borderRadius: 18, background: '#fff', color: 'inherit', textDecoration: 'none' }}>
-          <span><span style={{ display: 'block', color: '#7055df', fontSize: 11, fontWeight: 800, letterSpacing: '.08em' }}>{tl(locale, "НОВЫЙ ИНСТРУМЕНТ")}</span><strong id="review-tool-title" style={{ display: 'block', marginTop: 6, fontSize: 19 }}>{tl(locale, "Сверить сайт с ТЗ, backend и макетом")}</strong><span style={{ display: 'block', marginTop: 5, color: '#71707b', fontSize: 13 }}>{tl(locale, "Сравнение страниц рядом, загрузка макетов и разбор отличий.")}</span></span>
-          <span aria-hidden="true" style={{ flex: 'none', padding: '10px 13px', borderRadius: 10, background: '#7055df', color: '#fff', fontSize: 13, fontWeight: 750 }}>{tl(locale, "Открыть сверку →")}</span>
+      <section className="tool-section" aria-labelledby="review-tool-title">
+        <a href="/review" className="tool-link">
+          <span><span className="tool-tag">{tl(locale, "НОВЫЙ ИНСТРУМЕНТ")}</span><strong id="review-tool-title">{tl(locale, "Сверить сайт с ТЗ, backend и макетом")}</strong><span className="tool-text">{tl(locale, "Сравнение страниц рядом, загрузка макетов и разбор отличий.")}</span></span>
+          <span aria-hidden="true" className="tool-cta">{tl(locale, "Открыть сверку →")}</span>
         </a>
       </section>
 
@@ -79,7 +79,7 @@ export default async function HomePage() {
         <div className="section-heading"><div><p className="eyebrow">{tl(locale, "РАБОТАЕМ ВМЕСТЕ")}</p><h2>{tl(locale, "Вы решаете, каким должен быть результат")}</h2></div><p>{tl(locale, "BuildPath объясняет важные развилки и ведёт работу по сохранённому плану.")}</p></div>
         <div className="principle-grid">{principles.map(([title, description], index) => <article className="principle" key={title}><span className="principle-number">0{index + 1}</span><div><h3>{title}</h3><p>{description}</p></div></article>)}</div>
       </section>
-      <footer><a className="brand footer-brand" href="/"><span className="brand-mark" aria-hidden="true">B</span><span>buildpath</span></a><span>{tl(locale, "От первой идеи — к понятному результату.")}</span><span><a href="/legal/terms">{tl(locale, "Оферта")}</a> · <a href="/legal/privacy">{tl(locale, "Конфиденциальность")}</a></span></footer>
+      <footer><a className="brand footer-brand" href="/"><span className="brand-mark" aria-hidden="true">B</span><span>BuildPath</span></a><span>{tl(locale, "От первой идеи — к понятному результату.")}</span><span><a href="/legal/terms">{tl(locale, "Оферта")}</a> · <a href="/legal/privacy">{tl(locale, "Конфиденциальность")}</a></span></footer>
     </main>
   );
 }

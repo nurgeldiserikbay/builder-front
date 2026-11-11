@@ -57,7 +57,7 @@ export default function TelegramBridge() {
 
   if (!notice) return null;
   return (
-    <div role="status" style={{ position: "sticky", top: 0, zIndex: 20, background: "#fff6e0", color: "#5c4400", padding: "10px 16px", fontSize: 14, borderBottom: "1px solid #f1dfaa" }}>
+    <div role="status" style={{ position: "sticky", top: 0, zIndex: 20, background: "var(--attention-soft)", color: "#5e3b00", padding: "12px 20px", fontSize: 15, borderBottom: "1px solid #f0d9a6" }}>
       {notice}
     </div>
   );

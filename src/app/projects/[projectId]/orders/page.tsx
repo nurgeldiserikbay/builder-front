@@ -7,6 +7,7 @@ import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import { formatTenge } from "@/lib/money";
 import styles from "../../journey.module.css";
+import AppHeader from "../../../app-header";
 
 type Status = "new" | "confirmed" | "done" | "cancelled_by_owner" | "cancelled_by_client";
 type Order = {
@@ -44,10 +45,7 @@ export default function OrdersPage() {
 
   return (
     <div className={styles.shell}>
-      <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.back} href={`/projects/${projectId}`}>{t("← Проект")}</a>
-        <span className={styles.topTitle}>{t("Заказы")}</span>
-      </div></header>
+      <AppHeader back={{ href: `/projects/${projectId}`, label: t("← Проект") }} title={t("Заказы")} />
       <main className={styles.container}>
         <p className={styles.kicker}>{t("Магазин")}</p>
         <h1 className={styles.h1}>{t("Заказы")}</h1>
@@ -70,7 +68,7 @@ export default function OrdersPage() {
               <div className={styles.row}>
                 <strong style={{ fontSize: 18 }}>{t("№{0}", [order.number])} · {formatTenge(order.totalTiyn / 100)}</strong>
                 <div className={styles.spacer} />
-                <span className={styles.small} style={order.status === "new" ? { fontWeight: 800, color: "#9a3412" } : undefined}>{statusText(order.status)}</span>
+                <span className={styles.small} style={order.status === "new" ? { fontWeight: 700, color: "#9a3412" } : undefined}>{statusText(order.status)}</span>
               </div>
               <p className={styles.small} style={{ margin: "2px 0 8px" }}>{new Date(order.createdAt).toLocaleString(dateLocale(), { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}</p>
               <ul className={styles.list} style={{ margin: "0 0 6px" }}>
@@ -78,7 +76,7 @@ export default function OrdersPage() {
               </ul>
               <p style={{ margin: "4px 0" }}>{order.deliveryTitle}{order.deliveryTiyn ? ` · ${formatTenge(order.deliveryTiyn / 100)}` : ""} · {order.paymentMethod === "transfer" ? t("переводом") : t("при получении")}</p>
               {order.address && <p style={{ margin: "4px 0" }}>{t("Адрес:")}{" "}{order.address}</p>}
-              <p style={{ margin: "6px 0" }}>{order.clientName} · <a href={phoneHref(order.clientPhone)} style={{ color: "#255b42", fontWeight: 800 }}>{order.clientPhone}</a></p>
+              <p style={{ margin: "6px 0" }}>{order.clientName} · <a href={phoneHref(order.clientPhone)} style={{ color: "var(--brand-ink)", fontWeight: 700 }}>{order.clientPhone}</a></p>
               {order.comment && <p className={styles.small} style={{ margin: "0 0 6px", whiteSpace: "pre-wrap" }}>«{order.comment}»</p>}
               <div className={styles.row} style={{ flexWrap: "wrap" }}>
                 <a className={styles.secondary} href={phoneHref(order.clientPhone)}>{t("Позвонить")}</a>

@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import styles from "../../projects/journey.module.css";
+import AppHeader from "../../app-header";
 
 type Invite = {
   projectName: string; invitedBy: string; stageKey: string; stageTitle: string; stagePurpose: string; role: "lead" | "consultant"; roleTitle: string; roleExplanation: string;
@@ -43,7 +44,7 @@ export default function InvitePage() {
 
   return (
     <div className={styles.shell}>
-      <header className={styles.top}><div className={styles.topInner}><a className={styles.brand} href="/"><span aria-hidden="true">B</span>BuildPath</a></div></header>
+      <AppHeader minimal />
       <main className={styles.container}>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
         {!invite && !error && <p className={styles.muted}>{t("Загружаем приглашение…")}</p>}

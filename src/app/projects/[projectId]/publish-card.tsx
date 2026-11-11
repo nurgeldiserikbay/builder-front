@@ -54,7 +54,7 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
     });
   }
 
-  if (!state) return error ? <p className={`${styles.notice} ${styles.error}`}>{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>{t("Открыть тариф →")}</a></>}</p> : null;
+  if (!state) return error ? <p className={`${styles.notice} ${styles.error}`}>{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть тариф →")}</a></>}</p> : null;
   const live = state.publication?.status === "live";
   const suffix = `.${state.baseDomain}`;
   const showChannels = Boolean(state.publication || state.acceptedBuild?.hasForm);
@@ -63,7 +63,7 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
     <section className={styles.card} aria-labelledby="publish-title">
       <p className={styles.kicker}>{t("Публикация")}</p>
       <h2 id="publish-title" className={styles.h2}>{live ? t("Сайт работает в интернете") : t("Опубликовать сайт")}</h2>
-      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>{t("Открыть тариф →")}</a></>}</p>}
+      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть тариф →")}</a></>}</p>}
       {message && <p className={`${styles.notice} ${styles.success}`} role="status">{message}</p>}
 
       {!state.acceptedBuild && !state.publication && (
@@ -72,12 +72,12 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
 
       {live && state.publication && (
         <>
-          <p style={{ margin: "0 0 10px" }}>{t("Адрес сайта:")}{" "}<a href={state.publication.url} target="_blank" rel="noopener" style={{ color: "#255b42", fontWeight: 800, wordBreak: "break-all" }}>{state.publication.url.replace(/^https?:\/\//, "")}</a></p>
+          <p style={{ margin: "0 0 10px" }}>{t("Адрес сайта:")}{" "}<a href={state.publication.url} target="_blank" rel="noopener" style={{ color: "var(--brand-ink)", fontWeight: 700, wordBreak: "break-all" }}>{state.publication.url.replace(/^https?:\/\//, "")}</a></p>
           <div className={styles.row} style={{ marginBottom: 10 }}>
             <a className={styles.button} href={state.publication.url} target="_blank" rel="noopener">{t("Открыть сайт")}</a>
             <button className={styles.ghost} onClick={() => { void navigator.clipboard?.writeText(state.publication!.url); setMessage(t("Ссылка скопирована — можно отправить клиентам.")); }}>{t("Скопировать ссылку")}</button>
           </div>
-          {state.publication.domain?.status === "active" && state.publication.domain.url && <p style={{ margin: "0 0 10px" }}>{t("Свой домен:")}{" "}<a href={state.publication.domain.url} target="_blank" rel="noopener" style={{ color: "#255b42", fontWeight: 800, wordBreak: "break-all" }}>{state.publication.domain.display}</a></p>}
+          {state.publication.domain?.status === "active" && state.publication.domain.url && <p style={{ margin: "0 0 10px" }}>{t("Свой домен:")}{" "}<a href={state.publication.domain.url} target="_blank" rel="noopener" style={{ color: "var(--brand-ink)", fontWeight: 700, wordBreak: "break-all" }}>{state.publication.domain.display}</a></p>}
           {state.publication.domain && state.publication.domain.status !== "active" && <p className={`${styles.notice} ${styles.warn}`}>{t("Домен")}{" "}{state.publication.domain.display}{" "}{t("ещё не подключён: нужно добавить запись у регистратора.")}{" "}<a href={`/projects/${projectId}/choices/domain`}>{t("Продолжить →")}</a></p>}
           <p className={styles.small} style={{ margin: "0 0 10px" }}>{t("Опубликована сборка версии")}{" "}{state.publication.publishedVersionNumber}.{!state.publication.domain && state.domainsAvailable && <> <a href={`/projects/${projectId}/choices/domain`}>{t("Подключить свой домен →")}</a></>}</p>
           {state.outdated && state.canManage && (
@@ -126,7 +126,7 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
       {!live && state.acceptedBuild && !state.canManage && <p className={styles.small}>{t("Опубликовать сайт может владелец или менеджер проекта.")}</p>}
 
       {showChannels && (
-        <div style={{ borderTop: "1px solid #e3e8e1", marginTop: 16, paddingTop: 14 }}>
+        <div style={{ borderTop: "1px solid var(--line)", marginTop: 16, paddingTop: 14 }}>
           <p className={styles.cardTitle}>{t("Куда присылать заявки с сайта")}</p>
           {!state.acceptedBuild?.hasForm && <p className={styles.small} style={{ marginTop: 0 }}>{t("На сайте сейчас нет формы заявки. Её можно включить на этапе «Цель сайта»: главное действие — «Оставить заявку на сайте».")}</p>}
           <div className={styles.item}>

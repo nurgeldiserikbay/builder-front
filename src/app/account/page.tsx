@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import styles from "../projects/journey.module.css";
+import AppHeader from "../app-header";
 
 type Me = { id: string; email: string; name: string | null };
 type Preview = { projects: number; liveSites: Array<{ slug: string; projectName: string }>; specialistStages: number; telegramLinked: boolean; retentionDays: number; purgeAfter: string };
@@ -71,10 +72,7 @@ export default function AccountPage() {
 
   return (
     <div className={styles.shell}>
-      <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.back} href="/projects">{t("← Проекты")}</a>
-        <span className={styles.topTitle}>{t("Аккаунт")}</span>
-      </div></header>
+      <AppHeader back={{ href: "/projects", label: t("← Проекты") }} title={t("Аккаунт")} />
       <main className={styles.container}>
         {error && !open && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
         {!me && !error && <p className={styles.muted}>{t("Загружаем…")}</p>}

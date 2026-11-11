@@ -18,6 +18,7 @@ import { SitemapEditor, blankSitemap } from "./sitemap-editor";
 import { CatalogEditor } from "./catalog-editor";
 import { formatTenge } from "@/lib/money";
 import styles from "../../../journey.module.css";
+import AppHeader from "../../../../app-header";
 
 type SaveAs = "one_off" | "stage_rule" | "project_rule";
 const defaultDesign: Design = { palette: "forest", font: "modern", corners: "rounded", heroLayout: "centered" };
@@ -173,7 +174,7 @@ export default function StagePage() {
     });
   }
 
-  if (error && !detail) return <Shell projectId={projectId} title=""><p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>{t("Открыть тариф →")}</a></>}</p></Shell>;
+  if (error && !detail) return <Shell projectId={projectId} title=""><p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть тариф →")}</a></>}</p></Shell>;
   if (!detail) return <Shell projectId={projectId} title=""><p className={styles.muted}>{t("Загружаем этап…")}</p></Shell>;
 
   const { stage, ai } = detail;
@@ -259,7 +260,7 @@ export default function StagePage() {
         <p className={styles.small} style={{ margin: 0 }}><strong>{t("Результат:")}</strong> {stage.outcome}</p>
       </section>
 
-      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>{t("Открыть тариф →")}</a></>}</p>}
+      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть тариф →")}</a></>}</p>}
       {message && (
         <p className={`${styles.notice} ${styles.success}`} role="status">{message}
           {nextStageKey && accepted && <><br /><a className={styles.back} href={`/projects/${projectId}/stages/${nextStageKey}`}>{t("Перейти к следующему этапу →")}</a></>}
@@ -587,7 +588,7 @@ export default function StagePage() {
       )}
 
       {stage.status !== "locked" && (
-        <div className={styles.bottomBar}><div className={styles.bottomInner}>
+        <div className={styles.bottomBar}><div className={`${styles.bottomInner} ${styles.narrow}`}>
           {accepted ? (
             <>
               <span className={styles.bottomText}>{t("Этап принят")}{detail.versions.find((version) => version.accepted) ? t(" (версия {0})", [detail.versions.find((version) => version.accepted)!.versionNumber]) : ""}.</span>
@@ -630,11 +631,8 @@ export default function StagePage() {
 function Shell({ projectId, title, children }: { projectId: string; title: string; children: React.ReactNode }) {
   return (
     <div className={styles.shell}>
-      <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.back} href={`/projects/${projectId}`}>{t("← Этапы")}</a>
-        <span className={styles.topTitle}>{title}</span>
-      </div></header>
-      <main className={styles.container}>{children}</main>
+      <AppHeader back={{ href: `/projects/${projectId}`, label: t("← Этапы") }} title={title} />
+      <main className={`${styles.container} ${styles.narrow}`}>{children}</main>
     </div>
   );
 }

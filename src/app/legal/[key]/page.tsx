@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import { Markdown } from "@/lib/markdown";
 import styles from "../../projects/journey.module.css";
+import AppHeader from "../../app-header";
 
 type LegalDocument = { key: string; title: string; version: string; effectiveDate: string; markdown: string };
 
@@ -22,11 +23,7 @@ export default function LegalPage() {
 
   return (
     <div className={styles.shell}>
-      <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.brand} href="/"><span aria-hidden="true">B</span>BuildPath</a>
-        <div className={styles.spacer} />
-        <a className={styles.back} href={key === "terms" ? "/legal/privacy" : "/legal/terms"}>{key === "terms" ? t("Политика конфиденциальности") : t("Оферта")}</a>
-      </div></header>
+      <AppHeader minimal extra={<a className={styles.back} href={key === "terms" ? "/legal/privacy" : "/legal/terms"}>{key === "terms" ? t("Политика конфиденциальности") : t("Оферта")}</a>} />
       <main className={`${styles.container} ${styles.legal}`}>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
         {!doc && !error && <p className={styles.muted}>{t("Загружаем…")}</p>}

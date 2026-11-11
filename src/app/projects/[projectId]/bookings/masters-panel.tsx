@@ -44,7 +44,7 @@ export function MastersPanel({ projectId }: { projectId: string }) {
       <p className={styles.small} style={{ margin: "0 0 10px" }}>{t("Пригласите мастера — он будет видеть только записи к себе, получать новые в Telegram или на почту и отмечать, пришёл ли клиент. Отменять записи и видеть остальное может только владелец.")}</p>
       {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
       {masters.map((master) => (
-        <div key={master.key} style={{ borderTop: "1px solid #e3e7e3", padding: "10px 0" }}>
+        <div key={master.key} style={{ borderTop: "1px solid var(--line)", padding: "10px 0" }}>
           <div className={styles.row}>
             <strong>{master.name}</strong>
             <div className={styles.spacer} />

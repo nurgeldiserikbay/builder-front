@@ -14,7 +14,7 @@ export type DataEntity = { key: string; name: string; plain?: string; fields: Ar
 export type Sequence = { title: string; participants: string[]; messages: Array<{ from: number; to: number; text: string }> };
 
 export const kindColors: Record<ActorKind, { fill: string; stroke: string; text: string }> = {
-  client: { fill: "#e8f2ec", stroke: "#255b42", text: "#173b2a" },
+  client: { fill: "#e3f3ea", stroke: "#13804f", text: "#173b2a" },
   business: { fill: "#fdf1dd", stroke: "#a86a12", text: "#5c3a07" },
   staff: { fill: "#ece9fb", stroke: "#5b4bb7", text: "#2f2470" },
   system: { fill: "#e6f0fa", stroke: "#2d6da3", text: "#173a5a" },
@@ -47,7 +47,7 @@ export function SwimlaneDiagram({ actors, scenario, highlight }: { actors: Proce
   const height = head + Math.max(1, scenario.steps.length) * row + 10;
   const index = new Map(actors.map((actor, i) => [actor.key, i]));
   const center = (step: ProcessStep, i: number) => ({ x: (index.get(step.actor) ?? 0) * lane + lane / 2, y: head + i * row + 8 + box.height / 2 });
-  const mark = { built: "#255b42", manual: "#8a8f8a", not_built: "#b3261e" };
+  const mark = { built: "#13804f", manual: "#8a8f8a", not_built: "#b3261e" };
   return (
     <Scroll label={t("Схема сценария «{0}» по ролям", [scenario.title])}>
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block", minWidth: width }}>
@@ -134,7 +134,7 @@ export function DataDiagram({ entities }: { entities: DataEntity[] }) {
               {outgoing.length ? <line x1={x + 10} y1={fieldsBottom + 2} x2={x + cardWidth - 10} y2={fieldsBottom + 2} stroke="#e1e6e2" /> : null}
               {outgoing.map((link, k) => {
                 const text = `→ ${names[link.to]} · ${link.kind === "many" ? t("много") : t("один")}${link.label ? ` (${link.label})` : ""}`;
-                return <text key={k} x={x + 10} y={fieldsBottom + 18 + k * 16} fontSize={11} fill="#255b42">{text.length > 40 ? `${text.slice(0, 39)}…` : text}</text>;
+                return <text key={k} x={x + 10} y={fieldsBottom + 18 + k * 16} fontSize={11} fill="#13804f">{text.length > 40 ? `${text.slice(0, 39)}…` : text}</text>;
               })}
             </g>
           );
@@ -168,11 +168,11 @@ export function SequenceDiagram({ sequence }: { sequence: Sequence }) {
   return (
     <Scroll label={t("Сценарий «{0}» по шагам", [sequence.title])}>
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block", minWidth: width }}>
-        <defs>{arrowMarker("seq-arrow", "#255b42")}</defs>
+        <defs>{arrowMarker("seq-arrow", "#13804f")}</defs>
         {sequence.participants.map((name, i) => (
           <g key={name}>
             <line x1={x(i)} y1={head} x2={x(i)} y2={height - 4} stroke="#c9cfca" strokeDasharray="3 3" />
-            <Box x={i * column + 4} y={4} width={column - 8} height={32} fill="#e8f2ec" stroke="#255b42" color="#173b2a" bold>{name}</Box>
+            <Box x={i * column + 4} y={4} width={column - 8} height={32} fill="#e3f3ea" stroke="#13804f" color="#173b2a" bold>{name}</Box>
           </g>
         ))}
         {layout.map(({ from, to, self, left, labelWidth, text, labelHeight }, i) => {
@@ -180,8 +180,8 @@ export function SequenceDiagram({ sequence }: { sequence: Sequence }) {
           return (
             <g key={i}>
               {self
-                ? <path d={`M${from},${y - 6} h22 v12 h-20`} fill="none" stroke="#255b42" strokeWidth={1.3} markerEnd="url(#seq-arrow)" />
-                : <line x1={from} y1={y} x2={to + (to > from ? -3 : 3)} y2={y} stroke="#255b42" strokeWidth={1.3} markerEnd="url(#seq-arrow)" />}
+                ? <path d={`M${from},${y - 6} h22 v12 h-20`} fill="none" stroke="#13804f" strokeWidth={1.3} markerEnd="url(#seq-arrow)" />
+                : <line x1={from} y1={y} x2={to + (to > from ? -3 : 3)} y2={y} stroke="#13804f" strokeWidth={1.3} markerEnd="url(#seq-arrow)" />}
               <foreignObject x={self ? from + 4 : left + 2} y={y - labelHeight - 4} width={labelWidth} height={labelHeight}>
                 <div style={{ fontSize: 10.5, lineHeight: "13px", color: "#1c241f", textAlign: self ? "left" : "center", display: "flex", alignItems: "flex-end", justifyContent: self ? "flex-start" : "center", height: "100%" }}><span>{text}</span></div>
               </foreignObject>

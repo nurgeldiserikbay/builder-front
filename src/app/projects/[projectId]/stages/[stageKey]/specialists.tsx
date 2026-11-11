@@ -69,7 +69,7 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
     <section className={styles.card} aria-label={t("Специалисты")}>
       <p className={styles.cardTitle}>{t("Специалисты на этапе")}</p>
       <p className={styles.small} style={{ marginTop: 0 }}>{t("Пригласите человека, который разбирается в этом этапе: он будет давать ИИ инструкции и доводить результат, а принимать будете вы.")}</p>
-      {error && <p className={`${styles.notice} ${styles.error}`}>{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 800 }}>{t("Открыть тариф →")}</a></>}</p>}
+      {error && <p className={`${styles.notice} ${styles.error}`}>{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть тариф →")}</a></>}</p>}
       {link && (
         <div className={`${styles.notice} ${styles.success}`}>
           {link.emailSent ? t("Приглашение отправлено на почту. ") : ""}{t("Отправьте эту ссылку специалисту — например, в Telegram или WhatsApp. Она действует 7 дней и сработает только для указанной почты.")}

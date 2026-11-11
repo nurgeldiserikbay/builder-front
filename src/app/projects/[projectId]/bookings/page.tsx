@@ -7,6 +7,7 @@ import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import styles from "../../journey.module.css";
 import { MastersPanel } from "./masters-panel";
+import AppHeader from "../../../app-header";
 
 type Booking = {
   id: string; serviceName: string; minutes: number; price: string | null; masterName: string; startsAt: string; endsAt: string; timezone: string;
@@ -75,10 +76,7 @@ export default function BookingsPage() {
 
   return (
     <div className={styles.shell}>
-      <header className={styles.top}><div className={styles.topInner}>
-        <a className={styles.back} href={`/projects/${projectId}`}>{t("← Проект")}</a>
-        <span className={styles.topTitle}>{t("Записи")}</span>
-      </div></header>
+      <AppHeader back={{ href: `/projects/${projectId}`, label: t("← Проект") }} title={t("Записи")} />
       <main className={styles.container}>
         <p className={styles.kicker}>{t("Онлайн-запись")}</p>
         <h1 className={styles.h1}>{t("Записи клиентов")}</h1>
@@ -112,7 +110,7 @@ export default function BookingsPage() {
                   </div>
                   <p style={{ margin: "6px 0 2px" }}><strong>{booking.serviceName}</strong>{booking.price ? ` · ${booking.price}` : ""}</p>
                   <p className={styles.small} style={{ margin: 0 }}>{t("Мастер:")}{" "}{booking.masterName}</p>
-                  <p style={{ margin: "6px 0" }}>{booking.clientName} · <a href={`tel:${booking.clientPhone.replace(/[^\d+]/g, "")}`} style={{ color: "#255b42", fontWeight: 800 }}>{booking.clientPhone}</a></p>
+                  <p style={{ margin: "6px 0" }}>{booking.clientName} · <a href={`tel:${booking.clientPhone.replace(/[^\d+]/g, "")}`} style={{ color: "var(--brand-ink)", fontWeight: 700 }}>{booking.clientPhone}</a></p>
                   {booking.comment && <p className={styles.small} style={{ margin: "0 0 6px", whiteSpace: "pre-wrap" }}>«{booking.comment}»</p>}
                   {active && !started && reminderLabel(booking) && <p className={styles.small} style={{ margin: "0 0 6px" }}>{reminderLabel(booking)}</p>}
                   <div className={styles.row} style={{ flexWrap: "wrap" }}>

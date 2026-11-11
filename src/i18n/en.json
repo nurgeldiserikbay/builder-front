@@ -1689,5 +1689,7 @@
  "✨ Пусть ИИ опишет процесс": "✨ Let AI describe the process",
  "👁 Посмотреть, как это выглядит на телефоне": "👁 See how it looks on a phone",
  "🔒 Защищено от ИИ · снять": "🔒 Protected from AI · unlock",
- "Что хранит система и как это связано. Связи — стрелки слева и строки «→» в карточке: сплошная линия — «много», пунктир — «один».": "What the system stores and how it is linked. Links are the arrows on the left and the «→» lines in each card: a solid line means «many», a dashed one — «one»."
+ "Что хранит система и как это связано. Связи — стрелки слева и строки «→» в карточке: сплошная линия — «много», пунктир — «один».": "What the system stores and how it is linked. Links are the arrows on the left and the «→» lines in each card: a solid line means «many», a dashed one — «one».",
+ "Язык сайта": "Site language",
+ "На этом языке будут кнопки, формы и страницы записи на сайте, письма вашим клиентам, шаблоны и черновики ИИ. Интерфейс BuildPath остаётся на вашем языке. Поменять язык сайта после создания пока нельзя.": "Buttons, forms and booking pages on the site, emails to your clients, templates and AI drafts will be in this language. The BuildPath interface stays in your language. The site language cannot be changed after the project is created yet."
 }

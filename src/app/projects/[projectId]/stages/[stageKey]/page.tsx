@@ -192,6 +192,15 @@ export default function StagePage() {
       <h1 className={styles.h1}>{stage.title}</h1>
       <span className={`${styles.chip} ${styles[tone]}`} title={stage.statusExplanation}>{stage.statusLabel}</span>
       <p className={styles.small} style={{ margin: "6px 0 14px" }}>{stage.statusExplanation}</p>
+      {stage.artifactType === "site" && detail.options.technology === "developer" && (
+        <p className={`${styles.notice} ${styles.info}`}>Выбран свой стек у разработчика: сайт он делает и размещает сам, проверки и публикация BuildPath к нему не применяются. Сборка с ИИ ниже сделает сайт на технологиях BuildPath — это удобно как образец для разработчика. <a href={`/projects/${projectId}/choices/technologies`}>Изменить решение →</a></p>
+      )}
+      {stage.artifactType === "site" && detail.options.technology === "constructor" && (
+        <p className={`${styles.notice} ${styles.info}`}>Выбран конструктор сайтов: сайт соберёте там, перенеся тексты вручную. Сборка с ИИ сделает сайт на технологиях BuildPath — как образец того, что получится. <a href={`/projects/${projectId}/choices/technologies`}>Изменить решение →</a></p>
+      )}
+      {stage.artifactType === "site" && detail.options.technology === null && (
+        <p className={styles.small} style={{ margin: "-6px 0 14px" }}>Сборка делается на технологиях BuildPath. Нужен свой стек или конструктор? <a href={`/projects/${projectId}/choices/technologies`}>Сравнить варианты →</a></p>
+      )}
 
       {specialist && assignment && (
         <p className={`${styles.notice} ${styles.info}`}>

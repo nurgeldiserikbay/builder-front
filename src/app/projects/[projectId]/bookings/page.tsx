@@ -9,8 +9,9 @@ import styles from "../../journey.module.css";
 type Booking = {
   id: string; serviceName: string; minutes: number; price: string | null; masterName: string; startsAt: string; endsAt: string; timezone: string;
   clientName: string; clientPhone: string; comment: string | null; status: "booked" | "cancelled_by_client" | "cancelled_by_owner" | "done" | "no_show"; telegramStatus: string; createdAt: string;
+  reminderStatus: "pending" | "sending" | "sent" | "failed" | "skipped" | null; reminderAt: string | null;
 };
-type Data = { bookings: Booking[]; live: boolean; siteUrl: string | null };
+type Data = { bookings: Booking[]; live: boolean; siteUrl: string | null; siteName: string; emailReminders: boolean };
 
 const statusText: Record<Booking["status"], string> = {
   booked: "записан", cancelled_by_client: "отменил клиент", cancelled_by_owner: "вы отменили", done: "пришёл", no_show: "не пришёл",
@@ -21,6 +22,25 @@ const dayOf = (booking: Booking) => {
   const text = new Date(booking.startsAt).toLocaleDateString("ru-RU", { timeZone: booking.timezone, weekday: "long", day: "numeric", month: "long" });
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
+/** WhatsApp wants the number in international form without «+»; Kazakh numbers written from 8 become 7. */
+function whatsappNumber(phone: string): string | null {
+  let digits = phone.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("8")) digits = `7${digits.slice(1)}`;
+  return digits.length >= 10 && digits.length <= 15 ? digits : null;
+}
+
+function reminderText(booking: Booking, siteName: string): string {
+  const day = new Date(booking.startsAt).toLocaleDateString("ru-RU", { timeZone: booking.timezone, weekday: "long", day: "numeric", month: "long" });
+  return `Здравствуйте, ${booking.clientName}! Напоминаем о записи в «${siteName}»: ${booking.serviceName}, ${day} в ${clock(booking.startsAt, booking.timezone)}. Мастер: ${booking.masterName}. Если планы изменились, напишите нам, пожалуйста.`;
+}
+
+const reminderLabel = (booking: Booking): string | null => {
+  if (booking.reminderStatus === "pending" && booking.reminderAt) return `Напоминание на почту: ${new Date(booking.reminderAt).toLocaleString("ru-RU", { timeZone: booking.timezone, day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}`;
+  if (booking.reminderStatus === "sent") return "Напоминание на почту отправлено";
+  if (booking.reminderStatus === "failed") return "Напоминание на почту не отправилось — напомните сами";
+  return null;
+};
+
 const clock = (value: string, timeZone: string) => new Date(value).toLocaleTimeString("ru-RU", { timeZone, hour: "2-digit", minute: "2-digit" });
 
 export default function BookingsPage() {
@@ -62,6 +82,9 @@ export default function BookingsPage() {
         <h1 className={styles.h1}>Записи клиентов</h1>
         <p className={styles.small} style={{ margin: "0 0 12px" }}>
           Новые записи и отмены приходят вам в Telegram. Если отменяете запись здесь, позвоните клиенту — сам он сообщения не получит.
+          {data && (data.emailReminders
+            ? " Клиенты, которые оставили почту, получат напоминание перед визитом (обычно за сутки). Остальным можно напомнить в WhatsApp кнопкой у записи."
+            : " Напомнить клиенту о визите можно в WhatsApp кнопкой у записи — текст подставится сам.")}
           {data?.siteUrl && <> <a href={`${data.siteUrl}/book`} target="_blank" rel="noopener">Открыть запись на сайте →</a></>}
         </p>
         <div className={styles.viewToggle} role="group" aria-label="Какие записи">
@@ -89,8 +112,12 @@ export default function BookingsPage() {
                   <p className={styles.small} style={{ margin: 0 }}>Мастер: {booking.masterName}</p>
                   <p style={{ margin: "6px 0" }}>{booking.clientName} · <a href={`tel:${booking.clientPhone.replace(/[^\d+]/g, "")}`} style={{ color: "#255b42", fontWeight: 800 }}>{booking.clientPhone}</a></p>
                   {booking.comment && <p className={styles.small} style={{ margin: "0 0 6px", whiteSpace: "pre-wrap" }}>«{booking.comment}»</p>}
+                  {active && !started && reminderLabel(booking) && <p className={styles.small} style={{ margin: "0 0 6px" }}>{reminderLabel(booking)}</p>}
                   <div className={styles.row} style={{ flexWrap: "wrap" }}>
                     <a className={styles.secondary} href={`tel:${booking.clientPhone.replace(/[^\d+]/g, "")}`}>Позвонить</a>
+                    {active && !started && whatsappNumber(booking.clientPhone) && data && (
+                      <a className={styles.secondary} href={`https://wa.me/${whatsappNumber(booking.clientPhone)}?text=${encodeURIComponent(reminderText(booking, data.siteName))}`} target="_blank" rel="noopener">Напомнить в WhatsApp</a>
+                    )}
                     {active && !started && <button className={styles.danger} disabled={Boolean(busy)} onClick={() => void mark(booking, "cancelled_by_owner")}>Отменить</button>}
                     {started && ["booked", "done", "no_show"].includes(booking.status) && (
                       <>

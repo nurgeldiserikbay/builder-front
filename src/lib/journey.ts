@@ -138,6 +138,14 @@ const messages: Record<string, string> = {
   UNPUBLISH_BEFORE_ARCHIVE: "Сначала снимите сайт с публикации — опубликованный проект нельзя отправить в архив.",
   PROJECT_STATUS_FORBIDDEN: "Это может сделать только владелец проекта.",
   PLAN_LIMIT_PROJECTS: "По вашему тарифу больше нельзя создать проектов. Отправьте ненужные в архив или расширьте тариф.",
+  DOMAIN_INVALID: "Не похоже на домен. Впишите его так: barber-usy.com или www.barber-usy.com.",
+  DOMAIN_IS_PLATFORM: "Это адрес BuildPath — его выбирают в блоке «Публикация». Здесь подключается домен, который вы купили сами.",
+  DOMAIN_KZ_NEEDS_KZ_HOSTING: "Домены .kz и .қаз по правилам Казахстана должны работать на серверах в Казахстане, а BuildPath сейчас размещает сайты за его пределами. Выберите домен в другой зоне (например, .com) или разместите сайт на своём сервере в Казахстане.",
+  DOMAIN_APEX_UNSUPPORTED: "Адрес без www пока не подключается. Подключите www.ваш-домен, а у регистратора включите переадресацию с адреса без www.",
+  DOMAIN_TAKEN: "Этот домен уже подключён к другому сайту на BuildPath.",
+  DOMAIN_NOT_SET: "Домен ещё не указан.",
+  DOMAIN_CHECK_TOO_SOON: "Проверяли только что. Подождите 10 секунд и попробуйте снова.",
+  DOMAINS_NOT_CONFIGURED: "Свои домены пока не подключаются на этом сервере BuildPath.",
   PROJECT_BALANCE_LOW: "На балансе проекта не хватает денег на запрос к ИИ. Владелец может пополнить баланс на странице проекта — работать вручную можно и без этого.",
   TOP_UP_AMOUNT_INVALID: "Сумма пополнения вне допустимых границ.",
   PAYMENTS_NOT_CONFIGURED: "Оплата пока не подключена на этом сервере BuildPath.",
@@ -179,11 +187,18 @@ export function explainError(error: unknown): string {
 }
 
 export type Publication = {
-  publication: { slug: string; url: string; status: "live" | "unpublished"; publishedAt: string; unpublishedAt: string | null; publishedVersionNumber: number | null; notifyTelegram: boolean; notifyEmail: boolean } | null;
+  publication: { slug: string; url: string; status: "live" | "unpublished"; publishedAt: string; unpublishedAt: string | null; publishedVersionNumber: number | null; notifyTelegram: boolean; notifyEmail: boolean; domain: SiteDomain | null } | null;
+  domainsAvailable: boolean;
+  domainCheck?: { ok: boolean; found: string[] };
   acceptedBuild: { versionId: string; versionNumber: number; hasForm: boolean } | null;
   outdated: boolean; canManage: boolean; suggestedSlug: string; baseDomain: string; urlTemplate: string;
   channels: { telegram: { configured: boolean; linked: boolean; username: string | null; botUsername: string | null }; email: { configured: boolean; address: string } };
   leadsCount: number;
+};
+
+export type SiteDomain = {
+  name: string; display: string; status: "pending" | "active" | "failed"; checkedAt: string | null; error: "DNS_RECORD_NOT_FOUND" | "DNS_POINTS_ELSEWHERE" | null;
+  apex: boolean; url: string | null; records: Array<{ type: "CNAME" | "A"; name: string; value: string }>;
 };
 
 export type Lead = { id: string; name: string; contact: string; message: string | null; createdAt: string; telegramStatus: string; emailStatus: string };

@@ -156,6 +156,8 @@ export default function JourneyPage() {
               <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/code_hosting`}>Выбрать, где хранить код</a>
               <p style={{ margin: "14px 0 8px" }}>Сайт можно разместить не только на BuildPath: на своём сервере или в GitHub Pages. Мы проведём по шагам и проверим, что он открывается.</p>
               <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/deployment`}>Где будет работать сайт</a>
+              <p style={{ margin: "14px 0 8px" }}>Свой домен вроде barber-usy.com вместо адреса BuildPath — объясним, где купить и что вписать у регистратора.</p>
+              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/domain`}>Адрес сайта</a>
             </section>
 
             <section className={styles.card} aria-labelledby="result-title">

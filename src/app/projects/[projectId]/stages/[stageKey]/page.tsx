@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import {
-  explainError, isPlanMessage, originLabels, statusTone, type Content, type Design, type Journey, type Offer, type SiteCheck, type StageDetail,
+  explainError, isPlanMessage, originLabels, statusTone, type Content, type Design, type Journey, type Offer, type SiteCheck, type StageDetail, type Sitemap,
 } from "@/lib/journey";
 import { ContentEditor, DesignPicker, FieldsForm } from "./editors";
 import { SpecialistsPanel, SuggestionsPanel } from "./specialists";
@@ -14,6 +14,7 @@ import { TimesheetPanel } from "./timesheet";
 import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
 import { ProcessEditor, blankProcess, type BusinessProcess } from "./process-editor";
+import { SitemapEditor, blankSitemap } from "./sitemap-editor";
 import { formatTenge } from "@/lib/money";
 import styles from "../../../journey.module.css";
 
@@ -51,6 +52,10 @@ export default function StagePage() {
   const [saveAs, setSaveAs] = useState<SaveAs>("one_off");
   const [importText, setImportText] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
+  // Multi-page sites: the pages the preview can switch between, and which one is shown.
+  const [previewPages, setPreviewPages] = useState<Array<{ path: string; title: string }>>([]);
+  const [previewPage, setPreviewPage] = useState("/");
+  const [previewVersion, setPreviewVersion] = useState<string | undefined>(undefined);
   const [nextStageKey, setNextStageKey] = useState<string | null>(null);
   const [requestPrice, setRequestPrice] = useState<number | null>(null);
   useEffect(() => {
@@ -112,10 +117,14 @@ export default function StagePage() {
       : t("ИИ подготовил версию {0}. Проверьте её — если что-то не так, напишите, что поменять.", [result.versionNumber]));
   }
 
-  async function showPreview(versionId?: string) {
+  async function showPreview(versionId?: string, page = "/") {
     if (dirty) await saveDraft();
-    const data = await api<{ html: string }>(`/projects/${projectId}/preview${versionId ? `?versionId=${versionId}` : ""}`);
+    const query = new URLSearchParams({ ...(versionId ? { versionId } : {}), ...(page !== "/" ? { page } : {}) }).toString();
+    const data = await api<{ html: string; pages?: Array<{ path: string; title: string }> }>(`/projects/${projectId}/preview${query ? `?${query}` : ""}`);
     setPreview(data.html);
+    setPreviewPages(data.pages ?? []);
+    setPreviewPage(page);
+    setPreviewVersion(versionId);
   }
 
   async function toggleLock(key: string, locked: boolean) {
@@ -331,6 +340,26 @@ export default function StagePage() {
           {!stage.inputsReady && <p className={styles.small}>{t("Черновик от ИИ станет доступен, когда будет принят паспорт проекта. Описать процесс самому можно уже сейчас.")}</p>}
         </section>
       )}
+      {/* Starting point for an empty sitemap */}
+      {stage.artifactType === "sitemap" && !detail.current && draft === null && stage.canEdit && (
+        <section className={styles.card} aria-label={t("Как начать")}>
+          <p className={styles.cardTitle}>{t("Как начнём карту сайта?")}</p>
+          <div style={{ display: "grid", gap: 10 }}>
+            {ai.configured && stage.inputsReady && (
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{busy === "ai" ? t("ИИ подбирает страницы…") : t("✨ Пусть ИИ предложит страницы")}</button>
+            )}
+            {detail.options.sitemap?.template && (
+              <button className={ai.configured ? styles.secondary : styles.button} onClick={() => edit(detail.options.sitemap!.template)}>{t("Взять типовой набор: главная, услуги, о нас, вопросы, контакты")}</button>
+            )}
+            <button className={styles.secondary} onClick={() => edit(blankSitemap())}>{t("Собрать самому, начиная с главной")}</button>
+          </div>
+          {!stage.inputsReady && <p className={styles.small}>{t("Предложение от ИИ станет доступно, когда будут приняты паспорт проекта и услуги.")}</p>}
+        </section>
+      )}
+      {stage.artifactType === "sitemap" && stage.status !== "locked" && draft !== null && detail.options.sitemap && (
+        <SitemapEditor value={draft as Sitemap} onChange={edit} options={detail.options.sitemap} sectionTypes={detail.options.sectionTypes} disabled={!stage.canEdit}
+          issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
+      )}
       {stage.artifactType === "process" && stage.status !== "locked" && draft !== null && detail.options.process && (
         <ProcessEditor value={draft as BusinessProcess} onChange={edit} options={detail.options.process} disabled={!stage.canEdit}
           issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
@@ -345,7 +374,7 @@ export default function StagePage() {
         </section>
       )}
       {stage.artifactType === "content" && draft !== null && (
-        <ContentEditor projectId={projectId} content={draft as Content} onChange={edit} sectionTypes={detail.options.sectionTypes} disabled={!stage.canEdit}
+        <ContentEditor projectId={projectId} content={draft as Content} onChange={edit} sectionTypes={detail.options.sectionTypes} disabled={!stage.canEdit} pages={detail.options.pages ?? null}
           aiAvailable={aiUsable && Boolean(detail.current)} issueKeys={issueKeys}
           onAskAi={(targetKey, text) => run("ai", () => askAi({ instruction: text, targetKey }))}
           lockedKeys={stage.lockedKeys} onToggleLock={toggleLock} canLock={stage.canEdit && Boolean(detail.current)} />
@@ -411,7 +440,16 @@ export default function StagePage() {
             <p className={styles.cardTitle} style={{ margin: 0 }}>{t("Предпросмотр")}</p><div className={styles.spacer} />
             <button className={styles.ghost} style={{ minHeight: 40 }} onClick={() => setPreview(null)}>{t("Скрыть")}</button>
           </div>
+          {previewPages.length > 1 && (
+            <div className={styles.chips} role="tablist" aria-label={t("Страницы сайта")} style={{ marginBottom: 10 }}>
+              {previewPages.map((page) => (
+                <button key={page.path} type="button" role="tab" aria-selected={page.path === previewPage} className={page.path === previewPage ? styles.button : styles.ghost}
+                  style={{ minHeight: 40, padding: "4px 12px" }} disabled={Boolean(busy)} onClick={() => run("preview", () => showPreview(previewVersion, page.path))}>{page.title}</button>
+              ))}
+            </div>
+          )}
           <div className={styles.phone}><iframe title={t("Предпросмотр сайта")} sandbox="" srcDoc={preview} /></div>
+          {previewPages.length > 1 && <p className={styles.small}>{t("В предпросмотре меню не переходит по страницам — переключайте их кнопками выше.")}</p>}
           {stage.artifactType !== "site" && <p className={styles.small}>{t("Это черновик: здесь видны последние сохранённые версии этапов, даже не принятые.")}</p>}
         </section>
       )}

@@ -2,7 +2,7 @@
 
 import { t } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { explainError, images, shrinkPhoto, type Content, type Design, type FieldDefinition, type Offer, type Preset, type ProjectImage, type Section, type SectionType } from "@/lib/journey";
+import { explainError, images, shrinkPhoto, type Content, type Design, type FieldDefinition, type Offer, type PageSeo, type Preset, type ProjectImage, type Section, type SectionType, type SitemapPage } from "@/lib/journey";
 import styles from "../../../journey.module.css";
 
 type LockProps = { lockedKeys: string[]; onToggleLock: (key: string, locked: boolean) => void; canLock: boolean };
@@ -224,38 +224,73 @@ function PhotoControl({ projectId, library, imageId, onSelect, disabled, section
   );
 }
 
-export function ContentEditor({ projectId, content, onChange, sectionTypes, disabled, aiAvailable, onAskAi, issueKeys, ...lock }: LockProps & {
+export function ContentEditor({ projectId, content, onChange, sectionTypes, disabled, aiAvailable, onAskAi, issueKeys, pages, ...lock }: LockProps & {
   projectId: string; content: Content; onChange: (next: Content) => void; sectionTypes: Record<SectionType, string>; disabled: boolean; aiAvailable: boolean;
   onAskAi: (targetKey: string, instruction: string) => Promise<void>; issueKeys: string[];
+  /** Multi-page site: pages of the accepted «Карта сайта»; blocks are edited page by page. */
+  pages?: SitemapPage[] | null;
 }) {
   const [newType, setNewType] = useState<SectionType>("faq");
+  const [pageKey, setPageKey] = useState(pages?.[0]?.key ?? "home");
   const library = usePhotoLibrary(projectId);
+  const paged = Boolean(pages?.length);
+  const onPage = (section: Section) => !paged || (section.page ?? "home") === pageKey;
+  const visible = content.sections.filter(onPage);
+  const page = pages?.find((item) => item.key === pageKey) ?? null;
   const updateSection = (key: string, patch: Partial<Section>) => onChange({ ...content, sections: content.sections.map((section) => (section.key === key ? { ...section, ...patch } : section)) });
+  /** Moves a block among the blocks of the shown page. */
   const move = (index: number, delta: number) => {
+    const a = content.sections.indexOf(visible[index]!);
+    const b = content.sections.indexOf(visible[index + delta]!);
     const sections = [...content.sections];
-    const [section] = sections.splice(index, 1);
-    sections.splice(index + delta, 0, section);
+    [sections[a], sections[b]] = [sections[b]!, sections[a]!];
     onChange({ ...content, sections });
   };
   const addSection = () => {
-    let key: string = newType;
-    for (let number = 2; content.sections.some((section) => section.key === key); number += 1) key = `${newType}-${number}`;
-    const section: Section = { key, type: newType, title: sectionTypes[newType], text: "", items: [], buttonLabel: null, imageId: null };
-    const contactsIndex = content.sections.findIndex((item) => item.type === "contacts");
+    let key: string = paged ? `${pageKey}-${newType}`.slice(0, 40) : newType;
+    for (let number = 2; content.sections.some((section) => section.key === key); number += 1) key = `${paged ? `${pageKey}-` : ""}${newType}-${number}`.slice(0, 40);
+    const section: Section = { key, type: newType, title: sectionTypes[newType], text: "", items: [], buttonLabel: null, imageId: null, ...(paged ? { page: pageKey } : {}) };
     const sections = [...content.sections];
-    sections.splice(contactsIndex >= 0 ? contactsIndex : sections.length, 0, section);
+    const contacts = visible.find((item) => item.type === "contacts");
+    const last = visible[visible.length - 1];
+    const at = contacts ? sections.indexOf(contacts) : last ? sections.indexOf(last) + 1 : sections.length;
+    sections.splice(at, 0, section);
     onChange({ ...content, sections });
+  };
+  const home = !page || page.path === "/";
+  const seo = home ? content.seo : content.pageSeo?.find((item) => item.page === pageKey) ?? { page: pageKey, title: "", description: "" };
+  const setSeo = (patch: Partial<{ title: string; description: string }>) => {
+    if (home) { onChange({ ...content, seo: { ...content.seo, ...patch } }); return; }
+    const rest = (content.pageSeo ?? []).filter((item) => item.page !== pageKey);
+    onChange({ ...content, pageSeo: [...rest, { ...seo, page: pageKey, ...patch } as PageSeo] });
   };
   return (
     <div>
-      {content.sections.map((section, index) => (
+      {paged && (
+        <div className={styles.card}>
+          <p className={styles.cardTitle}>{t("Страницы сайта")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{t("Тексты пишутся по карте сайта. Выберите страницу — ниже её блоки.")}</p>
+          <div className={styles.chips} role="tablist" aria-label={t("Страницы сайта")}>
+            {pages!.map((item) => {
+              const count = content.sections.filter((section) => (section.page ?? "home") === item.key).length;
+              return (
+                <button key={item.key} type="button" role="tab" aria-selected={item.key === pageKey} className={item.key === pageKey ? styles.button : styles.ghost}
+                  style={{ minHeight: 40, padding: "4px 12px" }} onClick={() => setPageKey(item.key)}>{item.title}{" "}<span style={{ opacity: 0.75 }}>· {count}</span></button>
+              );
+            })}
+          </div>
+          {page?.purpose && <p className={styles.small} style={{ marginBottom: 0 }}>{t("Задача страницы: {0}", [page.purpose])}</p>}
+        </div>
+      )}
+      {paged && visible.length === 0 && <p className={`${styles.notice} ${styles.warn}`}>{t("На этой странице пока нет блоков — добавьте их ниже.")}</p>}
+      {visible.map((section, index) => (
         <article key={section.key} className={styles.section} aria-label={sectionTypes[section.type]}>
           <div className={styles.sectionHead}>
             <span className={styles.sectionType}>{sectionTypes[section.type]}</span>
             <LockBadge lockKey={section.key} {...lock} />
             <div className={styles.spacer} />
             <button type="button" className={styles.iconButton} disabled={disabled || index === 0} aria-label={t("Поднять блок выше")} onClick={() => move(index, -1)}>↑</button>
-            <button type="button" className={styles.iconButton} disabled={disabled || index === content.sections.length - 1} aria-label={t("Опустить блок ниже")} onClick={() => move(index, 1)}>↓</button>
+            <button type="button" className={styles.iconButton} disabled={disabled || index === visible.length - 1} aria-label={t("Опустить блок ниже")} onClick={() => move(index, 1)}>↓</button>
             <button type="button" className={styles.iconButton} disabled={disabled || content.sections.length <= 1} aria-label={t("Удалить блок")}
               onClick={() => { if (window.confirm(t("Удалить блок «{0}»? Его можно вернуть из истории версий.", [section.title || sectionTypes[section.type]]))) onChange({ ...content, sections: content.sections.filter((item) => item.key !== section.key) }); }}>✕</button>
           </div>
@@ -292,24 +327,24 @@ export function ContentEditor({ projectId, content, onChange, sectionTypes, disa
           {aiAvailable && !disabled && <AskAiInline onAsk={(instruction) => onAskAi(section.key, instruction)} />}
         </article>
       ))}
-      {!disabled && content.sections.length < 12 && (
+      {!disabled && visible.length < 12 && (!paged || content.sections.length < 60) && (
         <div className={styles.card}>
-          <p className={styles.cardTitle}>{t("Добавить блок")}</p>
+          <p className={styles.cardTitle}>{paged && page ? t("Добавить блок на страницу «{0}»", [page.title]) : t("Добавить блок")}</p>
           <div className={styles.row}>
             <select className={styles.select} style={{ flex: "1 1 200px" }} value={newType} aria-label={t("Тип блока")} onChange={(event) => setNewType(event.target.value as SectionType)}>
-              {(Object.keys(sectionTypes) as SectionType[]).filter((type) => type !== "hero").map((type) => <option key={type} value={type}>{sectionTypes[type]}</option>)}
+              {(Object.keys(sectionTypes) as SectionType[]).filter((type) => type !== "hero" || (paged && !visible.some((item) => item.type === "hero"))).map((type) => <option key={type} value={type}>{sectionTypes[type]}</option>)}
             </select>
             <button type="button" className={styles.secondary} onClick={addSection}>{t("Добавить")}</button>
           </div>
         </div>
       )}
       <article className={styles.section} aria-label={t("Для поисковиков")}>
-        <div className={styles.sectionHead}><span className={styles.sectionType}>{t("Для поисковиков")}</span><LockBadge lockKey="seo" {...lock} /></div>
+        <div className={styles.sectionHead}><span className={styles.sectionType}>{paged && page ? t("Для поисковиков: «{0}»", [page.title]) : t("Для поисковиков")}</span><LockBadge lockKey={home ? "seo" : "pageSeo"} {...lock} /></div>
         <p className={styles.why} style={{ marginBottom: 10 }}>{t("Так сайт будет выглядеть в результатах Google и Яндекса. Посетители на странице это не видят.")}</p>
-        <label className={styles.field}><span className={styles.label}>{t("Заголовок (")}{content.seo.title.length}/70)</span>
-          <input className={styles.input} value={content.seo.title} maxLength={70} disabled={disabled} onChange={(event) => onChange({ ...content, seo: { ...content.seo, title: event.target.value } })} /></label>
-        <label className={styles.field}><span className={styles.label}>{t("Описание (")}{content.seo.description.length}/160)</span>
-          <textarea className={styles.textarea} value={content.seo.description} maxLength={160} disabled={disabled} onChange={(event) => onChange({ ...content, seo: { ...content.seo, description: event.target.value } })} /></label>
+        <label className={styles.field}><span className={styles.label}>{t("Заголовок (")}{seo.title.length}/70)</span>
+          <input className={styles.input} value={seo.title} maxLength={70} disabled={disabled} onChange={(event) => setSeo({ title: event.target.value })} /></label>
+        <label className={styles.field}><span className={styles.label}>{t("Описание (")}{seo.description.length}/160)</span>
+          <textarea className={styles.textarea} value={seo.description} maxLength={160} disabled={disabled} onChange={(event) => setSeo({ description: event.target.value })} /></label>
       </article>
     </div>
   );

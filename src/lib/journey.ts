@@ -5,7 +5,7 @@ import type { ProcessOptions } from "@/app/projects/[projectId]/stages/[stageKey
 import { API_BASE_URL, ApiError, api } from "./api";
 
 export type StageStatus = "locked" | "ready" | "awaiting_lead" | "in_progress" | "in_review" | "changes_requested" | "approved" | "stale" | "imported" | "skipped" | "blocked";
-export type ArtifactType = "brief" | "process" | "offer" | "content" | "design" | "site" | "schedule" | "techplan";
+export type ArtifactType = "brief" | "process" | "offer" | "content" | "design" | "site" | "schedule" | "techplan" | "sitemap";
 
 export type CatalogType = {
   key: "landing" | "company_site"; title: string; description: string; goodFor: string; examples: string[]; resultExplanation: string;
@@ -43,9 +43,15 @@ export type FieldDefinition = {
 export type Brief = Record<string, string | null>;
 export type Offer = { services: Array<{ name: string; description: string | null; price: string | null }>; hours: string | null };
 export type SectionType = "hero" | "about" | "services" | "benefits" | "steps" | "faq" | "contacts" | "cta";
-export type Section = { key: string; type: SectionType; title: string; text: string; items: Array<{ title: string; text: string }>; buttonLabel: string | null; imageId?: string | null };
+/** page: key of the «Карта сайта» page on a multi-page site. */
+export type Section = { key: string; type: SectionType; title: string; text: string; items: Array<{ title: string; text: string }>; buttonLabel: string | null; imageId?: string | null; page?: string };
 export type ProjectImage = { id: string; width: number; height: number; sizeBytes: number; alt: string; createdAt: string; inUse: boolean };
-export type Content = { sections: Section[]; seo: { title: string; description: string } };
+export type PageSeo = { page: string; title: string; description: string };
+/** seo is the home page; pageSeo the other pages of a multi-page site. */
+export type Content = { sections: Section[]; seo: { title: string; description: string }; pageSeo?: PageSeo[] };
+export type SitemapPage = { key: string; path: string; title: string; purpose: string; sections: SectionType[] };
+export type Sitemap = { pages: SitemapPage[] };
+export type SitemapOptions = { limits: { pages: number; minPages: number; sections: number }; reservedPaths: string[]; template: Sitemap };
 export type Design = { palette: string; font: string; corners: "rounded" | "sharp"; heroLayout: "centered" | "left" };
 export type SiteCheck = { id: string; status: "passed" | "warning" | "failed"; title: string; details: string; required: boolean };
 
@@ -72,7 +78,7 @@ export type StageDetail = {
     provenance: { provider: string; model: string | null; instruction: string | null; targetKey: string | null; rulesApplied: number } | null }>;
   rules: Array<{ id: string; kind: "stage_rule" | "project_rule"; status: "active" | "disabled"; text: string; createdAt: string }>;
   ai: { level: string; whatItDoes: string; instructionExamples: string[]; describeHint: string | null; configured: boolean; remainingToday: number; templateAvailable: boolean; budget: { limit: number | null; used: number } | null; month: { left: number; limit: number; planTitle: string } | null };
-  options: { palettes: Preset[]; fonts: Preset[]; corners: Preset[]; heroLayouts: Preset[]; sectionTypes: Record<SectionType, string>; schedule?: ScheduleOptions; techplan?: TechPlanOptions; process?: ProcessOptions; technology?: string | null };
+  options: { palettes: Preset[]; fonts: Preset[]; corners: Preset[]; heroLayouts: Preset[]; sectionTypes: Record<SectionType, string>; schedule?: ScheduleOptions; techplan?: TechPlanOptions; process?: ProcessOptions; sitemap?: SitemapOptions; pages?: SitemapPage[] | null; technology?: string | null };
 };
 
 const messages: Record<string, string> = {

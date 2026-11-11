@@ -8,7 +8,7 @@ import styles from "../../../journey.module.css";
 
 type Terms = { payKind: "none" | "fixed" | "hourly"; fixedAmount: number | null; hourlyRate: number | null; hourLimit: number | null; weeklyHourLimit: number | null; revisionsIncluded: number | null; onlyResultTime: boolean };
 type Entry = { id: string; startedAt: string; endedAt: string; minutes: number; source: "tracked" | "manual"; actions: number; withoutResult: boolean; note: string | null; status: string; ownerComment: string | null; specialistReply: string | null };
-type Payment = { id: string; basis: string; minutes: number | null; amount: number; fee: number | null; payout: number | null; status: "due" | "checkout" | "held" | "paid_out" | "paid_direct" | "paid" | "cancelled"; paidAt: string | null; paidOutAt: string | null; stageVersion: number | null };
+type Payment = { id: string; basis: string; minutes: number | null; amount: number; fee: number | null; payout: number | null; status: "due" | "checkout" | "held" | "paid_out" | "paid_direct" | "paid" | "cancelled" | "refunded"; paidAt: string | null; paidOutAt: string | null; stageVersion: number | null };
 type Summary = { trackedMinutes: number; approvedMinutes: number; pendingMinutes: number; disputedMinutes: number; noResultMinutes: number; payableMinutes: number; limitMinutes: number | null; limitReached: boolean; amountDue: number };
 type Sheet = { id: string; name: string; isYou: boolean; role: string; status: string; terms: Terms; summary: Summary; entries: Entry[]; payments: Payment[] };
 
@@ -18,7 +18,7 @@ const day = (value: string) => new Date(value).toLocaleDateString("ru-RU", { wee
 const statusText: Record<string, string> = { pending: "ждёт подтверждения", approved: "подтверждено", auto_approved: "подтверждено автоматически", disputed: "оспорено" };
 const paymentText: Record<string, string> = {
   due: "к оплате", checkout: "ждёт оплаты", held: "оплачено в BuildPath, ждёт перевода специалисту", paid_out: "переведено специалисту",
-  paid_direct: "оплачено напрямую", paid: "оплачено", cancelled: "отменено",
+  paid_direct: "оплачено напрямую", paid: "оплачено", cancelled: "отменено", refunded: "возвращено владельцу",
 };
 
 /**
@@ -112,6 +112,7 @@ export function TimesheetPanel({ projectId, stageKey, specialistActive }: { proj
                 {payment.payout !== null && ["held", "paid_out"].includes(payment.status) && payment.fee ? (
                   <div className={styles.small}>Специалисту: {formatTenge(payment.payout)} · комиссия BuildPath: {formatTenge(payment.fee)}</div>
                 ) : null}
+                {canDecide && ["held", "paid_out", "refunded"].includes(payment.status) && <div><a className={styles.small} href={`/projects/${projectId}/receipts/stage/${payment.id}`}>Квитанция об оплате</a></div>}
                 {canDecide && (payment.status === "due" || payment.status === "checkout") && (
                   <div style={{ marginTop: 8 }}>
                     {online.payOnline ? (

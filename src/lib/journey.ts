@@ -5,7 +5,7 @@ import type { ProcessOptions } from "@/app/projects/[projectId]/stages/[stageKey
 import { API_BASE_URL, ApiError, api } from "./api";
 
 export type StageStatus = "locked" | "ready" | "awaiting_lead" | "in_progress" | "in_review" | "changes_requested" | "approved" | "stale" | "imported" | "skipped" | "blocked";
-export type ArtifactType = "brief" | "process" | "offer" | "content" | "design" | "site" | "schedule" | "techplan" | "sitemap";
+export type ArtifactType = "brief" | "process" | "offer" | "content" | "design" | "site" | "schedule" | "techplan" | "sitemap" | "catalog";
 
 export type CatalogType = {
   key: "landing" | "company_site"; title: string; description: string; goodFor: string; examples: string[]; resultExplanation: string;
@@ -51,6 +51,10 @@ export type PageSeo = { page: string; title: string; description: string };
 export type Content = { sections: Section[]; seo: { title: string; description: string }; pageSeo?: PageSeo[] };
 export type SitemapPage = { key: string; path: string; title: string; purpose: string; sections: SectionType[] };
 export type Sitemap = { pages: SitemapPage[] };
+export type Product = { key: string; name: string; description: string; price: number; unit: string | null; available: boolean; imageId: string | null };
+export type DeliveryOption = { key: string; title: string; price: number; needsAddress: boolean; note: string };
+export type Catalog = { products: Product[]; delivery: DeliveryOption[]; payment: { onDelivery: boolean; transfer: boolean; transferNote: string }; minOrder: number | null };
+export type CatalogOptions = { limits: { products: number; delivery: number; maxPrice: number }; template: Catalog };
 export type SitemapOptions = { limits: { pages: number; minPages: number; sections: number }; reservedPaths: string[]; template: Sitemap };
 export type Design = { palette: string; font: string; corners: "rounded" | "sharp"; heroLayout: "centered" | "left" };
 export type SiteCheck = { id: string; status: "passed" | "warning" | "failed"; title: string; details: string; required: boolean };
@@ -78,7 +82,7 @@ export type StageDetail = {
     provenance: { provider: string; model: string | null; instruction: string | null; targetKey: string | null; rulesApplied: number } | null }>;
   rules: Array<{ id: string; kind: "stage_rule" | "project_rule"; status: "active" | "disabled"; text: string; createdAt: string }>;
   ai: { level: string; whatItDoes: string; instructionExamples: string[]; describeHint: string | null; configured: boolean; remainingToday: number; templateAvailable: boolean; budget: { limit: number | null; used: number } | null; month: { left: number; limit: number; planTitle: string } | null };
-  options: { palettes: Preset[]; fonts: Preset[]; corners: Preset[]; heroLayouts: Preset[]; sectionTypes: Record<SectionType, string>; schedule?: ScheduleOptions; techplan?: TechPlanOptions; process?: ProcessOptions; sitemap?: SitemapOptions; pages?: SitemapPage[] | null; technology?: string | null };
+  options: { palettes: Preset[]; fonts: Preset[]; corners: Preset[]; heroLayouts: Preset[]; sectionTypes: Record<SectionType, string>; schedule?: ScheduleOptions; techplan?: TechPlanOptions; process?: ProcessOptions; sitemap?: SitemapOptions; catalog?: CatalogOptions; pages?: SitemapPage[] | null; technology?: string | null };
 };
 
 const messages: Record<string, string> = {
@@ -156,6 +160,9 @@ const messages: Record<string, string> = {
   DOMAINS_NOT_CONFIGURED: t("Свои домены пока не подключаются на этом сервере BuildPath."),
   BOOKING_NOT_STARTED: t("Отметить визит можно после начала записи."),
   BOOKING_NOT_FOUND: t("Запись не найдена или больше вам не доступна."),
+  ORDER_NOT_FOUND: t("Заказ не найден."),
+  ORDER_STATUS_NOT_ALLOWED: t("Этот заказ уже изменили — например, клиент отменил его. Список обновлён."),
+  STORE_NEEDS_BUILDPATH: t("Магазин принимает заказы только на BuildPath: на своём сервере корзина и заказы пока не работают."),
   MASTER_NOT_FOUND: t("Такого мастера нет в опубликованном расписании. Если вы добавили мастера, примите расписание и обновите сайт."),
   MASTER_ALREADY_CONNECTED: t("Этот мастер уже подключён. Чтобы сменить почту, сначала закройте доступ."),
   MASTERS_FORBIDDEN: t("Приглашать мастеров может владелец или менеджер проекта."),

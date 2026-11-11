@@ -146,6 +146,14 @@ export default function JourneyPage() {
                 <a className={styles.secondary} href={`/projects/${projectId}/bookings`}>{t("Открыть записи")}</a>
               </section>
             )}
+            {journey.project.projectType === "store" && (
+              <section className={styles.card} aria-labelledby="orders-title">
+                <p className={styles.kicker}>{t("Магазин")}</p>
+                <h2 id="orders-title" className={styles.h2}>{t("Заказы")}</h2>
+                <p style={{ margin: "0 0 10px" }}>{t("Что заказали, как доставить и как клиент платит. Подтверждайте заказы и отмечайте выполненные.")}</p>
+                <a className={styles.secondary} href={`/projects/${projectId}/orders`}>{t("Открыть заказы")}</a>
+              </section>
+            )}
             <WalletCard projectId={projectId} />
             <BudgetCard projectId={projectId} />
             <PublishCard projectId={projectId} onChange={() => void load()} />

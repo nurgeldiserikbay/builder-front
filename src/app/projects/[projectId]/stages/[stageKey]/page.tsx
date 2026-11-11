@@ -13,6 +13,7 @@ import ChangesPanel from "./changes";
 import { TimesheetPanel } from "./timesheet";
 import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
+import { ProcessEditor, blankProcess, type BusinessProcess } from "./process-editor";
 import { formatTenge } from "@/lib/money";
 import styles from "../../../journey.module.css";
 
@@ -314,6 +315,27 @@ export default function StagePage() {
         </section>
       )}
 
+      {/* Starting point for an empty business process */}
+      {stage.artifactType === "process" && !detail.current && draft === null && stage.canEdit && (
+        <section className={styles.card} aria-label={t("Как начать")}>
+          <p className={styles.cardTitle}>{t("Как начнём описывать процесс?")}</p>
+          <div style={{ display: "grid", gap: 10 }}>
+            {ai.configured && stage.inputsReady && (
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{busy === "ai" ? t("ИИ описывает процесс…") : t("✨ Пусть ИИ опишет процесс")}</button>
+            )}
+            {!ai.configured && ai.templateAvailable && stage.inputsReady && (
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{t("Взять типичный процесс")}</button>
+            )}
+            <button className={styles.secondary} onClick={() => edit(blankProcess)}>{t("Описать самому с чистого листа")}</button>
+          </div>
+          {!stage.inputsReady && <p className={styles.small}>{t("Черновик от ИИ станет доступен, когда будет принят паспорт проекта. Описать процесс самому можно уже сейчас.")}</p>}
+        </section>
+      )}
+      {stage.artifactType === "process" && stage.status !== "locked" && draft !== null && detail.options.process && (
+        <ProcessEditor value={draft as BusinessProcess} onChange={edit} options={detail.options.process} disabled={!stage.canEdit}
+          issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
+      )}
+
       {/* Editors */}
       {stage.status !== "locked" && stage.fields && (stage.artifactType === "brief" || stage.artifactType === "offer") && draft !== null && (
         <section className={styles.card}>
@@ -344,7 +366,7 @@ export default function StagePage() {
         <TechPlanView plan={(detail.options.techplan.outdated || !detail.current ? detail.options.techplan.preview : detail.current.content as TechPlan) ?? null}
           outdated={detail.options.techplan.outdated} notes={((draft as { ownerNotes?: string | null } | null)?.ownerNotes) ?? ""} disabled={!stage.canEdit}
           onNotes={(value) => edit({ ownerNotes: value })} busy={busy === "plan"}
-          onRefresh={stage.canEdit ? () => run("plan", async () => { await saveDraft(); setMessage(t("План обновлён по принятым этапам. Проверьте и примите его.")); }) : null} />
+          onRefresh={stage.canEdit ? () => run("plan", async () => { await saveDraft(); setMessage(t("Архитектура обновлена по принятым этапам. Проверьте и примите её.")); }) : null} />
       )}
 
       {/* Build stage */}

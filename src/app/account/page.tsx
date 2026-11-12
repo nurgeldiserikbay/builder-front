@@ -88,6 +88,7 @@ export default function AccountPage() {
               <ul className={styles.list}>
                 <li><a href="/account/plan">{t("Тариф и лимиты")}</a></li>
                 <li><a href="/account/specialist">{t("Карточка специалиста")}</a>{" "}{t("— чтобы владельцы находили вас в каталоге")}</li>
+                <li><a href="/account/disputes">{t("Споры")}</a>{" "}{t("— разногласия по работе специалистов и оплате")}</li>
                 <li><a href="/legal/terms">{t("Оферта")}</a></li>
                 <li><a href="/legal/privacy">{t("Политика конфиденциальности")}</a>{" "}{t("— какие данные мы храним и зачем")}</li>
               </ul>

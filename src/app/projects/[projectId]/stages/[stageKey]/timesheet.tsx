@@ -83,7 +83,23 @@ export function TimesheetPanel({ projectId, stageKey, specialistActive }: { proj
   const post = (path: string, body?: unknown) => api<{ canDecide: boolean; assignments: Sheet[] }>(path, { method: "POST", ...(body ? { body: JSON.stringify(body) } : {}) });
 
   const paid = (sheets ?? []).filter((sheet) => sheet.terms.payKind !== "none" || sheet.entries.length > 0);
-  if (!sheets || paid.length === 0) return error ? <p className={`${styles.notice} ${styles.error}`}>{error}</p> : null;
+  if (!sheets) return error ? <p className={`${styles.notice} ${styles.error}`}>{error}</p> : null;
+  // Paid outside BuildPath and no tracked time: no timesheet to show, but the sides can still raise a disagreement.
+  if (paid.length === 0) {
+    const mine = sheets.filter((sheet) => canDecide || sheet.isYou);
+    if (mine.length === 0) return null;
+    return (
+      <details className={`${styles.card} ${styles.details}`}>
+        <summary>{t("Разногласия по работе специалиста")}</summary>
+        {mine.map((sheet) => (
+          <div key={sheet.id} style={{ marginTop: 8 }}>
+            {canDecide && <strong>{sheet.name}</strong>}
+            <DisputesBlock assignmentId={sheet.id} />
+          </div>
+        ))}
+      </details>
+    );
+  }
 
   return (
     <section className={styles.card} aria-label={t("Время и оплата")}>

@@ -60,10 +60,12 @@ export default function StagePage() {
   const [previewVersion, setPreviewVersion] = useState<string | undefined>(undefined);
   const [nextStageKey, setNextStageKey] = useState<string | null>(null);
   const [requestPrice, setRequestPrice] = useState<number | null>(null);
-  useEffect(() => {
+  const [spendLimit, setSpendLimit] = useState<{ amount: number; left: number; percent: number; warn: boolean; blocked: boolean } | null>(null);
+  const loadBudget = useCallback(() => {
     // Specialists don't see project money; the request just fails quietly for them.
-    api<{ perRequest: number | null }>(`/projects/${projectId}/budget`).then((budget) => setRequestPrice(budget.perRequest)).catch(() => undefined);
+    api<{ perRequest: number | null; limit: typeof spendLimit }>(`/projects/${projectId}/budget`).then((budget) => { setRequestPrice(budget.perRequest); setSpendLimit(budget.limit ?? null); }).catch(() => undefined);
   }, [projectId]);
+  useEffect(() => { loadBudget(); }, [loadBudget]);
 
   const load = useCallback(async () => {
     try {
@@ -484,8 +486,13 @@ export default function StagePage() {
                 ))}
                 <p className={styles.why}>{t("Запомненные правила ИИ будет учитывать каждый раз, например «пиши без канцелярита».")}</p>
               </fieldset>
-              <button className={`${styles.button} ${styles.block}`} disabled={Boolean(busy) || instruction.trim().length < 2}
-                onClick={() => run("ai", async () => { await askAi({ instruction: instruction.trim(), saveAs }); setInstruction(""); setSaveAs("one_off"); })}>{busy === "ai" ? t("ИИ работает…") : t("Попросить ИИ")}</button>
+              {spendLimit?.blocked ? (
+                <p className={`${styles.notice} ${styles.error}`} role="alert">{t("Лимит расходов на ИИ по проекту исчерпан. Владелец может увеличить его на странице проекта, в карточке «Смета и расход».")}</p>
+              ) : spendLimit?.warn ? (
+                <p className={`${styles.notice} ${styles.warn}`} role="status">{t("Потрачено {0}% лимита на ИИ — осталось {1}.", [spendLimit.percent, formatTenge(spendLimit.left)])}</p>
+              ) : null}
+              <button className={`${styles.button} ${styles.block}`} disabled={Boolean(busy) || instruction.trim().length < 2 || Boolean(spendLimit?.blocked)}
+                onClick={() => run("ai", async () => { try { await askAi({ instruction: instruction.trim(), saveAs }); setInstruction(""); setSaveAs("one_off"); } finally { loadBudget(); } })}>{busy === "ai" ? t("ИИ работает…") : t("Попросить ИИ")}</button>
               <p className={styles.small}>{ai.budget && ai.budget.limit !== null ? t("Ваших запросов к ИИ: {0} из {1}", [ai.budget.used, ai.budget.limit]) : ai.month ? t("Запросов к ИИ в этом месяце осталось: {0} из {1}", [ai.month.left, ai.month.limit]) : t("Осталось запросов сегодня: {0}", [ai.remainingToday])}</p>
             </>
           )}

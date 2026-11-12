@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import { formatTenge } from "@/lib/money";
+import { DisputesBlock } from "./disputes";
 import styles from "../../../journey.module.css";
 
 type Terms = { payKind: "none" | "fixed" | "hourly"; fixedAmount: number | null; hourlyRate: number | null; hourLimit: number | null; weeklyHourLimit: number | null; revisionsIncluded: number | null; onlyResultTime: boolean };
@@ -109,7 +110,7 @@ export function TimesheetPanel({ projectId, stageKey, specialistActive }: { proj
             </ul>
             {sheet.payments.map((payment) => (
               <div key={payment.id} className={`${styles.notice} ${payment.status === "due" || payment.status === "checkout" ? styles.info : styles.success}`}>
-                {t("Версия")}{" "}{payment.stageVersion}: {formatTenge(payment.amount)}{payment.minutes !== null ? t(" за {0}", [hours(payment.minutes)]) : ""} — {paymentText[payment.status]}{payment.paidAt ? ` ${new Date(payment.paidAt).toLocaleDateString(dateLocale())}` : ""}
+                {payment.basis === "dispute" ? t("По решению спора") : <>{t("Версия")}{" "}{payment.stageVersion}</>}: {formatTenge(payment.amount)}{payment.minutes !== null ? t(" за {0}", [hours(payment.minutes)]) : ""} — {paymentText[payment.status]}{payment.paidAt ? ` ${new Date(payment.paidAt).toLocaleDateString(dateLocale())}` : ""}
                 {payment.payout !== null && ["held", "paid_out"].includes(payment.status) && payment.fee ? (
                   <div className={styles.small}>{t("Специалисту:")}{" "}{formatTenge(payment.payout)}{" "}{t("· комиссия BuildPath:")}{" "}{formatTenge(payment.fee)}</div>
                 ) : null}
@@ -138,6 +139,7 @@ export function TimesheetPanel({ projectId, stageKey, specialistActive }: { proj
               </div>
             ))}
             {sheet.isYou && sheet.terms.payKind !== "none" && online.payOnline && <PayoutAccount />}
+            {(canDecide || sheet.isYou) && <DisputesBlock assignmentId={sheet.id} />}
             {[...byDay.entries()].map(([label, entries]) => (
               <details key={label} open={entries.some((entry) => entry.status === "pending" || entry.status === "disputed")}>
                 <summary className={styles.small} style={{ fontWeight: 700, padding: "6px 0" }}>{label} · {hours(entries.reduce((sum, entry) => sum + entry.minutes, 0))}</summary>

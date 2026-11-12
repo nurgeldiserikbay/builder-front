@@ -23,3 +23,6 @@
 .card label.consent input{width:20px;height:20px;flex:none;margin:2px 0 0;accent-color:var(--brand)}
 .consent a{color:var(--brand-ink);font-weight:600}
 @media(max-width:520px){.card{padding:28px 22px}.card h1{font-size:28px}}
+.inlineLink{justify-self:start;border:0;background:none;padding:4px 0;margin-top:-8px;color:var(--brand-ink);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.inlineLink:hover{text-decoration:underline}
+.inlineLink:focus-visible{outline:3px solid var(--focus);outline-offset:2px}

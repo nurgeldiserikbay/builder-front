@@ -7,6 +7,7 @@ import { ApiError, api } from "@/lib/api";
 import { download, explainError, isPlanMessage, statusTone, type Journey } from "@/lib/journey";
 import styles from "../journey.module.css";
 import PublishCard from "./publish-card";
+import InsightsCard from "./insights-card";
 import ProjectMap from "./project-map";
 import BudgetCard from "./budget-card";
 import WalletCard from "./wallet-card";
@@ -178,6 +179,7 @@ export default function JourneyPage() {
             {tab === "publish" && !specialist && (
               <div className={styles.panels}>
                 <PublishCard projectId={projectId} onChange={() => void load()} />
+                <InsightsCard projectId={projectId} />
                 {journey.project.projectType === "booking" && (
               <section className={styles.card} aria-labelledby="bookings-title">
                 <p className={styles.kicker}>{t("Онлайн-запись")}</p>

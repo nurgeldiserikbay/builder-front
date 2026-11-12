@@ -9,7 +9,7 @@ import styles from "../../../journey.module.css";
 
 type Assignment = {
   id: string; email: string; name: string | null; profileId: string | null; role: "lead" | "consultant"; status: string; aiBudget: number | null; aiUsed: number; inviteExpired: boolean; readUntil: string | null; termsText: string;
-  review: { rating: number; text: string | null; reply: string | null } | null; canReview: boolean;
+  review: { rating: number; text: string | null; reply: string | null; hidden: boolean; moderationNote: string | null } | null; canReview: boolean;
 };
 type Roles = { lead: { title: string; explanation: string; can: string[] }; consultant: { title: string; explanation: string; can: string[] }; cannot: string[]; afterAcceptance: string };
 
@@ -115,6 +115,7 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
                 <p className={styles.small} style={{ margin: "6px 0 0" }}>
                   {t("Ваш отзыв:")}{" "}<span style={{ color: "#c98a00" }}>{"★".repeat(item.review.rating)}</span>{item.review.text ? ` — ${item.review.text}` : ""}
                   {item.review.reply ? <><br />{t("Ответ:")}{" "}{item.review.reply}</> : null}
+                  {item.review.hidden ? <><br /><strong>{t("Поддержка скрыла этот отзыв:")}</strong>{" "}{item.review.moderationNote}</> : null}
                 </p>
               )}
               {item.canReview && reviewing !== item.id && (

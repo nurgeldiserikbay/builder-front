@@ -71,6 +71,7 @@ export default function SpecialistProfilePage() {
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
         {saved && <p className={`${styles.notice} ${styles.success}`} role="status">{saved}{data?.profile && <> <a href={`/specialists/${data.profile.id}`} style={{ color: "inherit", fontWeight: 700 }}>{t("Посмотреть →")}</a></>}</p>}
         {!data && !error && <p className={styles.muted}>{t("Загружаем…")}</p>}
+        {data?.profile && !saved && <p><a href={`/specialists/${data.profile.id}`}>{t("Моя карточка и отзывы →")}</a></p>}
         {data && (
           <form onSubmit={(event) => { event.preventDefault(); void save(true); }}>
             <label className={styles.field}>

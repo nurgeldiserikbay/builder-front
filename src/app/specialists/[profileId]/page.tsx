@@ -10,7 +10,7 @@ import styles from "../../projects/journey.module.css";
 import AppHeader from "../../app-header";
 import { Rating, Stars, inviteTarget } from "../stars";
 
-type Review = { id: string; rating: number; text: string | null; reply: string | null; createdAt: string; stageTitle: string; projectTypeTitle: string | null; canReply: boolean };
+type Review = { id: string; rating: number; text: string | null; reply: string | null; createdAt: string; stageTitle: string; projectTypeTitle: string | null; canReply: boolean; reportStatus?: "none" | "pending" | "kept" | "hidden"; canReport?: boolean };
 type Profile = {
   id: string; displayName: string; headline: string; about: string | null; city: string | null; hourlyRate: number | null; stages: Array<{ key: string; title: string }>;
   rating: number | null; reviewCount: number; reviews: Review[]; completedStages: number; own: boolean; published: boolean;
@@ -23,6 +23,8 @@ export default function SpecialistPage() {
   const [target, setTarget] = useState<{ projectId: string; stageKey: string } | null>(null);
   const [replyFor, setReplyFor] = useState<string | null>(null);
   const [reply, setReply] = useState("");
+  const [reportFor, setReportFor] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,6 +37,12 @@ export default function SpecialistPage() {
   async function sendReply(reviewId: string) {
     setBusy(true); setError("");
     try { await api(`/me/reviews/${reviewId}/reply`, { method: "POST", body: JSON.stringify({ text: reply.trim() }) }); setReplyFor(null); setReply(""); await load(); }
+    catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
+  }
+
+  async function sendReport(reviewId: string) {
+    setBusy(true); setError("");
+    try { await api(`/me/reviews/${reviewId}/report`, { method: "POST", body: JSON.stringify({ reason: reason.trim() }) }); setReportFor(null); setReason(""); await load(); }
     catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
   }
 
@@ -72,6 +80,19 @@ export default function SpecialistPage() {
                     {review.text && <p style={{ margin: "6px 0 0", whiteSpace: "pre-line" }}>{review.text}</p>}
                     {review.reply && <p className={styles.small} style={{ margin: "6px 0 0", paddingLeft: 12, borderLeft: "3px solid var(--line)" }}><strong>{t("Ответ специалиста:")}</strong> {review.reply}</p>}
                     {review.canReply && replyFor !== review.id && <button className={styles.ghost} onClick={() => { setReplyFor(review.id); setReply(""); }}>{t("Ответить")}</button>}
+                    {review.reportStatus === "pending" && <p className={styles.small} style={{ margin: "6px 0 0" }}>{t("Вы пожаловались на этот отзыв — поддержка проверит его.")}</p>}
+                    {review.reportStatus === "kept" && <p className={styles.small} style={{ margin: "6px 0 0" }}>{t("Поддержка проверила отзыв и оставила его.")}</p>}
+                    {review.canReport && reportFor !== review.id && replyFor !== review.id && <button className={styles.ghost} onClick={() => { setReportFor(review.id); setReason(""); }}>{t("Пожаловаться")}</button>}
+                    {reportFor === review.id && (
+                      <div style={{ marginTop: 8 }}>
+                        <textarea className={styles.textarea} style={{ minHeight: 80 }} maxLength={1000} value={reason} onChange={(event) => setReason(event.target.value)} aria-label={t("Что не так с отзывом")} placeholder={t("Что не так с отзывом")} />
+                        <p className={styles.why}>{t("Например: отзыв оскорбительный или про другую работу. Поддержка проверит его по истории этапа и скроет, если вы правы. Пожаловаться можно один раз; несогласие с оценкой — не причина.")}</p>
+                        <div className={styles.row}>
+                          <button className={styles.button} disabled={busy || reason.trim().length < 10} onClick={() => void sendReport(review.id)}>{busy ? t("Отправляем…") : t("Отправить жалобу")}</button>
+                          <button className={styles.ghost} onClick={() => setReportFor(null)}>{t("Отмена")}</button>
+                        </div>
+                      </div>
+                    )}
                     {replyFor === review.id && (
                       <div style={{ marginTop: 8 }}>
                         <textarea className={styles.textarea} style={{ minHeight: 80 }} maxLength={1000} value={reply} onChange={(event) => setReply(event.target.value)} aria-label={t("Ваш ответ")} />

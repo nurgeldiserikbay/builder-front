@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import styles from "./review.module.css";
+import app from "../projects/journey.module.css";
+import AppHeader from "../app-header";
 import ApiCheckPanel from "./api-check-panel";
 
 type User = { id: string; email: string; name: string | null };
@@ -786,12 +788,9 @@ export default function ReviewPage() {
     try { await api<void>("/auth/logout", { method: "POST" }); } finally { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); }
   }
 
-  return <main className={styles.page}>
-    <header className={styles.topbar}>
-      <a className={styles.brand} href="/"><span className={styles.logo}>B</span> BuildPath</a>
-      <nav aria-label={t("Навигация")}><a href="/">{t("Проект")}</a><a className={styles.current} href="/review">{t("Сверка")}</a></nav>
-      <div className={styles.account}>{user?.email && <span>{user.email}</span>}<button onClick={logout}>{t("Выйти")}</button></div>
-    </header>
+  return <div className={app.shell}>
+    <AppHeader extra={<div className={styles.account}>{user?.email && <span>{user.email}</span>}<button onClick={logout}>{t("Выйти")}</button></div>} />
+    <main className={styles.page}>
 
     <section className={styles.intro}>
       <div><p className={styles.eyebrow}>{t("Проверка реализации")}</p><h1>{t("Сверьте сайт с ТЗ и макетом")}</h1>
@@ -1090,7 +1089,8 @@ export default function ReviewPage() {
         </div>
       </div>
     </section>
-  </main>;
+  </main>
+  </div>;
 }
 
 function resolvePreviewUrl(route: string, base: string) {

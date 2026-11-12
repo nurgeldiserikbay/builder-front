@@ -224,6 +224,15 @@ const messages: Record<string, string> = {
   PROJECT_SPEND_LIMIT: t("Лимит расходов на ИИ по проекту исчерпан: следующий запрос мог бы выйти за него. Владелец может увеличить лимит на странице проекта — работать вручную можно и без этого."),
   SPEND_LIMIT_INVALID: t("Укажите лимит целым числом от 1 до 10 000 000 ₸."),
   SPEND_LIMIT_FORBIDDEN: t("Менять лимит может владелец или менеджер проекта."),
+  QUICK_EDIT_REQUEST_INVALID: t("Опишите правку — от 5 до 1000 символов."),
+  QUICK_EDIT_PENDING: t("Предыдущая правка ещё ждёт подтверждения: обновите сайт или отмените её."),
+  QUICK_EDIT_STAGE_IN_WORK: t("Этот этап сейчас в работе. Закончите изменения на самом этапе, потом возвращайтесь сюда."),
+  QUICK_EDIT_STAGE_HAS_LEAD: t("На этом этапе работает специалист. Попросите его внести правку или отзовите приглашение."),
+  QUICK_EDIT_TARGET_INVALID: t("Так поменять нельзя. Услуги, товары и расписание меняются на своих этапах."),
+  QUICK_EDIT_NOTHING_PENDING: t("Правка уже подтверждена или отменена. Обновите страницу."),
+  QUICK_EDIT_NO_CHANGES: t("Ничего не поменялось."),
+  QUICK_EDIT_CHECKS_FAILED: t("Изменения приняты, но новая сборка не прошла обязательные проверки, поэтому на сайте пока прежняя версия. Откройте этап «Сборка», чтобы увидеть, что исправить."),
+  QUICK_EDIT_CONTACT_INVALID: t("Проверьте контакт: телефон — только цифры, пробелы, скобки, + и -; почта — вида name@mail.kz."),
   PROJECT_BALANCE_LOW: t("На балансе проекта не хватает денег на запрос к ИИ. Владелец может пополнить баланс на странице проекта — работать вручную можно и без этого."),
   TOP_UP_AMOUNT_INVALID: t("Сумма пополнения вне допустимых границ."),
   PAYMENTS_NOT_CONFIGURED: t("Оплата пока не подключена на этом сервере BuildPath."),
@@ -257,6 +266,7 @@ export function explainError(error: unknown): string {
   if (!(error instanceof ApiError)) return t("Не удалось связаться с сервером. Проверьте интернет и попробуйте ещё раз.");
   const code = error.message;
   if (messages[code]) return messages[code];
+  if (code.startsWith("QUICK_EDIT_CONTACT_INVALID")) return messages.QUICK_EDIT_CONTACT_INVALID!;
   if (code.startsWith("STAGE_INCOMPLETE")) return t("Этап ещё не заполнен до конца — посмотрите список «Чего не хватает».");
   if (code.startsWith("FIELD_TOO_LONG")) return t("Один из текстов слишком длинный. Сократите его.");
   if (code.startsWith("FIELD_REQUIRED")) return t("Заполните обязательные поля.");

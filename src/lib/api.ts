@@ -3,7 +3,8 @@ import { getLocale } from "./i18n";
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api/v1").replace(/\/$/, "");
 
 export class ApiError extends Error {
-  constructor(public readonly status: number, message: string) {
+  /** body: the whole error answer, for the few errors that carry details (e.g. which parts are protected). */
+  constructor(public readonly status: number, message: string, public readonly body: unknown = null) {
     super(message);
     this.name = "ApiError";
   }
@@ -26,7 +27,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
       : typeof payload?.code === "string"
         ? payload.code
         : `Request failed (${response.status})`;
-    throw new ApiError(response.status, message);
+    throw new ApiError(response.status, message, payload);
   }
   return payload?.data as T;
 }

@@ -201,10 +201,13 @@ export default function StagePage() {
 
   return (
     <Shell projectId={projectId} title={stage.title}>
-      <p className={styles.kicker}>{t("Этап")}</p>
-      <h1 className={styles.h1}>{stage.title}</h1>
-      <span className={`${styles.chip} ${styles[tone]}`} title={stage.statusExplanation}>{stage.statusLabel}</span>
-      <p className={styles.small} style={{ margin: "6px 0 14px" }}>{stage.statusExplanation}</p>
+      <div className={styles.split}>
+      <div className={styles.work}>
+      <div className={styles.workHead}>
+        <h1 className={styles.h1}>{stage.title}</h1>
+        <span className={`${styles.chip} ${styles[tone]}`} title={stage.statusExplanation}>{stage.statusLabel}</span>
+      </div>
+      {stage.statusExplanation && <p className={styles.small} style={{ margin: "0 0 16px" }}>{stage.statusExplanation}</p>}
       {stage.artifactType === "site" && detail.options.technology === "developer" && (
         <p className={`${styles.notice} ${styles.info}`}>{t("Выбран свой стек у разработчика: сайт он делает и размещает сам, проверки и публикация BuildPath к нему не применяются. Сборка с ИИ ниже сделает сайт на технологиях BuildPath — это удобно как образец для разработчика.")}{" "}<a href={`/projects/${projectId}/choices/technologies`}>{t("Изменить решение →")}</a></p>
       )}
@@ -254,11 +257,6 @@ export default function StagePage() {
       )}
 
 
-      <section className={styles.card} aria-label={t("Зачем этот этап")}>
-        <p className={styles.cardTitle}>{t("Зачем этот этап")}</p>
-        <p style={{ margin: "0 0 8px" }}>{stage.purpose}</p>
-        <p className={styles.small} style={{ margin: 0 }}><strong>{t("Результат:")}</strong> {stage.outcome}</p>
-      </section>
 
       {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть тариф →")}</a></>}</p>}
       {message && (
@@ -274,19 +272,6 @@ export default function StagePage() {
         </div>
       )}
 
-      {detail.inputs.length > 0 && stage.status !== "locked" && (
-        <details className={`${styles.card} ${styles.details}`}>
-          <summary>{t("Что берём из прошлых этапов")}</summary>
-          <ul className={styles.list}>
-            {detail.inputs.map((input) => (
-              <li key={input.key}>
-                <strong>{input.title}</strong>{input.satisfied ? t(" (версия {0}): {1}", [input.versionNumber, summarize(input.key, input.content)]) : t(" — ещё не принят")}
-                {!input.satisfied && <> · <a className={styles.back} href={`/projects/${projectId}/stages/${input.key}`}>{t("открыть")}</a></>}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
 
       {stage.status === "stale" && <p className={`${styles.notice} ${styles.warn}`}>{t("Предыдущий этап изменился. Посмотрите, что изменилось, вверху страницы и решите: обновить этот этап или оставить его как есть.")}</p>}
       {!stage.inputsReady && stage.status !== "locked" && !accepted && (
@@ -513,6 +498,42 @@ export default function StagePage() {
       <SuggestionsPanel projectId={projectId} stageKey={stageKey} suggestions={detail.suggestions} canSuggest={stage.canSuggest} canResolve={stage.canEdit}
         aiReady={ai.configured && stage.inputsReady} targets={sectionTargets} onChanged={load} onError={setError} onMessage={setMessage} />
 
+
+      {stage.canImport && stage.importHint && (
+        <details className={`${styles.card} ${styles.details}`} open={!detail.current && stage.artifactType !== "brief"}>
+          <summary>{t("У меня уже есть готовое")}</summary>
+          <p className={styles.small}>{stage.importHint}</p>
+          <textarea className={styles.textarea} style={{ minHeight: 140 }} value={importText} maxLength={20000} aria-label={t("Ваши материалы")} onChange={(event) => setImportText(event.target.value)} />
+          <button className={styles.secondary} style={{ marginTop: 10 }} disabled={Boolean(busy) || importText.trim().length < 2}
+            onClick={() => run("import", async () => {
+              const result = await api<{ status: string; issues: Array<{ message: string }> }>(`/projects/${projectId}/stages/${stageKey}/import`, { method: "POST", body: JSON.stringify({ text: importText }) });
+              await load(); setImportText("");
+              setMessage(result.status === "imported" ? t("Материалы добавлены, этап засчитан. Следующие этапы открыты.") : t("Материалы добавлены как черновик. Проверьте его и дополните то, чего не хватает."));
+            })}>{t("Добавить мои материалы")}</button>
+        </details>
+      )}
+
+
+      </div>
+      <aside className={styles.context} aria-label={t("Об этапе")}>
+      <section className={styles.card} aria-label={t("Зачем этот этап")}>
+        <p className={styles.cardTitle}>{t("Зачем этот этап")}</p>
+        <p style={{ margin: "0 0 8px" }}>{stage.purpose}</p>
+        <p className={styles.small} style={{ margin: 0 }}><strong>{t("Результат:")}</strong> {stage.outcome}</p>
+      </section>
+      {detail.inputs.length > 0 && stage.status !== "locked" && (
+        <details className={`${styles.card} ${styles.details}`}>
+          <summary>{t("Что берём из прошлых этапов")}</summary>
+          <ul className={styles.list}>
+            {detail.inputs.map((input) => (
+              <li key={input.key}>
+                <strong>{input.title}</strong>{input.satisfied ? t(" (версия {0}): {1}", [input.versionNumber, summarize(input.key, input.content)]) : t(" — ещё не принят")}
+                {!input.satisfied && <> · <a className={styles.back} href={`/projects/${projectId}/stages/${input.key}`}>{t("открыть")}</a></>}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       {stage.canInvite && stage.status !== "locked" && (
         <SpecialistsPanel projectId={projectId} stageKey={stageKey} editable={!accepted} />
       )}
@@ -540,21 +561,6 @@ export default function StagePage() {
           </ul>
         </details>
       )}
-
-      {stage.canImport && stage.importHint && (
-        <details className={`${styles.card} ${styles.details}`} open={!detail.current && stage.artifactType !== "brief"}>
-          <summary>{t("У меня уже есть готовое")}</summary>
-          <p className={styles.small}>{stage.importHint}</p>
-          <textarea className={styles.textarea} style={{ minHeight: 140 }} value={importText} maxLength={20000} aria-label={t("Ваши материалы")} onChange={(event) => setImportText(event.target.value)} />
-          <button className={styles.secondary} style={{ marginTop: 10 }} disabled={Boolean(busy) || importText.trim().length < 2}
-            onClick={() => run("import", async () => {
-              const result = await api<{ status: string; issues: Array<{ message: string }> }>(`/projects/${projectId}/stages/${stageKey}/import`, { method: "POST", body: JSON.stringify({ text: importText }) });
-              await load(); setImportText("");
-              setMessage(result.status === "imported" ? t("Материалы добавлены, этап засчитан. Следующие этапы открыты.") : t("Материалы добавлены как черновик. Проверьте его и дополните то, чего не хватает."));
-            })}>{t("Добавить мои материалы")}</button>
-        </details>
-      )}
-
       {detail.versions.length > 0 && (
         <details className={`${styles.card} ${styles.details}`}>
           <summary>{t("История версий (")}{detail.versions.length})</summary>
@@ -586,9 +592,11 @@ export default function StagePage() {
           <ul className={styles.list}>{stage.acceptance.map((item) => <li key={item}>{item}</li>)}</ul>
         </details>
       )}
+      </aside>
+      </div>
 
       {stage.status !== "locked" && (
-        <div className={styles.bottomBar}><div className={`${styles.bottomInner} ${styles.narrow}`}>
+        <div className={styles.bottomBar}><div className={styles.bottomInner}>
           {accepted ? (
             <>
               <span className={styles.bottomText}>{t("Этап принят")}{detail.versions.find((version) => version.accepted) ? t(" (версия {0})", [detail.versions.find((version) => version.accepted)!.versionNumber]) : ""}.</span>
@@ -632,7 +640,7 @@ function Shell({ projectId, title, children }: { projectId: string; title: strin
   return (
     <div className={styles.shell}>
       <AppHeader back={{ href: `/projects/${projectId}`, label: t("← Этапы") }} title={title} />
-      <main className={`${styles.container} ${styles.narrow}`}>{children}</main>
+      <main className={styles.stageMain}>{children}</main>
     </div>
   );
 }

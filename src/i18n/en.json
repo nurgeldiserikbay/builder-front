@@ -1786,5 +1786,9 @@
  "Заполнить вручную": "Fill in manually",
  "Заказ не найден.": "Order not found.",
  "Этот заказ уже изменили — например, клиент отменил его. Список обновлён.": "This order has already been changed — for example, the client cancelled it. The list is updated.",
- "Магазин принимает заказы только на BuildPath: на своём сервере корзина и заказы пока не работают.": "The store takes orders only on BuildPath: the cart and orders do not work on your own server yet."
+ "Магазин принимает заказы только на BuildPath: на своём сервере корзина и заказы пока не работают.": "The store takes orders only on BuildPath: the cart and orders do not work on your own server yet.",
+ "Об этапе": "About this stage",
+ "Этапы": "Stages",
+ "Деньги": "Money",
+ "Разделы проекта": "Project sections"
 }

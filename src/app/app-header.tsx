@@ -16,9 +16,9 @@ export default function AppHeader({ back, title, minimal = false, extra }: {
 }) {
   const path = usePathname() ?? "";
   const nav = [
-    { href: "/projects", label: t("Мои проекты"), active: path.startsWith("/projects") },
-    { href: "/account", label: t("Аккаунт"), active: path.startsWith("/account") },
-    { href: "/review", label: t("Сверка сайта"), active: path.startsWith("/review") },
+    { href: "/projects", label: t("Мои проекты"), active: path.startsWith("/projects"), icon: <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /> },
+    { href: "/review", label: t("Сверка сайта"), active: path.startsWith("/review"), icon: <><rect x="3" y="4" width="8" height="16" rx="1.5" /><rect x="13" y="4" width="8" height="16" rx="1.5" /></> },
+    { href: "/account", label: t("Аккаунт"), active: path.startsWith("/account"), icon: <><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></> },
   ];
   return (
     <header className={styles.top}>
@@ -27,7 +27,10 @@ export default function AppHeader({ back, title, minimal = false, extra }: {
         {!minimal && (
           <nav className={styles.nav} aria-label={t("Навигация")}>
             {nav.map((item) => (
-              <a key={item.href} href={item.href} className={styles.navLink} aria-current={item.active ? "page" : undefined}>{item.label}</a>
+              <a key={item.href} href={item.href} className={styles.navLink} aria-current={item.active ? "page" : undefined}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{item.icon}</svg>
+                <span>{item.label}</span>
+              </a>
             ))}
           </nav>
         )}

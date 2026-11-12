@@ -55,7 +55,7 @@ export default function ProjectMap({ projectId, stages, aiOn }: { projectId: str
   return (
     <div className={styles.map} role="list" aria-label={t("Карта проекта")}>
       {rows.map((row, rowIndex) => (
-        <div key={row.map((stage) => stage.key).join()}>
+        <div key={row.map((stage) => stage.key).join()} className={styles.mapCol}>
           {rowIndex > 0 && <Connectors from={rows[rowIndex - 1]} to={row} />}
           <div className={styles.mapRow} style={{ gridTemplateColumns: `repeat(${row.length}, minmax(${row.length > 2 ? 150 : 0}px, 1fr))` }}>
             {row.map((stage) => {

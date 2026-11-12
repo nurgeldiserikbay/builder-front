@@ -28,6 +28,20 @@ export default function JourneyPage() {
   const [result, setResult] = useState<ResultPackage | null>(null);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<"map" | "list">("map");
+  type Tab = "stages" | "money" | "publish" | "decisions" | "result";
+  const [tab, setTab] = useState<Tab>("stages");
+  const tabs: Array<{ key: Tab; label: string }> = [
+    { key: "stages", label: t("Этапы") }, { key: "money", label: t("Деньги") }, { key: "publish", label: t("Публикация") },
+    { key: "decisions", label: t("Решения") }, { key: "result", label: t("Результат") },
+  ];
+  useEffect(() => {
+    const fromHash = window.location.hash.slice(1);
+    if (["stages", "money", "publish", "decisions", "result"].includes(fromHash)) setTab(fromHash as Tab);
+  }, []);
+  function openTab(next: Tab) {
+    setTab(next);
+    window.history.replaceState(null, "", next === "stages" ? window.location.pathname : `#${next}`);
+  }
 
   const load = useCallback(async () => {
     try {
@@ -61,27 +75,37 @@ export default function JourneyPage() {
   return (
     <div className={styles.shell}>
       <AppHeader back={{ href: "/projects", label: t("← Проекты") }} title={journey?.project.name ?? ""} />
-      <main className={`${styles.container} ${styles.wide}`}>
+      <main className={styles.appMain}>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть тариф →")}</a></>}</p>}
-        {!journey && !error && <p className={styles.muted}>{t("Загружаем проект…")}</p>}
+        {!journey && !error && <p className={styles.muted} style={{ padding: 24 }}>{t("Загружаем проект…")}</p>}
         {journey && (
           <>
-            <div className={styles.pageHead}>
-              <div>
-                <p className={styles.kicker}>{journey.project.typeTitle}</p>
+            <div className={styles.projectBar}>
+              <div className={styles.projectBarTitle}>
                 <h1 className={styles.h1}>{journey.project.name}</h1>
+                <span className={styles.small}>{journey.project.typeTitle}</span>
+              </div>
+              <div className={styles.progressInline}>
                 <div className={styles.progress} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={journey.progress.percent} aria-label={t("Готовность проекта")}>
                   <span style={{ width: `${journey.progress.percent}%` }} />
                 </div>
-                <p className={styles.small} style={{ margin: 0 }}>{t("Принято этапов:")}{" "}{journey.progress.accepted}{" "}{t("из")}{" "}{journey.progress.total}</p>
+                <span className={styles.small}>{t("Принято этапов:")}{" "}{journey.progress.accepted}{" "}{t("из")}{" "}{journey.progress.total}</span>
               </div>
             </div>
+            {!specialist && (
+              <div className={styles.tabs} role="tablist" aria-label={t("Разделы проекта")}>
+                {tabs.map((item) => (
+                  <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} className={styles.tab} onClick={() => openTab(item.key)}>{item.label}</button>
+                ))}
+              </div>
+            )}
+
+            <div className={styles.tabBody}>
             {specialist && (
               <p className={`${styles.notice} ${styles.info}`}>{t("Вы приглашены в этот проект как специалист. Вам видны только ваши этапы и то, что для них нужно. Принимает работу владелец проекта.")}</p>
             )}
 
-            <div className={styles.layout}>
-            <div className={styles.mainCol}>
+            {tab === "stages" && <>
             {archived ? (
               <div className={`${styles.notice} ${styles.info}`}>
                 {t("Проект в архиве: его можно смотреть и скачивать, но не менять. Он не занимает место в тарифе.")}
@@ -103,24 +127,17 @@ export default function JourneyPage() {
               </section>
             )}
 
-            <p className={styles.small} style={{ margin: "0 0 14px" }} hidden={specialist}>
-              {journey.ai.configured
-                ? t("ИИ подключён: на каждом этапе он делает черновик, а вы говорите, что поменять.{0}", [journey.ai.month ? t(" Запросов по тарифу «{0}» в этом месяце: осталось {1} из {2}.", [journey.ai.month.planTitle, journey.ai.month.left, journey.ai.month.limit]) : ""])
-                : t("ИИ пока не подключён: этапы заполняются вручную, а тексты и стиль можно получить по готовому шаблону.")}
-            </p>
-
-            <div className={styles.sectionTitle}>
-              <h2 className={styles.h2}>{specialist ? t("Ваши этапы") : t("Карта проекта")}</h2>
-              <div className={styles.spacer} />
-              <div className={styles.viewToggle} role="group" aria-label={t("Вид")} style={{ margin: 0 }}>
+            <div className={styles.toolbar}>
+              <div className={styles.viewToggle} role="group" aria-label={t("Вид")}>
                 <button type="button" aria-pressed={view === "map"} onClick={() => setView("map")}>{t("Карта")}</button>
                 <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>{t("Список")}</button>
               </div>
+              {!specialist && ["owner", "manager"].includes(journey.project.role) && journey.project.changeResponseDays && (
+                <ResponseDays projectId={projectId} value={journey.project.changeResponseDays} />
+              )}
+              <div className={styles.spacer} />
+              <a className={styles.back} href={`/projects/${projectId}/history`}>{t("История запросов к ИИ →")}</a>
             </div>
-            <p className={styles.small} style={{ margin: "0 0 16px", maxWidth: "72ch" }}>{t("Этап открывается, когда приняты те, от которых он зависит. Этапы в одной строке делаются одновременно: они построены на общем утверждённом контракте. Принятый этап можно изменить позже — следующие этапы получат уведомление.")}</p>
-            {!specialist && ["owner", "manager"].includes(journey.project.role) && journey.project.changeResponseDays && (
-              <ResponseDays projectId={projectId} value={journey.project.changeResponseDays} />
-            )}
             {view === "map" && <ProjectMap projectId={projectId} stages={journey.stages} aiOn={journey.ai.configured} />}
             {view === "list" && <ol className={styles.stageList}>
               {journey.stages.map((stage, index) => {
@@ -143,11 +160,25 @@ export default function JourneyPage() {
                 );
               })}
             </ol>}
+            <p className={styles.small} style={{ margin: "16px 0 0", maxWidth: "80ch" }}>{t("Этап открывается, когда приняты те, от которых он зависит. Этапы в одной строке делаются одновременно: они построены на общем утверждённом контракте. Принятый этап можно изменить позже — следующие этапы получат уведомление.")}</p>
+            </>}
 
-            <p style={{ margin: "4px 0 0" }}><a className={styles.back} href={`/projects/${projectId}/history`}>{t("История запросов к ИИ →")}</a></p>
-            {!specialist && <>
-            <div style={{ height: 24 }} />
-            {journey.project.projectType === "booking" && (
+            {tab === "money" && !specialist && <>
+            <p className={styles.small} style={{ margin: "0 0 14px" }} hidden={specialist}>
+              {journey.ai.configured
+                ? t("ИИ подключён: на каждом этапе он делает черновик, а вы говорите, что поменять.{0}", [journey.ai.month ? t(" Запросов по тарифу «{0}» в этом месяце: осталось {1} из {2}.", [journey.ai.month.planTitle, journey.ai.month.left, journey.ai.month.limit]) : ""])
+                : t("ИИ пока не подключён: этапы заполняются вручную, а тексты и стиль можно получить по готовому шаблону.")}
+            </p>
+              <div className={styles.panels}>
+                <WalletCard projectId={projectId} />
+                <BudgetCard projectId={projectId} />
+              </div>
+            </>}
+
+            {tab === "publish" && !specialist && (
+              <div className={styles.panels}>
+                <PublishCard projectId={projectId} onChange={() => void load()} />
+                {journey.project.projectType === "booking" && (
               <section className={styles.card} aria-labelledby="bookings-title">
                 <p className={styles.kicker}>{t("Онлайн-запись")}</p>
                 <h2 id="bookings-title" className={styles.h2}>{t("Записи клиентов")}</h2>
@@ -163,26 +194,23 @@ export default function JourneyPage() {
                 <a className={styles.secondary} href={`/projects/${projectId}/orders`}>{t("Открыть заказы")}</a>
               </section>
             )}
-            </>}
-            </div>
-            {!specialist && <aside className={styles.aside} aria-label={t("Проект")}>
-            <WalletCard projectId={projectId} />
-            <BudgetCard projectId={projectId} />
-            <PublishCard projectId={projectId} onChange={() => void load()} />
+              </div>
+            )}
 
-            <section className={styles.card} aria-labelledby="code-title">
-              <p className={styles.kicker}>{t("Решения")}</p>
+            {tab === "decisions" && !specialist && <>
+            <section aria-labelledby="code-title">
               <h2 id="code-title" className={styles.h2}>{t("Технологии, код и адрес")}</h2>
-              <p style={{ margin: "0 0 8px" }}>{t("На чём делать сайт: BuildPath соберёт его сам, а для личного кабинета или оплаты онлайн понадобится разработчик со своим стеком. Сравним варианты.")}</p>
-              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/technologies`}>{t("Технологии")}</a>
-              <p style={{ margin: "14px 0 8px" }}>{t("Сайт работает на BuildPath и без этого. Копия у вас — страховка: можно переехать, отдать разработчику или восстановить. Выберите вариант — мы объясним, что сделать.")}</p>
-              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/code_hosting`}>{t("Выбрать, где хранить код")}</a>
-              <p style={{ margin: "14px 0 8px" }}>{t("Сайт можно разместить не только на BuildPath: на своём сервере или в GitHub Pages. Мы проведём по шагам и проверим, что он открывается.")}</p>
-              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/deployment`}>{t("Где будет работать сайт")}</a>
-              <p style={{ margin: "14px 0 8px" }}>{t("Свой домен вроде barber-usy.com вместо адреса BuildPath — объясним, где купить и что вписать у регистратора.")}</p>
-              <a className={`${styles.secondary} ${styles.block}`} href={`/projects/${projectId}/choices/domain`}>{t("Адрес сайта")}</a>
+              <div className={styles.tiles}>
+                <div className={styles.tile}><p>{t("На чём делать сайт: BuildPath соберёт его сам, а для личного кабинета или оплаты онлайн понадобится разработчик со своим стеком. Сравним варианты.")}</p><a className={styles.secondary} href={`/projects/${projectId}/choices/technologies`}>{t("Технологии")}</a></div>
+                <div className={styles.tile}><p>{t("Сайт работает на BuildPath и без этого. Копия у вас — страховка: можно переехать, отдать разработчику или восстановить. Выберите вариант — мы объясним, что сделать.")}</p><a className={styles.secondary} href={`/projects/${projectId}/choices/code_hosting`}>{t("Выбрать, где хранить код")}</a></div>
+                <div className={styles.tile}><p>{t("Сайт можно разместить не только на BuildPath: на своём сервере или в GitHub Pages. Мы проведём по шагам и проверим, что он открывается.")}</p><a className={styles.secondary} href={`/projects/${projectId}/choices/deployment`}>{t("Где будет работать сайт")}</a></div>
+                <div className={styles.tile}><p>{t("Свой домен вроде barber-usy.com вместо адреса BuildPath — объясним, где купить и что вписать у регистратора.")}</p><a className={styles.secondary} href={`/projects/${projectId}/choices/domain`}>{t("Адрес сайта")}</a></div>
+              </div>
             </section>
+            </>}
 
+            {tab === "result" && !specialist && (
+              <div className={styles.panels}>
             <section className={styles.card} aria-labelledby="result-title">
               <p className={styles.kicker}>{t("Результат")}</p>
               <h2 id="result-title" className={styles.h2}>{t("Забрать результат можно на любом этапе")}</h2>
@@ -213,7 +241,8 @@ export default function JourneyPage() {
                 <button className={styles.ghost} style={{ marginTop: 12 }} disabled={busy} onClick={() => setStatus("complete")}>{t("Завершить проект на этом этапе")}</button>
               )}
             </section>
-            </aside>}
+              </div>
+            )}
             </div>
           </>
         )}

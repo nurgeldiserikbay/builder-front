@@ -1833,5 +1833,18 @@
  "Этот этап не редактируется вручную.": "This stage is not edited by hand.",
  "На этом этапе ИИ не используется — заполните его сами.": "AI is not used on this stage: fill it in yourself.",
  "Этой версии больше нет. Обновите страницу.": "This version no longer exists. Refresh the page.",
- "Платформа считает время, пока специалист работает на этапе. Отрезки без действий помечены «без результата». Оплата начисляется, когда вы принимаете этап: время, которое вы не оспорили, при приёмке засчитывается. Оспорьте то, с чем не согласны, до приёмки.": "The platform counts time while the specialist works on the stage. Periods without actions are marked «no result». Payment is calculated when you accept the stage: time you have not disputed counts at acceptance. Dispute what you disagree with before accepting."
+ "Платформа считает время, пока специалист работает на этапе. Отрезки без действий помечены «без результата». Оплата начисляется, когда вы принимаете этап: время, которое вы не оспорили, при приёмке засчитывается. Оспорьте то, с чем не согласны, до приёмки.": "The platform counts time while the specialist works on the stage. Periods without actions are marked «no result». Payment is calculated when you accept the stage: time you have not disputed counts at acceptance. Dispute what you disagree with before accepting.",
+ "Лимит расходов на ИИ исчерпан: потрачено {0} из {1}. Новые запросы к ИИ не запустятся, пока лимит не увеличат. Работать вручную можно.": "The AI spending limit is used up: {0} of {1} spent. New AI requests won't start until the limit is raised. You can still work manually.",
+ "Потрачено {0}% лимита на ИИ — осталось {1}.": "{0}% of the AI limit is spent — {1} left.",
+ "Лимит на ИИ:": "AI limit:",
+ ", осталось": ", left",
+ "Лимита на ИИ нет — расход ничем не ограничен.": "No AI limit — spending is not capped.",
+ "Установить лимит": "Set a limit",
+ "Сколько можно потратить на ИИ за весь проект, ₸": "How much may be spent on AI for the whole project, ₸",
+ "Убрать лимит": "Remove limit",
+ "Когда расход дойдёт до 80%, мы предупредим. Если следующий запрос может выйти за лимит, ИИ не запустится — уже начатый ответ не обрывается. Подставлена верхняя граница сметы.": "We'll warn you at 80%. If the next request could go over the limit, AI won't start — an answer already in progress is never cut off. The upper end of the estimate is filled in.",
+ "Лимит расходов на ИИ по проекту исчерпан. Владелец может увеличить его на странице проекта, в карточке «Смета и расход».": "The project's AI spending limit is used up. The owner can raise it on the project page, in the “Estimate and spending” card.",
+ "Лимит расходов на ИИ по проекту исчерпан: следующий запрос мог бы выйти за него. Владелец может увеличить лимит на странице проекта — работать вручную можно и без этого.": "The project's AI spending limit is used up: the next request could go over it. The owner can raise the limit on the project page — you can keep working manually.",
+ "Укажите лимит целым числом от 1 до 10 000 000 ₸.": "Enter the limit as a whole number from 1 to 10,000,000 ₸.",
+ "Менять лимит может владелец или менеджер проекта.": "Only the project owner or a manager can change the limit."
 }

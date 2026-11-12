@@ -7,7 +7,10 @@ import { formatTenge } from "@/lib/money";
 import { isPlanMessage, explainError, type Suggestion } from "@/lib/journey";
 import styles from "../../../journey.module.css";
 
-type Assignment = { id: string; email: string; name: string | null; role: "lead" | "consultant"; status: string; aiBudget: number | null; aiUsed: number; inviteExpired: boolean; readUntil: string | null; termsText: string };
+type Assignment = {
+  id: string; email: string; name: string | null; profileId: string | null; role: "lead" | "consultant"; status: string; aiBudget: number | null; aiUsed: number; inviteExpired: boolean; readUntil: string | null; termsText: string;
+  review: { rating: number; text: string | null; reply: string | null } | null; canReview: boolean;
+};
 type Roles = { lead: { title: string; explanation: string; can: string[] }; consultant: { title: string; explanation: string; can: string[] }; cannot: string[]; afterAcceptance: string };
 
 const statusText: Record<string, string> = { invited: t("приглашение отправлено"), active: t("работает над этапом"), completed: t("этап принят"), revoked: t("доступ отозван") };
@@ -19,6 +22,11 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<"lead" | "consultant">("lead");
   const [email, setEmail] = useState("");
+  // Picked in the catalog: invited by profile, the address stays on the server.
+  const [invitee, setInvitee] = useState<{ id: string; name: string } | null>(null);
+  const [reviewing, setReviewing] = useState<string | null>(null);
+  const [rating, setRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
   const [budget, setBudget] = useState("20");
   const [pay, setPay] = useState<"none" | "fixed" | "hourly">("hourly");
   const [amount, setAmount] = useState("");
@@ -38,14 +46,29 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
     } catch (caught) { setError(explainError(caught)); }
   }, [projectId, stageKey]);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const id = query.get("inviteProfile");
+    if (id && /^[0-9a-f-]{36}$/i.test(id) && editable) { setInvitee({ id, name: (query.get("inviteName") ?? "").slice(0, 80) || t("специалист из каталога") }); setOpen(true); }
+  }, [editable]);
+  const catalogUrl = `/specialists?invite=1&project=${projectId}&stage=${stageKey}`;
+
+  async function sendReview(item: Assignment) {
+    setBusy(true); setError("");
+    try {
+      await api(`/projects/${projectId}/assignments/${item.id}/review`, { method: "POST", body: JSON.stringify({ rating, text: reviewText.trim() || null }) });
+      setReviewing(null); await load();
+    } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
+  }
 
   async function invite() {
     setBusy(true); setError("");
     try {
       const result = await api<{ inviteUrl: string; emailSent: boolean }>(`/projects/${projectId}/stages/${stageKey}/assignments`, {
-        method: "POST", body: JSON.stringify({ email: email.trim(), role, aiBudget: role === "lead" && budget.trim() ? Number(budget) : null, ...termsBody() }),
+        method: "POST", body: JSON.stringify({ ...(invitee ? { profileId: invitee.id } : { email: email.trim() }), role, aiBudget: role === "lead" && budget.trim() ? Number(budget) : null, ...termsBody() }),
       });
-      setLink({ url: result.inviteUrl, emailSent: result.emailSent }); setEmail(""); setOpen(false);
+      setLink({ url: result.inviteUrl, emailSent: result.emailSent }); setEmail(""); setInvitee(null); setOpen(false);
+      window.history.replaceState(null, "", window.location.pathname);
       await load();
     } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
   }
@@ -65,6 +88,7 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
 
   const visible = list.filter((item) => item.status !== "revoked");
   const hasLead = visible.some((item) => item.role === "lead" && (item.status === "invited" || item.status === "active"));
+  useEffect(() => { if (open && hasLead && role === "lead") setRole("consultant"); }, [open, hasLead, role]);
   return (
     <section className={styles.card} aria-label={t("Специалисты")}>
       <p className={styles.cardTitle}>{t("Специалисты на этапе")}</p>
@@ -82,11 +106,38 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
           {visible.map((item) => (
             <li key={item.id}>
               <div className={styles.row}>
-                <strong>{item.name ?? item.email}</strong>
+                {item.profileId ? <a href={`/specialists/${item.profileId}`}><strong>{item.name ?? item.email}</strong></a> : <strong>{item.name ?? item.email}</strong>}
                 <span className={styles.small}>{item.role === "lead" ? t("ведущий") : t("консультант")}</span>
               </div>
               <div className={styles.small}>{item.inviteExpired ? t("срок приглашения истёк") : statusText[item.status]}{item.role === "lead" ? t(" · ИИ: {0}{1}", [item.aiUsed, item.aiBudget === null ? "" : t(" из {0}", [item.aiBudget])]) : ""}</div>
               <div className={styles.small}>{item.termsText}</div>
+              {item.review && reviewing !== item.id && (
+                <p className={styles.small} style={{ margin: "6px 0 0" }}>
+                  {t("Ваш отзыв:")}{" "}<span style={{ color: "#c98a00" }}>{"★".repeat(item.review.rating)}</span>{item.review.text ? ` — ${item.review.text}` : ""}
+                  {item.review.reply ? <><br />{t("Ответ:")}{" "}{item.review.reply}</> : null}
+                </p>
+              )}
+              {item.canReview && reviewing !== item.id && (
+                <button className={styles.secondary} style={{ minHeight: 40, marginTop: 6, marginRight: 8 }} onClick={() => { setReviewing(item.id); setRating(item.review?.rating ?? 0); setReviewText(item.review?.text ?? ""); }}>
+                  {item.review ? t("Изменить отзыв") : t("Оставить отзыв")}
+                </button>
+              )}
+              {reviewing === item.id && (
+                <div style={{ marginTop: 8 }}>
+                  <div className={styles.row} role="radiogroup" aria-label={t("Оценка")}>
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <button key={value} type="button" role="radio" aria-checked={rating === value} aria-label={t("{0} из 5", [value])} className={styles.ghost}
+                        style={{ minWidth: 44, fontSize: 24, color: value <= rating ? "#c98a00" : "var(--line)", padding: 0 }} onClick={() => setRating(value)}>★</button>
+                    ))}
+                  </div>
+                  <textarea className={styles.textarea} style={{ minHeight: 80, marginTop: 8 }} maxLength={1000} value={reviewText} onChange={(event) => setReviewText(event.target.value)} aria-label={t("Что понравилось или что можно улучшить")} placeholder={t("Что понравилось или что можно улучшить")} />
+                  <p className={styles.why}>{t("Отзыв увидят в каталоге без вашего имени и названия проекта. Изменить его можно 14 дней. При оценке 1–2 напишите, что пошло не так.")}</p>
+                  <div className={styles.row}>
+                    <button className={styles.button} disabled={busy || rating === 0 || (rating <= 2 && reviewText.trim().length === 0)} onClick={() => void sendReview(item)}>{busy ? t("Сохраняем…") : t("Сохранить отзыв")}</button>
+                    <button className={styles.ghost} onClick={() => setReviewing(null)}>{t("Отмена")}</button>
+                  </div>
+                </div>
+              )}
               {(item.status === "invited" || item.status === "active" || (item.status === "completed" && item.readUntil)) && (
                 <button className={styles.danger} style={{ minHeight: 40, marginTop: 6 }} onClick={() => void revoke(item)}>{t("Отозвать доступ")}</button>
               )}
@@ -94,7 +145,12 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
           ))}
         </ul>
       )}
-      {editable && !open && <button className={styles.secondary} onClick={() => { setOpen(true); setLink(null); if (hasLead) setRole("consultant"); }}>{t("+ Пригласить специалиста")}</button>}
+      {editable && !open && (
+        <div className={styles.row}>
+          <button className={styles.secondary} onClick={() => { setOpen(true); setLink(null); if (hasLead) setRole("consultant"); }}>{t("+ Пригласить специалиста")}</button>
+          <a className={styles.ghost} href={catalogUrl}>{t("Найти в каталоге")}</a>
+        </div>
+      )}
       {editable && open && roles && (
         <div>
           <div className={styles.choices} role="group" aria-label={t("Роль")}>
@@ -105,10 +161,18 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
               </button>
             ))}
           </div>
-          <label className={styles.field} style={{ marginTop: 14 }}>
-            <span className={styles.label}>{t("Почта специалиста")}</span>
-            <input className={styles.input} type="email" inputMode="email" autoComplete="off" value={email} maxLength={254} placeholder="name@example.kz" onChange={(event) => setEmail(event.target.value)} />
-          </label>
+          {invitee ? (
+            <div className={`${styles.notice} ${styles.info}`} style={{ marginTop: 14 }}>
+              {t("Приглашаете из каталога:")}{" "}<strong>{invitee.name}</strong>{t(". Приглашение придёт на почту из его аккаунта.")}
+              <div><button type="button" className={styles.ghost} onClick={() => { setInvitee(null); window.history.replaceState(null, "", window.location.pathname); }}>{t("Указать почту вместо этого")}</button></div>
+            </div>
+          ) : (
+            <label className={styles.field} style={{ marginTop: 14 }}>
+              <span className={styles.label}>{t("Почта специалиста")}</span>
+              <input className={styles.input} type="email" inputMode="email" autoComplete="off" value={email} maxLength={254} placeholder="name@example.kz" onChange={(event) => setEmail(event.target.value)} />
+              <span className={styles.why}>{t("Нет знакомого специалиста?")}{" "}<a href={catalogUrl}>{t("Найти в каталоге →")}</a></span>
+            </label>
+          )}
           {role === "lead" && (
             <label className={styles.field}>
               <span className={styles.label}>{t("Сколько запросов к ИИ разрешить")}</span>
@@ -163,7 +227,7 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
           <div className={styles.row}>
             <button className={styles.ghost} onClick={() => setOpen(false)}>{t("Отмена")}</button>
             <div className={styles.spacer} />
-            <button className={styles.button} disabled={busy || !termsValid || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())} onClick={invite}>{busy ? t("Создаём…") : t("Пригласить")}</button>
+            <button className={styles.button} disabled={busy || !termsValid || (!invitee && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))} onClick={invite}>{busy ? t("Создаём…") : t("Пригласить")}</button>
           </div>
         </div>
       )}

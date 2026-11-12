@@ -12,12 +12,11 @@ export default function VerifyAction({ token }: { token: string }) {
     if (!token) return;
     api<void>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) })
       .then(() => { setMessage(t("Email подтверждён. Теперь можно войти.")); setDone(true); })
-      .catch(() => setMessage(t("Ссылка недействительна или срок её действия истёк. Запросите письмо повторно.")));
+      .catch(() => setMessage(t("Ссылка недействительна или срок её действия истёк. Попробуйте войти — на странице входа можно отправить письмо ещё раз.")));
   }, [token]);
   return <main className={styles.shell}>
     <a href="/" className={styles.brand}><span>B</span> BuildPath</a>
     <section className={styles.card}>
-      <p className={styles.kicker}>{t("ПОДТВЕРЖДЕНИЕ EMAIL")}</p>
       <h1>{done ? t("Готово") : t("Проверяем ссылку")}</h1>
       <p className={styles.message} role="status">{message}</p>
       {done && <a className={styles.primary} style={{display:"grid",placeItems:"center",marginTop:18,textDecoration:"none"}} href="/login">{t("Перейти ко входу")}</a>}

@@ -71,6 +71,14 @@ export type Approval = {
   approved?: number; required?: number; broken?: boolean; canApprove?: boolean; approveBlocker?: string | null; isReviewer?: boolean;
 };
 
+export type QualityReport = {
+  auditVersion: string; profile: { key: string; version: number } | null; status: "passed" | "failed"; summary: string;
+  categories: Array<{ id: string; title: string; enabled: boolean; required: boolean; counts: { critical: number; high: number; medium: number; low: number }; status: "passed" | "failed" | "warning" | "off" }>;
+  findings: Array<{ id: string; category: string; severity: "critical" | "high" | "medium" | "low"; title: string; details: string; pages: string[]; blocking: boolean }>;
+  unmeasured: Array<{ id: string; category: string; title: string; why: string }>;
+  pages: Array<{ path: string; htmlKb: number; imagesKb: number }>;
+};
+
 export type StageDetail = {
   viewer: ViewerInfo;
   suggestions: Suggestion[];
@@ -279,6 +287,8 @@ const messages: Record<string, string> = {
   POLICY_REVIEWER_NOT_MEMBER: t("Проверяющим может быть только участник команды (не наблюдатель)."),
   POLICY_REVIEWERS_COUNT: t("Выберите от 1 до 10 проверяющих."),
   POLICY_QUORUM_INVALID: t("Число одобрений должно быть от 1 до числа проверяющих."),
+  QUALITY_GATE_FAILED: t("Сайт не прошёл проверку перед публикацией. Посмотрите замечания на этапе «Сборка», исправьте и соберите заново."),
+  BUILD_NOT_QUALITY_CHECKED: t("Эта сборка сделана до проверки качества. Соберите сайт заново на этапе «Сборка»."),
   PLAN_NO_SPECIALISTS: t("Приглашать специалистов можно на тарифах «Старт» и «Бизнес». Посмотрите тарифы."),
 };
 
@@ -315,7 +325,7 @@ export type Publication = {
   publication: { slug: string; url: string; status: "live" | "unpublished"; publishedAt: string; unpublishedAt: string | null; publishedVersionNumber: number | null; notifyTelegram: boolean; notifyEmail: boolean; domain: SiteDomain | null } | null;
   domainsAvailable: boolean;
   domainCheck?: { ok: boolean; found: string[] };
-  acceptedBuild: { versionId: string; versionNumber: number; hasForm: boolean } | null;
+  acceptedBuild: { versionId: string; versionNumber: number; hasForm: boolean; quality: Pick<QualityReport, "status" | "summary" | "categories" | "profile"> | null } | null;
   outdated: boolean; rolledBack?: boolean; canManage: boolean; suggestedSlug: string; baseDomain: string; urlTemplate: string;
   channels: { telegram: { configured: boolean; linked: boolean; username: string | null; botUsername: string | null }; email: { configured: boolean; address: string } };
   leadsCount: number;

@@ -6,11 +6,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import {
-  explainError, isPlanMessage, originLabels, statusTone, type Content, type Design, type Journey, type Offer, type SiteCheck, type StageDetail, type Sitemap, type Catalog,
+  explainError, isPlanMessage, originLabels, statusTone, type Content, type Design, type Journey, type Offer, type SiteCheck, type QualityReport, type StageDetail, type Sitemap, type Catalog,
 } from "@/lib/journey";
 import { ContentEditor, DesignPicker, FieldsForm } from "./editors";
 import { SpecialistsPanel, SuggestionsPanel } from "./specialists";
 import ChangesPanel from "./changes";
+import QualityReportView from "./quality-report";
 import { TimesheetPanel } from "./timesheet";
 import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
@@ -197,7 +198,9 @@ export default function StagePage() {
   const aiUsable = ai.level !== "none" && ai.configured && stage.canEdit && stage.inputsReady;
   const issueKeys = detail.issues.map((issue) => issue.key);
   const siteChecks = stage.artifactType === "site" ? ((detail.current?.content as { checks?: SiteCheck[] } | undefined)?.checks ?? []) : [];
-  const failedRequired = siteChecks.filter((check) => check.required && check.status === "failed");
+  const quality = stage.artifactType === "site" ? ((detail.current?.content as { quality?: QualityReport | null } | undefined)?.quality ?? null) : null;
+  const failedRequired = [...siteChecks.filter((check) => check.required && check.status === "failed"),
+    ...(stage.artifactType === "site" && detail.current && (!quality || quality.status === "failed") ? [{ id: "quality", status: "failed" as const, title: t("Проверка перед публикацией"), details: "", required: true }] : [])];
   const specialist = detail.viewer.kind === "specialist";
   const policy = Boolean(stage.approval?.policy);
   const assignment = detail.viewer.assignments.find((item) => item.stageKey === stage.key) ?? null;
@@ -441,6 +444,7 @@ export default function StagePage() {
                 ))}
               </ul>
               <p className={styles.small}>{t("Это автоматические проверки содержимого. Они не заменяют просмотр сайта на вашем телефоне.")}</p>
+              <QualityReportView report={quality} />
             </>
           )}
           {detail.current && !preview && <button className={styles.ghost} style={{ marginTop: 10 }} onClick={() => run("preview", () => showPreview(detail.current!.id))}>{t("Показать сайт")}</button>}

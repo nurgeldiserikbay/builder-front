@@ -10,6 +10,7 @@ import AppHeader from "../app-header";
 
 type Workspace = { id: string; name: string; role: string };
 type Assignment = { id: string; projectId: string; projectName: string; stageKey: string; stageTitle: string; stageStatus: string; role: string; roleTitle: string; status: string };
+type TeamProject = { id: string; name: string; status: string; ownerName: string | null; role: string; roleTitle: string };
 type Project = { id: string; name: string; status: string; projectType: string | null; createdAt: string; updatedAt: string };
 
 const projectStatus: Record<string, string> = { draft: t("Черновик"), active: t("В работе"), paused: t("На паузе"), completed: t("Завершён"), archived: t("В архиве"), live: t("Опубликован") };
@@ -19,6 +20,7 @@ export default function ProjectsPage() {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [teamProjects, setTeamProjects] = useState<TeamProject[]>([]);
   const [types, setTypes] = useState<CatalogType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -34,12 +36,14 @@ export default function ProjectsPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [workspaces, catalog, mine, master] = await Promise.all([
+        const [workspaces, catalog, mine, master, team] = await Promise.all([
           api<Workspace[]>("/workspaces"),
           api<{ version: string; projectTypes: CatalogType[] }>("/journey/catalog"),
           api<Assignment[]>("/me/assignments"),
           api<{ places: Array<{ accessId: string }> }>("/me/master-bookings").catch(() => ({ places: [] })),
+          api<TeamProject[]>("/me/team-projects").catch(() => []),
         ]);
+        setTeamProjects(team);
         setMasterPlaces(master.places.length);
         setTypes(catalog.projectTypes);
         setAssignments(mine);
@@ -48,7 +52,7 @@ export default function ProjectsPage() {
         if (first) {
           const list = await api<Project[]>(`/projects?workspaceId=${encodeURIComponent(first.id)}`);
           setProjects(list.filter((project) => project.projectType));
-          if (!list.some((project) => project.projectType) && mine.length === 0 && master.places.length === 0) setCreating(true);
+          if (!list.some((project) => project.projectType) && mine.length === 0 && master.places.length === 0 && team.length === 0) setCreating(true);
         }
       } catch (caught) {
         if (caught instanceof ApiError && caught.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return; }
@@ -116,6 +120,17 @@ export default function ProjectsPage() {
                 <strong>{t("Мои записи как мастера")}</strong>
                 <div className={styles.small}>{t("Клиенты, которые записались к вам")}{masterPlaces > 1 ? t(" — в {0} местах", [masterPlaces]) : ""}</div>
               </a>
+            )}
+            {teamProjects.length > 0 && (
+              <>
+                <h2 className={styles.h2} style={{ marginTop: 22 }}>{t("Вы в команде")}</h2>
+                {teamProjects.map((item) => (
+                  <a key={item.id} className={styles.projectCard} href={`/projects/${item.id}`}>
+                    <strong>{item.name}</strong>
+                    <div className={styles.small}>{item.roleTitle}{item.ownerName ? ` · ${t("владелец:")} ${item.ownerName}` : ""} · {projectStatus[item.status] ?? item.status}</div>
+                  </a>
+                ))}
+              </>
             )}
             {assignments.length > 0 && (
               <>

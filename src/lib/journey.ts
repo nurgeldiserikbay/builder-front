@@ -63,11 +63,19 @@ export type Preset = { id: string; label: string; hint: string; background?: str
 
 export type Suggestion = { id: string; text: string; targetKey: string | null; status: "proposed" | "applied" | "dismissed"; createdAt: string; author: string | null };
 
+export type Approval = {
+  policy: { mode: "one" | "all" | "quorum"; reviewers: string[]; quorum: number | null; authorMayApprove: boolean } | null;
+  policyText: string | null; candidates: Array<{ userId: string; name: string; role: string }>; canEditPolicy: boolean;
+  reviewers?: Array<{ userId: string; name: string; approved: boolean; active: boolean; author: boolean }>;
+  approvals?: Array<{ name: string; comment: string | null; createdAt: string }>;
+  approved?: number; required?: number; broken?: boolean; canApprove?: boolean; approveBlocker?: string | null; isReviewer?: boolean;
+};
+
 export type StageDetail = {
   viewer: ViewerInfo;
   suggestions: Suggestion[];
   stage: {
-    canSubmit: boolean; canRequestChanges: boolean; canInvite: boolean; canSuggest: boolean; reviewNote: string | null;
+    canSubmit: boolean; canRequestChanges: boolean; canInvite: boolean; canSuggest: boolean; reviewNote: string | null; approval: Approval;
     key: string; title: string; purpose: string; outcome: string; artifactType: ArtifactType; status: StageStatus; statusLabel: string; statusExplanation: string;
     acceptance: string[]; acceptExplanation: string; importHint: string | null; fields: FieldDefinition[] | null; lockedKeys: string[]; acceptedVersionId: string | null;
     canEdit: boolean; canAccept: boolean; canReopen: boolean; canImport: boolean; inputsReady: boolean; changesPending?: boolean;
@@ -258,6 +266,19 @@ const messages: Record<string, string> = {
   IMAGE_IN_USE: t("Это фото стоит на сайте. Сначала уберите его из блока."),
   IMAGE_NOT_FOUND: t("Фото не найдено — возможно, его уже удалили."),
   IMAGE_ALT_TOO_LONG: t("Описание фото слишком длинное — до 200 символов."),
+  PLAN_NO_TEAM: t("Команда проекта доступна на тарифах «Старт» и «Бизнес». Посмотрите тарифы."),
+  TEAM_LIMIT_REACHED: t("В команде уже 20 человек вместе с приглашениями. Отмените лишние приглашения или уберите участника."),
+  TEAM_MANAGE_FORBIDDEN: t("Управлять командой может владелец или администратор проекта."),
+  ROLE_NOT_ALLOWED: t("Эту роль может назначить или изменить только владелец проекта."),
+  CANNOT_CHANGE_SELF: t("Свою роль изменить нельзя."),
+  APPROVAL_POLICY_ACTIVE: t("Этот этап принимают проверяющие: отправьте его на проверку."),
+  AUTHOR_CANNOT_APPROVE: t("Автор версии не одобряет свою версию — это сделают другие проверяющие."),
+  NOT_A_REVIEWER: t("Вы не назначены проверяющим этого этапа."),
+  ALREADY_APPROVED: t("Вы уже одобрили эту версию."),
+  APPROVAL_POLICY_BROKEN: t("Правило согласования больше нельзя выполнить: кого-то из проверяющих нет в команде. Измените правило."),
+  POLICY_REVIEWER_NOT_MEMBER: t("Проверяющим может быть только участник команды (не наблюдатель)."),
+  POLICY_REVIEWERS_COUNT: t("Выберите от 1 до 10 проверяющих."),
+  POLICY_QUORUM_INVALID: t("Число одобрений должно быть от 1 до числа проверяющих."),
   PLAN_NO_SPECIALISTS: t("Приглашать специалистов можно на тарифах «Старт» и «Бизнес». Посмотрите тарифы."),
 };
 

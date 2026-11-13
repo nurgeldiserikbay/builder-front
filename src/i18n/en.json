@@ -2408,5 +2408,16 @@
  "Проверить ещё раз": "Check again",
  "Проверить в браузере": "Check in a browser",
  "Проверка в браузере уже идёт.": "The browser check is already running.",
- "Эту сборку уже проверяли 5 раз. Соберите сайт заново, чтобы проверить снова.": "This build has already been checked 5 times. Build the site again to check again."
+ "Эту сборку уже проверяли 5 раз. Соберите сайт заново, чтобы проверить снова.": "This build has already been checked 5 times. Build the site again to check again.",
+ "ZIP-архив": "ZIP archive",
+ "Загрузите архив ниже или добавьте его в «Файлы этапа»": "Upload an archive below or add it to «Stage files»",
+ "Удалить этот архив": "Delete this archive",
+ "Загрузить ZIP-архив": "Upload a ZIP archive",
+ "Нужно проверить опубликованный сайт — скорость, доступность, соответствие ТЗ и дизайну? Это делает": "Need to check a published site — speed, accessibility, match to the brief and design? That is done by",
+ "«Сверка сайта»": "«Site check»",
+ "из 2": "of 2",
+ "Только анализ готового кода": "Analysis of existing code only",
+ "Загрузите ZIP-архив или дайте ссылку на репозиторий GitHub — получите отчёт: технологии, страницы, ключи и пароли в коде, пробелы в документации. Без этапов разработки, код не меняется.": "Upload a ZIP archive or give a GitHub repository link and get a report: technologies, pages, keys and passwords in the code, documentation gaps. No development stages; the code is not changed.",
+ "Не занимает место в тарифе. Проверить опубликованный сайт можно в «Сверке сайта».": "Does not use a plan slot. A published site can be checked in «Site check».",
+ "Создать и перейти к разбору": "Create and go to analysis"
 }

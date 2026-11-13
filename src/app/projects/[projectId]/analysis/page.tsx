@@ -21,8 +21,9 @@ type Report = {
   checks: { key: string; label: string; status: string; statusLabel: string }[]; unverified: { key: string; text: string }[]; disclaimer: string;
 };
 type List = {
+  project: { name: string; analysisOnly: boolean };
   runs: Run[]; canRun: boolean;
-  sources: { files: { id: string; name: string; sizeBytes: number; stageKey: string; createdAt: string }[]; repository: { provider: string; repoPath: string; defaultBranch: string; canUse: boolean } | null; publicRepo: boolean };
+  sources: { files: { id: string; name: string; sizeBytes: number; stageKey: string | null; createdAt: string; canDelete: boolean }[]; repository: { provider: string; repoPath: string; defaultBranch: string; canUse: boolean } | null; publicRepo: boolean; canUpload: boolean };
 };
 
 const tones: Record<Run["status"], string> = { queued: "active", running: "active", succeeded: "done", partial: "attention", failed: "attention", cancelled: "closed" };
@@ -69,6 +70,25 @@ export default function AnalysisPage() {
     return () => clearInterval(timer);
   }, [pending, load, open, openRun]);
 
+  async function uploadZip(file: File | undefined) {
+    if (!file) return;
+    setError("");
+    if (file.size > 15 * 1024 * 1024) { setError(t("Файл больше 15 МБ. Сожмите его или разделите на части.")); return; }
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append("file", file, file.name);
+      const created = await api<{ createdId: string }>(`/projects/${projectId}/analysis-sources`, { method: "POST", body: form });
+      setSource("file"); setFileId(created.createdId);
+      await load();
+    } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
+  }
+  async function removeZip(id: string, name: string) {
+    if (!window.confirm(t("Удалить файл «{0}»? Это нельзя отменить.", [name]))) return;
+    setBusy(true); setError("");
+    try { await api(`/projects/${projectId}/analysis-sources/${id}`, { method: "DELETE" }); setFileId(""); await load(); } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
+  }
+
   async function start() {
     setBusy(true); setError("");
     try {
@@ -82,8 +102,9 @@ export default function AnalysisPage() {
   const ready = source === "file" ? Boolean(fileId) : source === "repository" ? Boolean(list?.sources.repository?.canUse) : /^https:\/\/github\.com\/[^/]+\/[^/]+/.test(url.trim());
   return (
     <div className={styles.shell}>
-      <AppHeader back={{ href: `/projects/${projectId}`, label: t("← Проект") }} title={t("Разбор кода")} />
+      <AppHeader back={list?.project.analysisOnly ? { href: "/projects", label: t("← Проекты") } : { href: `/projects/${projectId}`, label: t("← Проект") }} title={t("Разбор кода")} />
       <main className={styles.container}>
+        {list?.project.analysisOnly && <p className={styles.kicker}>{t("Только анализ")} · {list.project.name}</p>}
         <h1 className={styles.h1}>{t("Разбор кода")}</h1>
         <p style={{ maxWidth: "70ch" }}>{t("BuildPath изучит архив или репозиторий в режиме чтения: найдёт технологии, страницы, ключи и пароли в коде, лишние папки и пробелы в документации. Код не запускается, не меняется и не отправляется в ИИ. Каждая находка указывает файл и строку.")}</p>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
@@ -93,7 +114,7 @@ export default function AnalysisPage() {
             <p id="new-run" className={styles.cardTitle}>{t("Что разобрать")}</p>
             <div role="radiogroup" aria-label={t("Источник")} style={{ display: "grid", gap: 8, margin: "8px 0 12px" }}>
               {([
-                ["file", t("ZIP-архив из файлов этапов"), list.sources.files.length ? t("Архивов: {0}", [list.sources.files.length]) : t("Сначала добавьте ZIP в «Файлы этапа» на любом этапе")],
+                ["file", t("ZIP-архив"), list.sources.files.length ? t("Архивов: {0}", [list.sources.files.length]) : t("Загрузите архив ниже или добавьте его в «Файлы этапа»")],
                 ["repository", t("Подключённый репозиторий"), list.sources.repository ? `${list.sources.repository.repoPath}${list.sources.repository.canUse ? "" : t(" — запускает владелец или администратор")}` : t("Репозиторий не подключён")],
                 ["public_repo", t("Открытый репозиторий GitHub"), t("Скачиваем без вашего доступа, только чтение")],
               ] as const).map(([value, label, hint]) => (
@@ -108,6 +129,15 @@ export default function AnalysisPage() {
                 <select className={styles.select} value={fileId} onChange={(event) => setFileId(event.target.value)}>
                   {list.sources.files.map((file) => <option key={file.id} value={file.id}>{file.name} · {fileSize(file.sizeBytes)}</option>)}
                 </select>
+              </label>
+            )}
+            {source === "file" && list.sources.files.find((file) => file.id === fileId)?.canDelete && (
+              <button type="button" className={styles.ghost} disabled={busy} onClick={() => { const file = list.sources.files.find((item) => item.id === fileId)!; void removeZip(file.id, file.name); }}>{t("Удалить этот архив")}</button>
+            )}
+            {source === "file" && list.sources.canUpload && (
+              <label className={styles.secondary} style={{ cursor: busy ? "not-allowed" : "pointer", margin: "8px 0" }}>
+                {busy ? t("Загружаем и проверяем…") : t("Загрузить ZIP-архив")}
+                <input type="file" hidden disabled={busy} accept=".zip,application/zip" onChange={(event) => { void uploadZip(event.target.files?.[0]); event.target.value = ""; }} />
               </label>
             )}
             {source === "public_repo" && (
@@ -126,6 +156,7 @@ export default function AnalysisPage() {
         )}
 
         {list && list.runs.length === 0 && <p className={styles.small}>{t("Разборов ещё не было.")}</p>}
+        {list?.project.analysisOnly && <p className={styles.small}>{t("Нужно проверить опубликованный сайт — скорость, доступность, соответствие ТЗ и дизайну? Это делает")}{" "}<a href="/review">{t("«Сверка сайта»")}</a>.</p>}
         {list && list.runs.length > 0 && (
           <section aria-labelledby="runs-title">
             <h2 id="runs-title" className={styles.h2}>{t("Разборы")}</h2>

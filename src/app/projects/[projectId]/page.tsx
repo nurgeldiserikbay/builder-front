@@ -56,6 +56,8 @@ export default function JourneyPage() {
       setJourney(await api<Journey>(`/projects/${projectId}/journey`));
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return; }
+      // A project started as «Только анализ» has no stages: its home is the code analysis page.
+      if (caught instanceof ApiError && caught.message === "PROJECT_HAS_NO_ROUTE") { router.replace(`/projects/${projectId}/analysis`); return; }
       setError(explainError(caught));
     }
   }, [projectId, router]);

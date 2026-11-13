@@ -4,7 +4,7 @@ import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
-import { explainError, saveFromApi } from "@/lib/journey";
+import { explainError, saveFromApi, type CatalogType } from "@/lib/journey";
 import { fileSize } from "../stages/[stageKey]/files";
 import styles from "../../journey.module.css";
 import AppHeader from "../../../app-header";
@@ -24,6 +24,7 @@ type Report = {
 };
 type List = {
   project: { name: string; analysisOnly: boolean };
+  stages: { key: string; title: string }[]; canAddRoute: boolean;
   runs: Run[]; canRun: boolean;
   sources: { files: { id: string; name: string; sizeBytes: number; stageKey: string | null; createdAt: string; canDelete: boolean }[]; repository: { provider: string; repoPath: string; defaultBranch: string; canUse: boolean } | null; publicRepo: boolean; canUpload: boolean };
 };
@@ -158,6 +159,7 @@ export default function AnalysisPage() {
         )}
 
         {list && list.runs.length === 0 && <p className={styles.small}>{t("Разборов ещё не было.")}</p>}
+        {list?.canAddRoute && <RouteCard projectId={projectId} />}
         {list?.project.analysisOnly && <p className={styles.small}>{t("Нужно проверить опубликованный сайт — скорость, доступность, соответствие ТЗ и дизайну? Это делает")}{" "}<a href="/review">{t("«Сверка сайта»")}</a>.</p>}
         {list && list.runs.length > 0 && (
           <section aria-labelledby="runs-title">
@@ -176,7 +178,7 @@ export default function AnalysisPage() {
                       <button type="button" className={styles.ghost} onClick={() => void saveFromApi(`/projects/${projectId}/analysis-runs/${run.id}/export?format=json`, "analysis.json").catch((caught) => setError(explainError(caught)))}>{t("Скачать .json")}</button>
                     </div>
                   )}
-                  {open === run.id && report?.id === run.id && report.report && <ReportView report={report.report} />}
+                  {open === run.id && report?.id === run.id && report.report && <ReportView report={report.report} projectId={projectId} runId={run.id} stages={list.stages} />}
                 </li>
               ))}
             </ul>
@@ -187,8 +189,21 @@ export default function AnalysisPage() {
   );
 }
 
-function ReportView({ report }: { report: Report }) {
+function ReportView({ report, projectId, runId, stages }: { report: Report; projectId: string; runId: string; stages: { key: string; title: string }[] }) {
   const total = report.findings.length;
+  const [stageFor, setStageFor] = useState<Record<string, string>>({});
+  const [added, setAdded] = useState<Record<string, { stageKey: string; stageTitle: string }>>({});
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  async function toRemark(findingId: string) {
+    const stageKey = stageFor[findingId] ?? stages[0]?.key;
+    if (!stageKey) return;
+    setBusy(findingId); setError("");
+    try {
+      const result = await api<{ stageKey: string; stageTitle: string }>(`/projects/${projectId}/analysis-runs/${runId}/findings/${encodeURIComponent(findingId)}/remark`, { method: "POST", body: JSON.stringify({ stageKey }) });
+      setAdded((current) => ({ ...current, [findingId]: result }));
+    } catch (caught) { setError(explainError(caught)); } finally { setBusy(""); }
+  }
   return (
     <div style={{ marginTop: 14 }}>
       <p style={{ margin: "0 0 6px" }}>
@@ -211,6 +226,7 @@ function ReportView({ report }: { report: Report }) {
           <p className={styles.small} style={{ overflowWrap: "anywhere" }}>{report.summary.routes.join(", ")}</p>
         </details>
       )}
+      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
       <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 12 }}>
         {report.findings.map((finding) => (
           <li key={finding.id} style={{ borderLeft: `3px solid ${severityColor[finding.severity]}`, paddingLeft: 10 }}>
@@ -218,6 +234,16 @@ function ReportView({ report }: { report: Report }) {
             <p style={{ margin: "2px 0" }}><strong>{finding.title}</strong></p>
             <p style={{ margin: "2px 0" }}>{finding.explanation}</p>
             <p className={styles.small} style={{ margin: "2px 0" }}><strong>{t("Что сделать:")}</strong> {finding.remediation}</p>
+            {stages.length > 0 && (added[finding.id]
+              ? <p className={styles.small} style={{ margin: "4px 0" }}>✓ {t("Добавлено в замечания этапа")} <a href={`/projects/${projectId}/stages/${added[finding.id]!.stageKey}`}>«{added[finding.id]!.stageTitle}»</a></p>
+              : (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", margin: "4px 0" }}>
+                  <select className={styles.select} style={{ flex: "1 1 160px", minHeight: 40 }} aria-label={t("Этап для замечания")} value={stageFor[finding.id] ?? stages[0]!.key} onChange={(event) => setStageFor((current) => ({ ...current, [finding.id]: event.target.value }))}>
+                    {stages.map((stage) => <option key={stage.key} value={stage.key}>{stage.title}</option>)}
+                  </select>
+                  <button type="button" className={styles.ghost} disabled={busy === finding.id} onClick={() => void toRemark(finding.id)}>{t("В замечания этапа")}</button>
+                </div>
+              ))}
             <p className={styles.small} style={{ margin: "2px 0", overflowWrap: "anywhere" }}>{t("Где:")} {finding.evidence.map((item) => (report.type === "document" ? (item.line ? t("абзац {0}", [item.line]) : item.path) : `${item.path}${item.line ? `:${item.line}` : ""}`)).join(", ")}</p>
           </li>
         ))}
@@ -231,5 +257,49 @@ function ReportView({ report }: { report: Report }) {
       </details>
       <p className={styles.small} style={{ marginTop: 10 }}>{report.disclaimer}</p>
     </div>
+  );
+}
+
+/** «Только анализ» → a project with stages: the owner picks the type; reports and files stay. */
+function RouteCard({ projectId }: { projectId: string }) {
+  const [types, setTypes] = useState<CatalogType[]>([]);
+  const [typeKey, setTypeKey] = useState("");
+  const [locale, setLocale] = useState<"ru" | "en">("ru");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open || types.length) return;
+    void api<{ projectTypes: CatalogType[] }>("/journey/catalog").then((catalog) => { setTypes(catalog.projectTypes); setTypeKey(catalog.projectTypes[0]?.key ?? ""); }).catch((caught) => setError(explainError(caught)));
+  }, [open, types.length]);
+  async function create() {
+    setBusy(true); setError("");
+    try {
+      await api(`/projects/${projectId}/route`, { method: "POST", body: JSON.stringify({ projectType: typeKey, locale }) });
+      window.location.href = `/projects/${projectId}`;
+    } catch (caught) { setError(explainError(caught)); setBusy(false); }
+  }
+  return (
+    <section className={styles.card} aria-labelledby="route-title">
+      <p id="route-title" className={styles.cardTitle}>{t("Перейти к доработке")}</p>
+      <p className={styles.small} style={{ marginTop: 0 }}>{t("Если по отчёту решили делать сайт заново или дорабатывать — добавьте проекту этапы. Отчёты и файлы останутся, находки можно будет отправить в замечания этапов. С этого момента проект занимает место в тарифе.")}</p>
+      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
+      {!open ? <button type="button" className={styles.secondary} onClick={() => setOpen(true)}>{t("Выбрать тип проекта…")}</button> : (
+        <div style={{ display: "grid", gap: 10 }}>
+          <label className={styles.small}>{t("Тип проекта")}
+            <select className={styles.select} value={typeKey} onChange={(event) => setTypeKey(event.target.value)}>
+              {types.map((item) => <option key={item.key} value={item.key}>{item.title}</option>)}
+            </select>
+          </label>
+          {types.find((item) => item.key === typeKey) && <p className={styles.small} style={{ margin: 0 }}>{t("Этапы:")}{" "}{types.find((item) => item.key === typeKey)!.stages.map((stage) => stage.title).join(" → ")}</p>}
+          <label className={styles.small}>{t("Язык сайта")}
+            <select className={styles.select} value={locale} onChange={(event) => setLocale(event.target.value as "ru" | "en")}>
+              <option value="ru">Русский</option><option value="en">English</option>
+            </select>
+          </label>
+          <button type="button" className={styles.button} disabled={busy || !typeKey} onClick={() => void create()}>{busy ? t("Создаём…") : t("Добавить этапы")}</button>
+        </div>
+      )}
+    </section>
   );
 }

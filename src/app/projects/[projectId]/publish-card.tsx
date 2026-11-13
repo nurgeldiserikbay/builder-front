@@ -98,7 +98,16 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
         </>
       )}
 
-      {!live && state.acceptedBuild && state.canManage && (
+      {state.acceptedBuild && state.acceptedBuild.quality?.status !== "passed" && state.canManage && (
+        <p className={`${styles.notice} ${styles.warn}`}>
+          {state.acceptedBuild.quality ? state.acceptedBuild.quality.summary : t("Принятая сборка сделана до проверки качества. Соберите сайт заново на этапе «Сборка» — без проверки его нельзя опубликовать.")}
+          {" "}<a href={`/projects/${projectId}/stages/build`} style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть сборку →")}</a>
+        </p>
+      )}
+      {state.acceptedBuild?.quality?.status === "passed" && (
+        <p className={styles.small} style={{ margin: "0 0 10px" }}>✓ {t("Проверка перед публикацией пройдена:")}{" "}{state.acceptedBuild.quality.categories.filter((category) => category.status !== "off").map((category) => category.title).join(", ")}.</p>
+      )}
+      {!live && state.acceptedBuild && state.canManage && state.acceptedBuild.quality?.status === "passed" && (
         <>
           <p style={{ margin: "0 0 12px" }}>{t("Сайт будет доступен всем по короткой ссылке на BuildPath. Это бесплатно, отдельный хостинг и аккаунты не нужны.")}</p>
           <label className={styles.field}>

@@ -278,6 +278,27 @@ const messages: Record<string, string> = {
   NOT_YOUR_TURN: t("Сейчас очередь другого проверяющего."),
   STAGE_KEYS_INVALID: t("Выберите этапы этого проекта."),
   STAGE_KEYS_ONLY_FOR_CONTRIBUTORS: t("Этапы назначаются только исполнителям."),
+  FILE_REQUIRED: t("Выберите файл."),
+  FILE_TOO_LARGE: t("Файл больше 15 МБ. Сожмите его или разделите на части."),
+  FILE_TYPE_NOT_SUPPORTED: t("Такой файл не принимаем. Подойдут PDF, фото (JPG, PNG, WebP), TXT, MD, CSV, JSON, Word, Excel, PowerPoint и ZIP. Расширение должно совпадать с содержимым."),
+  FILE_NAME_INVALID: t("У файла неподходящее имя. Переименуйте его и попробуйте ещё раз."),
+  FILE_NOTE_TOO_LONG: t("Пояснение к файлу — не больше 500 символов."),
+  FILE_LIMIT_REACHED: t("На этапе уже 20 файлов. Удалите ненужные, чтобы добавить новые."),
+  FILE_STORAGE_FULL: t("Место для файлов проекта (150 МБ) закончилось. Удалите ненужные файлы."),
+  FILE_REJECTED_BY_SCAN: t("Файл не прошёл проверку безопасности и не сохранён."),
+  FILE_SCAN_UNAVAILABLE: t("Проверка файлов сейчас недоступна. Попробуйте загрузить файл позже."),
+  FILE_UPLOADS_TOO_FREQUENT: t("Слишком много загрузок за час. Попробуйте позже."),
+  FILE_NOT_FOUND: t("Файл не найден — возможно, его уже удалили."),
+  FILE_DELETE_FORBIDDEN: t("Удалить файл может тот, кто его загрузил, владелец или администратор."),
+  ANALYSIS_NEEDS_ZIP: t("Разобрать можно только ZIP-архив."),
+  ANALYSIS_SOURCE_INVALID: t("Выберите, что разобрать."),
+  ANALYSIS_REPOSITORY_FORBIDDEN: t("Подключённый репозиторий разбирает владелец или администратор проекта."),
+  ANALYSIS_ALREADY_RUNNING: t("Уже идут два разбора. Дождитесь, пока они закончатся."),
+  ANALYSIS_DAILY_LIMIT: t("За сутки можно сделать 20 разборов. Попробуйте завтра."),
+  ANALYSIS_NOT_FOUND: t("Разбор не найден."),
+  ANALYSIS_NOT_READY: t("Отчёт ещё готовится."),
+  REPO_URL_NOT_GITHUB: t("Нужна ссылка на репозиторий GitHub: https://github.com/владелец/репозиторий."),
+  REPO_REF_INVALID: t("Неверное имя ветки."),
   COMMENT_FORBIDDEN: t("Наблюдатель не пишет замечания."),
   COMMENT_BLOCKING_FORBIDDEN: t("Блокирующее замечание может оставить владелец, администратор или проверяющий этапа."),
   COMMENT_RESOLVE_FORBIDDEN: t("Закрыть замечание может его автор, владелец или администратор."),
@@ -371,6 +392,39 @@ export function download(name: string, mimeType: string, content: string) {
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export type StageFile = { id: string; name: string; kind: string; mime: string; sizeBytes: number; sha256: string; note: string; createdAt: string; author: string; mine: boolean; canDelete: boolean; canAnalyze: boolean };
+export type StageFiles = { files: StageFile[]; canUpload: boolean; limits: { fileBytes: number; perStage: number; note: number }; accepted: string[]; createdId?: string };
+
+/** Saves a file the API serves only with the session cookie (stage files, analysis reports). */
+export async function saveFromApi(path: string, fallbackName: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}${path}`, { credentials: "include" });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { message?: string } | null;
+    throw new ApiError(response.status, payload?.message ?? "DOWNLOAD_FAILED");
+  }
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+  const name = encoded ? decodeURIComponent(encoded) : fallbackName;
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url; link.download = name;
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Files attached to a stage for people to read. */
+export const stageFiles = {
+  list: (projectId: string, stageKey: string) => api<StageFiles>(`/projects/${projectId}/stages/${stageKey}/files`),
+  upload: (projectId: string, stageKey: string, file: File, note: string) => {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    form.append("note", note);
+    return api<StageFiles>(`/projects/${projectId}/stages/${stageKey}/files`, { method: "POST", body: form });
+  },
+  remove: (projectId: string, stageKey: string, fileId: string) => api<StageFiles>(`/projects/${projectId}/stages/${stageKey}/files/${fileId}`, { method: "DELETE" }),
+  download: (projectId: string, stageKey: string, file: StageFile) => saveFromApi(`/projects/${projectId}/stages/${stageKey}/files/${file.id}`, file.name),
+};
 
 /** Photos of a project. The API serves them only with the session cookie, so they are fetched as blobs. */
 export const images = {

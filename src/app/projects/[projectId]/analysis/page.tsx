@@ -13,7 +13,7 @@ type Run = {
   id: string; status: "queued" | "running" | "succeeded" | "partial" | "failed" | "cancelled"; statusLabel: string; sourceKind: string; sourceKindLabel: string;
   sourceLabel: string; sourceRef: string | null; sourceSha256: string | null; error: string | null; createdAt: string; finishedAt: string | null; requestedBy: string;
 };
-type Finding = { id: string; code: string; categoryLabel: string; severity: "high" | "medium" | "low" | "info"; severityLabel: string; confidence: string; title: string; explanation: string; remediation: string; evidence: { path: string; line?: number }[] };
+type Finding = { suggestedStageKey?: string | null; id: string; code: string; categoryLabel: string; severity: "high" | "medium" | "low" | "info"; severityLabel: string; confidence: string; title: string; explanation: string; remediation: string; evidence: { path: string; line?: number }[] };
 type Report = {
   type: "code" | "document";
   document: { format: string; words: number; paragraphs: number; pages: number | null; headings: string[]; sections: { key: string; label: string; found: boolean; paragraph: number | null }[] } | null;
@@ -196,7 +196,7 @@ function ReportView({ report, projectId, runId, stages }: { report: Report; proj
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   async function toRemark(findingId: string) {
-    const stageKey = stageFor[findingId] ?? stages[0]?.key;
+    const stageKey = stageFor[findingId] ?? report.findings.find((item) => item.id === findingId)?.suggestedStageKey ?? stages[0]?.key;
     if (!stageKey) return;
     setBusy(findingId); setError("");
     try {
@@ -238,7 +238,7 @@ function ReportView({ report, projectId, runId, stages }: { report: Report; proj
               ? <p className={styles.small} style={{ margin: "4px 0" }}>✓ {t("Добавлено в замечания этапа")} <a href={`/projects/${projectId}/stages/${added[finding.id]!.stageKey}`}>«{added[finding.id]!.stageTitle}»</a></p>
               : (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", margin: "4px 0" }}>
-                  <select className={styles.select} style={{ flex: "1 1 160px", minHeight: 40 }} aria-label={t("Этап для замечания")} value={stageFor[finding.id] ?? stages[0]!.key} onChange={(event) => setStageFor((current) => ({ ...current, [finding.id]: event.target.value }))}>
+                  <select className={styles.select} style={{ flex: "1 1 160px", minHeight: 40 }} aria-label={t("Этап для замечания")} value={stageFor[finding.id] ?? finding.suggestedStageKey ?? stages[0]!.key} onChange={(event) => setStageFor((current) => ({ ...current, [finding.id]: event.target.value }))}>
                     {stages.map((stage) => <option key={stage.key} value={stage.key}>{stage.title}</option>)}
                   </select>
                   <button type="button" className={styles.ghost} disabled={busy === finding.id} onClick={() => void toRemark(finding.id)}>{t("В замечания этапа")}</button>
@@ -265,6 +265,7 @@ function RouteCard({ projectId }: { projectId: string }) {
   const [types, setTypes] = useState<CatalogType[]>([]);
   const [typeKey, setTypeKey] = useState("");
   const [locale, setLocale] = useState<"ru" | "en">("ru");
+  const [start, setStart] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -275,7 +276,7 @@ function RouteCard({ projectId }: { projectId: string }) {
   async function create() {
     setBusy(true); setError("");
     try {
-      await api(`/projects/${projectId}/route`, { method: "POST", body: JSON.stringify({ projectType: typeKey, locale }) });
+      await api(`/projects/${projectId}/route`, { method: "POST", body: JSON.stringify({ projectType: typeKey, locale, ...(start ? { startStageKey: start } : {}) }) });
       window.location.href = `/projects/${projectId}`;
     } catch (caught) { setError(explainError(caught)); setBusy(false); }
   }
@@ -287,11 +288,19 @@ function RouteCard({ projectId }: { projectId: string }) {
       {!open ? <button type="button" className={styles.secondary} onClick={() => setOpen(true)}>{t("Выбрать тип проекта…")}</button> : (
         <div style={{ display: "grid", gap: 10 }}>
           <label className={styles.small}>{t("Тип проекта")}
-            <select className={styles.select} value={typeKey} onChange={(event) => setTypeKey(event.target.value)}>
+            <select className={styles.select} value={typeKey} onChange={(event) => { setTypeKey(event.target.value); setStart(""); }}>
               {types.map((item) => <option key={item.key} value={item.key}>{item.title}</option>)}
             </select>
           </label>
           {types.find((item) => item.key === typeKey) && <p className={styles.small} style={{ margin: 0 }}>{t("Этапы:")}{" "}{types.find((item) => item.key === typeKey)!.stages.map((stage) => stage.title).join(" → ")}</p>}
+          {(types.find((item) => item.key === typeKey)?.stages ?? []).some((stage, index) => index > 0 && stage.importHint) && (
+            <label className={styles.small}>{t("С какого этапа начать")}
+              <select className={styles.select} value={start} onChange={(event) => setStart(event.target.value)}>
+                <option value="">{t("С самого начала")}</option>
+                {types.find((item) => item.key === typeKey)!.stages.filter((stage, index) => index > 0 && stage.importHint).map((stage) => <option key={stage.key} value={stage.key}>{t("У меня уже есть:")} {stage.title.toLowerCase()}</option>)}
+              </select>
+            </label>
+          )}
           <label className={styles.small}>{t("Язык сайта")}
             <select className={styles.select} value={locale} onChange={(event) => setLocale(event.target.value as "ru" | "en")}>
               <option value="ru">Русский</option><option value="en">English</option>

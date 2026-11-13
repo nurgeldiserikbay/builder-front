@@ -312,6 +312,8 @@ const messages: Record<string, string> = {
   ROUTE_OWNER_ONLY: t("Этапы проекту добавляет его владелец."),
   PROJECT_HAS_ROUTE: t("У проекта уже есть этапы."),
   FINDING_NOT_FOUND: t("Находка не найдена в отчёте."),
+  DISPUTE_FILE_TYPE: t("Скриншот можно приложить в формате JPG, PNG или WebP, документ — в PDF."),
+  DISPUTE_TOO_MANY_FILES: t("К спору можно приложить до 10 файлов."),
   COMMENT_FORBIDDEN: t("Наблюдатель не пишет замечания."),
   COMMENT_BLOCKING_FORBIDDEN: t("Блокирующее замечание может оставить владелец, администратор или проверяющий этапа."),
   COMMENT_RESOLVE_FORBIDDEN: t("Закрыть замечание может его автор, владелец или администратор."),

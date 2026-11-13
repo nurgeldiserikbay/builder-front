@@ -2476,5 +2476,18 @@
  "Добавить этапы": "Add stages",
  "Этапы проекту добавляет его владелец.": "Stages are added by the project owner.",
  "У проекта уже есть этапы.": "The project already has stages.",
- "Находка не найдена в отчёте.": "The finding is not in the report."
+ "Находка не найдена в отчёте.": "The finding is not in the report.",
+ "С какого этапа начать": "Which stage to start from",
+ "Защита адреса сайта": "Site address protection",
+ "Не в порядке: {0}.": "Not in order: {0}.",
+ "Всё в порядке.": "All in order.",
+ "Адрес не ответил: {0}.": "The address did not answer: {0}.",
+ "Проверено {0}.": "Checked {0}.",
+ "не удалось проверить": "could not check",
+ "Проверим HTTPS, защитные заголовки и robots.txt по адресу, который видят посетители.": "We will check HTTPS, protective headers and robots.txt at the address visitors see.",
+ "Проверить адрес": "Check the address",
+ "Файл больше 5 МБ. Сожмите скриншот или PDF.": "The file is larger than 5 MB. Compress the screenshot or PDF.",
+ "Скриншот или PDF": "Screenshot or PDF",
+ "Скриншот можно приложить в формате JPG, PNG или WebP, документ — в PDF.": "A screenshot can be JPG, PNG or WebP; a document — PDF.",
+ "К спору можно приложить до 10 файлов.": "Up to 10 files can be attached to a dispute."
 }

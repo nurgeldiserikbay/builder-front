@@ -1,6 +1,7 @@
 "use client";
 
 import ApprovalPanel from "./approval";
+import CommentsPanel from "./comments";
 import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -212,7 +213,7 @@ export default function StagePage() {
     ? (detail.current.content as Content).sections.map((section) => ({ key: section.key, label: section.title || detail.options.sectionTypes[section.type] })) : [];
   const acceptBlocked = dirty || !stage.canAccept || detail.issues.length > 0 || failedRequired.length > 0;
   const impactText = stage.impact?.willNotify.length ? t("Этапы {0} получат уведомление об изменении.", [stage.impact.willNotify.map((item) => `«${item.title}»`).join(", ")]) : stage.impact?.opens.length ? t("Откроется: {0}.", [stage.impact.opens.map((item) => `«${item.title}»`).join(", ")]) : "";
-  const acceptReason = stage.waitingBranches?.length ? t("Ждём решения по изменениям (вверху страницы).") : stage.changesPending ? t("Сначала решите по изменению предыдущего этапа (вверху страницы).") : dirty ? t("Сначала сохраните изменения.")
+  const acceptReason = stage.blockingComments ? t("Есть открытые блокирующие замечания — их нужно закрыть до приёмки.") : stage.waitingBranches?.length ? t("Ждём решения по изменениям (вверху страницы).") : stage.changesPending ? t("Сначала решите по изменению предыдущего этапа (вверху страницы).") : dirty ? t("Сначала сохраните изменения.")
     : !stage.inputsReady ? t("Сначала примите предыдущие этапы.")
       : detail.issues.length > 0 ? t("Заполните то, чего не хватает (список выше).")
         : failedRequired.length > 0 ? t("Исправьте непройденные проверки.")
@@ -573,6 +574,10 @@ export default function StagePage() {
 
       </div>
       <aside className={styles.context} aria-label={t("Об этапе")}>
+      {stage.status !== "locked" && (
+        <CommentsPanel projectId={projectId} stageKey={stageKey} onChange={() => void load()}
+          targetLabel={(key) => (stage.artifactType === "content" ? (detail.current?.content as Content | undefined)?.sections.find((section) => section.key === key)?.title || key : stage.fields?.find((field) => field.key === key)?.label ?? key)} />
+      )}
       {!specialist && stage.status !== "locked" && <ApprovalPanel key={JSON.stringify(stage.approval.policy)} projectId={projectId} stageKey={stageKey} approval={stage.approval} onChange={() => void load()} />}
       <section className={styles.card} aria-label={t("Зачем этот этап")}>
         <p className={styles.cardTitle}>{t("Зачем этот этап")}</p>

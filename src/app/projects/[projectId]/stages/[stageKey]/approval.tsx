@@ -15,6 +15,7 @@ export default function ApprovalPanel({ projectId, stageKey, approval, onChange 
   const [reviewers, setReviewers] = useState<string[]>(approval.policy?.reviewers ?? []);
   const [quorum, setQuorum] = useState(approval.policy?.quorum ?? 2);
   const [authorMayApprove, setAuthorMayApprove] = useState(approval.policy?.authorMayApprove ?? false);
+  const [order, setOrder] = useState<"parallel" | "sequential">(approval.policy?.order ?? "parallel");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,7 +46,7 @@ export default function ApprovalPanel({ projectId, stageKey, approval, onChange 
               ))}
             </ul>
           )}
-          {typeof approval.required === "number" && <p className={styles.small} style={{ margin: "4px 0 0" }}>{t("Одобрено {0} из {1} нужных.", [approval.approved ?? 0, approval.required])}</p>}
+          {typeof approval.required === "number" && <p className={styles.small} style={{ margin: "4px 0 0" }}>{t("Одобрено {0} из {1} нужных.", [approval.approved ?? 0, approval.required])}{approval.next ? ` ${t("Сейчас очередь: {0}.", [approval.next])}` : ""}</p>}
           {approval.approvals && approval.approvals.filter((item) => item.comment).map((item) => (
             <p key={`${item.name}-${item.createdAt}`} className={styles.small} style={{ margin: "6px 0 0" }}>«{item.comment}» — {item.name}, {new Date(item.createdAt).toLocaleDateString(dateLocale())}</p>
           ))}
@@ -80,12 +81,19 @@ export default function ApprovalPanel({ projectId, stageKey, approval, onChange 
               <input className={styles.input} type="number" min={1} max={Math.max(1, reviewers.length)} value={quorum} onChange={(event) => setQuorum(Number(event.target.value))} />
             </label>
           )}
+          <label className={styles.small}>{t("Порядок")}
+            <select className={styles.input} value={order} onChange={(event) => setOrder(event.target.value as "parallel" | "sequential")}>
+              <option value="parallel">{t("Все проверяют одновременно")}</option>
+              <option value="sequential">{t("По очереди, в порядке выбора")}</option>
+            </select>
+          </label>
+          {order === "sequential" && reviewers.length > 1 && <p className={styles.small} style={{ margin: 0 }}>{t("Порядок: {0}", [reviewers.map((id) => approval.candidates.find((person) => person.userId === id)?.name ?? "").join(" → ")])}</p>}
           <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
             <input type="checkbox" checked={authorMayApprove} onChange={(event) => setAuthorMayApprove(event.target.checked)} style={{ width: 20, height: 20, flex: "none" }} />
             <span className={styles.small}>{t("Автор версии может одобрить свою версию (по умолчанию — нет: свою работу проверяет другой человек)")}</span>
           </label>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button type="button" className={styles.button} disabled={busy || reviewers.length === 0} onClick={() => void save({ mode, reviewers, quorum: mode === "quorum" ? quorum : null, authorMayApprove })}>{busy ? t("Сохраняем…") : t("Сохранить правило")}</button>
+            <button type="button" className={styles.button} disabled={busy || reviewers.length === 0} onClick={() => void save({ mode, reviewers, quorum: mode === "quorum" ? quorum : null, authorMayApprove, order })}>{busy ? t("Сохраняем…") : t("Сохранить правило")}</button>
             {approval.policy && <button type="button" className={styles.ghost} disabled={busy} onClick={() => void save(null)}>{t("Принимаю сам")}</button>}
             <button type="button" className={styles.ghost} disabled={busy} onClick={() => setEditing(false)}>{t("Отмена")}</button>
           </div>

@@ -290,7 +290,7 @@ const messages: Record<string, string> = {
   FILE_UPLOADS_TOO_FREQUENT: t("Слишком много загрузок за час. Попробуйте позже."),
   FILE_NOT_FOUND: t("Файл не найден — возможно, его уже удалили."),
   FILE_DELETE_FORBIDDEN: t("Удалить файл может тот, кто его загрузил, владелец или администратор."),
-  ANALYSIS_NEEDS_ZIP: t("Разобрать можно только ZIP-архив."),
+  ANALYSIS_FILE_NOT_SUPPORTED: t("Разобрать можно ZIP-архив, PDF, Word или текстовый файл."),
   ANALYSIS_SOURCE_INVALID: t("Выберите, что разобрать."),
   ANALYSIS_REPOSITORY_FORBIDDEN: t("Подключённый репозиторий разбирает владелец или администратор проекта."),
   ANALYSIS_ALREADY_RUNNING: t("Уже идут два разбора. Дождитесь, пока они закончатся."),

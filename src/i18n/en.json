@@ -2451,5 +2451,19 @@
  "Упомянуть — эти люди получат уведомление": "Mention — these people will be notified",
  "Загрузить и прикрепить файл": "Upload and attach a file",
  "К замечанию можно прикрепить до 5 файлов этого этапа.": "Up to 5 files of this stage can be attached to a remark.",
- "Упомянуть можно до 10 участников проекта или специалистов этого этапа.": "Up to 10 project members or specialists of this stage can be mentioned."
+ "Упомянуть можно до 10 участников проекта или специалистов этого этапа.": "Up to 10 project members or specialists of this stage can be mentioned.",
+ "Разбор кода и документов": "Code and document review",
+ "ТЗ в PDF, Word или тексте проверяется так же: какие разделы есть, где размытые формулировки и открытые вопросы — с номером абзаца.": "A brief in PDF, Word or text is checked the same way: which sections are there, where wording is vague and questions are open — with paragraph numbers.",
+ "Файл: ZIP, PDF, Word или текст": "File: ZIP, PDF, Word or text",
+ "Файлов: {0}": "Files: {0}",
+ "Загрузите файл ниже или добавьте его в «Файлы этапа»": "Upload a file below or add it to «Stage files»",
+ "Загрузить файл": "Upload a file",
+ "Слов: {0}, абзацев: {1}.": "Words: {0}, paragraphs: {1}.",
+ "не найдено": "not found",
+ "абзац {0}": "paragraph {0}",
+ "Разбор кода и ТЗ →": "Code and brief review →",
+ "Разобрать": "Analyse",
+ "Только анализ: код или ТЗ": "Analysis only: code or brief",
+ "Загрузите ZIP-архив, ТЗ в PDF или Word, или дайте ссылку на репозиторий GitHub — получите отчёт: технологии и ключи в коде, пропущенные разделы и размытые формулировки в ТЗ. Без этапов разработки, ничего не меняется.": "Upload a ZIP archive, a brief in PDF or Word, or give a GitHub repository link and get a report: technologies and keys in code, missing sections and vague wording in a brief. No development stages; nothing is changed.",
+ "Разобрать можно ZIP-архив, PDF, Word или текстовый файл.": "A ZIP archive, PDF, Word or text file can be analysed."
 }

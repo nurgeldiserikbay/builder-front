@@ -15,6 +15,8 @@ type Run = {
 };
 type Finding = { id: string; code: string; categoryLabel: string; severity: "high" | "medium" | "low" | "info"; severityLabel: string; confidence: string; title: string; explanation: string; remediation: string; evidence: { path: string; line?: number }[] };
 type Report = {
+  type: "code" | "document";
+  document: { format: string; words: number; paragraphs: number; pages: number | null; headings: string[]; sections: { key: string; label: string; found: boolean; paragraph: number | null }[] } | null;
   status: string; profile: string; source: { sha256: string; bytes: number; kindLabel: string; label: string; revision: string | null };
   summary: { files: number; directories: number; textFilesRead: number; lines: number; languages: { name: string; files: number; lines: number }[]; stack: { key: string; label: string; evidence: string }[]; routes: string[]; readmeExcerpt: string | null };
   findings: Finding[]; counts: Record<"high" | "medium" | "low" | "info", number>;
@@ -102,11 +104,11 @@ export default function AnalysisPage() {
   const ready = source === "file" ? Boolean(fileId) : source === "repository" ? Boolean(list?.sources.repository?.canUse) : /^https:\/\/github\.com\/[^/]+\/[^/]+/.test(url.trim());
   return (
     <div className={styles.shell}>
-      <AppHeader back={list?.project.analysisOnly ? { href: "/projects", label: t("← Проекты") } : { href: `/projects/${projectId}`, label: t("← Проект") }} title={t("Разбор кода")} />
+      <AppHeader back={list?.project.analysisOnly ? { href: "/projects", label: t("← Проекты") } : { href: `/projects/${projectId}`, label: t("← Проект") }} title={t("Разбор кода и документов")} />
       <main className={styles.container}>
         {list?.project.analysisOnly && <p className={styles.kicker}>{t("Только анализ")} · {list.project.name}</p>}
-        <h1 className={styles.h1}>{t("Разбор кода")}</h1>
-        <p style={{ maxWidth: "70ch" }}>{t("BuildPath изучит архив или репозиторий в режиме чтения: найдёт технологии, страницы, ключи и пароли в коде, лишние папки и пробелы в документации. Код не запускается, не меняется и не отправляется в ИИ. Каждая находка указывает файл и строку.")}</p>
+        <h1 className={styles.h1}>{t("Разбор кода и документов")}</h1>
+        <p style={{ maxWidth: "70ch" }}>{t("BuildPath изучит архив или репозиторий в режиме чтения: найдёт технологии, страницы, ключи и пароли в коде, лишние папки и пробелы в документации. Код не запускается, не меняется и не отправляется в ИИ. Каждая находка указывает файл и строку.")}{" "}{t("ТЗ в PDF, Word или тексте проверяется так же: какие разделы есть, где размытые формулировки и открытые вопросы — с номером абзаца.")}</p>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
 
         {list?.canRun && (
@@ -114,7 +116,7 @@ export default function AnalysisPage() {
             <p id="new-run" className={styles.cardTitle}>{t("Что разобрать")}</p>
             <div role="radiogroup" aria-label={t("Источник")} style={{ display: "grid", gap: 8, margin: "8px 0 12px" }}>
               {([
-                ["file", t("ZIP-архив"), list.sources.files.length ? t("Архивов: {0}", [list.sources.files.length]) : t("Загрузите архив ниже или добавьте его в «Файлы этапа»")],
+                ["file", t("Файл: ZIP, PDF, Word или текст"), list.sources.files.length ? t("Файлов: {0}", [list.sources.files.length]) : t("Загрузите файл ниже или добавьте его в «Файлы этапа»")],
                 ["repository", t("Подключённый репозиторий"), list.sources.repository ? `${list.sources.repository.repoPath}${list.sources.repository.canUse ? "" : t(" — запускает владелец или администратор")}` : t("Репозиторий не подключён")],
                 ["public_repo", t("Открытый репозиторий GitHub"), t("Скачиваем без вашего доступа, только чтение")],
               ] as const).map(([value, label, hint]) => (
@@ -136,8 +138,8 @@ export default function AnalysisPage() {
             )}
             {source === "file" && list.sources.canUpload && (
               <label className={styles.secondary} style={{ cursor: busy ? "not-allowed" : "pointer", margin: "8px 0" }}>
-                {busy ? t("Загружаем и проверяем…") : t("Загрузить ZIP-архив")}
-                <input type="file" hidden disabled={busy} accept=".zip,application/zip" onChange={(event) => { void uploadZip(event.target.files?.[0]); event.target.value = ""; }} />
+                {busy ? t("Загружаем и проверяем…") : t("Загрузить файл")}
+                <input type="file" hidden disabled={busy} accept=".zip,.pdf,.docx,.txt,.md" onChange={(event) => { void uploadZip(event.target.files?.[0]); event.target.value = ""; }} />
               </label>
             )}
             {source === "public_repo" && (
@@ -193,9 +195,16 @@ function ReportView({ report }: { report: Report }) {
         {total ? t("Находок: {0} — важных {1}, средних {2}, мелких {3}, к сведению {4}.", [total, report.counts.high, report.counts.medium, report.counts.low, report.counts.info]) : t("Находок нет.")}
       </p>
       <p className={styles.small} style={{ margin: "0 0 10px" }}>
-        {t("Файлов: {0}, прочитано текстовых: {1}, строк: {2}.", [report.summary.files, report.summary.textFilesRead, report.summary.lines.toLocaleString(dateLocale())])}
+        {report.document ? t("Слов: {0}, абзацев: {1}.", [report.document.words.toLocaleString(dateLocale()), report.document.paragraphs]) : t("Файлов: {0}, прочитано текстовых: {1}, строк: {2}.", [report.summary.files, report.summary.textFilesRead, report.summary.lines.toLocaleString(dateLocale())])}
         {report.summary.stack.length > 0 && <> {t("Технологии: {0}.", [report.summary.stack.map((item) => item.label).join(", ")])}</>}
       </p>
+      {report.document && (
+        <ul style={{ listStyle: "none", padding: 0, margin: "0 0 10px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 4 }}>
+          {report.document.sections.map((section) => (
+            <li key={section.key} className={styles.small}><span aria-hidden="true">{section.found ? "✓" : "✗"}</span> {section.label}{section.found ? "" : ` — ${t("не найдено")}`}</li>
+          ))}
+        </ul>
+      )}
       {report.summary.routes.length > 0 && (
         <details className={styles.details} style={{ margin: "0 0 10px" }}>
           <summary>{t("Страницы по именам файлов ({0})", [report.summary.routes.length])}</summary>
@@ -209,7 +218,7 @@ function ReportView({ report }: { report: Report }) {
             <p style={{ margin: "2px 0" }}><strong>{finding.title}</strong></p>
             <p style={{ margin: "2px 0" }}>{finding.explanation}</p>
             <p className={styles.small} style={{ margin: "2px 0" }}><strong>{t("Что сделать:")}</strong> {finding.remediation}</p>
-            <p className={styles.small} style={{ margin: "2px 0", overflowWrap: "anywhere" }}>{t("Где:")} {finding.evidence.map((item) => `${item.path}${item.line ? `:${item.line}` : ""}`).join(", ")}</p>
+            <p className={styles.small} style={{ margin: "2px 0", overflowWrap: "anywhere" }}>{t("Где:")} {finding.evidence.map((item) => (report.type === "document" ? (item.line ? t("абзац {0}", [item.line]) : item.path) : `${item.path}${item.line ? `:${item.line}` : ""}`)).join(", ")}</p>
           </li>
         ))}
       </ul>

@@ -14,15 +14,41 @@ type Page = {
 };
 type Check = {
   id: string; status: "queued" | "running" | "succeeded" | "failed" | "unavailable"; statusLabel: string; error: string | null; finishedAt: string | null;
-  result: { tool: { lighthouse: string; browser: string }; measuredAt: string; pages: Page[]; skippedPages: number } | null;
+  result: { tool: { lighthouse: string; browser: string }; measuredAt: string; pages: Page[]; skippedPages: number; desktop?: Page | null } | null;
   categories: { key: Category; label: string }[]; note: string;
 };
-type State = { check: Check | null; canRerun: boolean };
+type Gate = { status: "passed" | "pending" | "failed" | "unavailable"; reasons: string[] };
+type State = { check: Check | null; canRerun: boolean; gate?: Gate | null };
 
 const tone = (score: number | null) => (score === null ? "var(--line-strong)" : score >= 90 ? "var(--brand)" : score >= 50 ? "var(--attention, #b7791f)" : "var(--danger)");
 const seconds = (ms: number | null) => (ms === null ? "—" : t("{0} с", [(ms / 1000).toLocaleString(dateLocale(), { maximumFractionDigits: 1 })]));
 
-/** The build measured in a real browser (Lighthouse). Advice next to the release gate; it never blocks publishing. */
+function PageView({ page, categories }: { page: Page; categories: Check["categories"] }) {
+  if (page.error) return <p className={styles.small}>{page.error}</p>;
+  return (
+    <>
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
+        {categories.map((category) => (
+          <li key={category.key} style={{ border: "1px solid var(--line)", borderTop: `4px solid ${tone(page.scores[category.key])}`, borderRadius: 10, padding: "8px 10px" }}>
+            <span className={styles.small}>{category.label}</span><br />
+            <strong style={{ fontSize: 22 }}>{page.scores[category.key] ?? "—"}</strong><span className={styles.small}> / 100</span>
+          </li>
+        ))}
+      </ul>
+      <p className={styles.small} style={{ margin: "6px 0" }}>
+        {t("Первый текст: {0}. Главный блок: {1}. Сдвиг макета: {2}. Блокировка: {3} мс.", [seconds(page.metrics.fcpMs), seconds(page.metrics.lcpMs), page.metrics.cls ?? "—", page.metrics.tbtMs ?? "—"])}
+      </p>
+      {page.issues.length > 0 && (
+        <details className={styles.details}>
+          <summary>{t("Что можно улучшить ({0})", [page.issues.length])}</summary>
+          <ul className={styles.list}>{page.issues.map((issue) => <li key={`${issue.category}-${issue.id}`}>{issue.categoryLabel}: {issue.title}</li>)}</ul>
+        </details>
+      )}
+    </>
+  );
+}
+
+/** The build measured in a real browser (Lighthouse). Advice, unless the project's quality rules set thresholds — then it decides publication. */
 export default function BrowserCheckPanel({ projectId, versionId }: { projectId: string; versionId: string }) {
   const [state, setState] = useState<State | null>(null);
   const [busy, setBusy] = useState(false);
@@ -44,10 +70,21 @@ export default function BrowserCheckPanel({ projectId, versionId }: { projectId:
 
   if (!state) return error ? <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p> : null;
   const check = state.check;
+  const gate = state.gate;
   return (
     <div style={{ marginTop: 16 }}>
       <p className={styles.cardTitle}>{t("Проверка в браузере")}</p>
       {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
+      {gate && (
+        <div className={`${styles.notice} ${gate.status === "passed" ? styles.success : gate.status === "pending" ? styles.info : styles.error}`} role="status">
+          {gate.status === "passed" ? t("Пороги из правил проекта выполнены — сборку можно принять и опубликовать.")
+            : gate.status === "pending" ? t("По правилам проекта сборку можно принять только после проверки в браузере.")
+              : t("По правилам проекта сборку пока нельзя принять и опубликовать:")}
+          {(gate.status === "failed" || gate.status === "unavailable") && (
+            <ul className={styles.list} style={{ margin: "6px 0 0" }}>{gate.reasons.slice(0, 8).map((reason) => <li key={reason}>{reason}</li>)}</ul>
+          )}
+        </div>
+      )}
       {!check && <p className={styles.small}>{t("Эту сборку ещё не проверяли в браузере.")}</p>}
       {check && (check.status !== "succeeded" || !check.result) && (
         <p className={`${styles.notice} ${check.status === "failed" ? styles.warn : styles.info}`} role="status">
@@ -57,29 +94,16 @@ export default function BrowserCheckPanel({ projectId, versionId }: { projectId:
       {check?.result && check.result.pages.map((page) => (
         <div key={page.path} style={{ margin: "10px 0" }}>
           {check.result!.pages.length > 1 && <p className={styles.small} style={{ margin: "0 0 4px" }}><strong>{page.path}</strong></p>}
-          {page.error ? <p className={styles.small}>{page.error}</p> : (
-            <>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
-                {check.categories.map((category) => (
-                  <li key={category.key} style={{ border: "1px solid var(--line)", borderTop: `4px solid ${tone(page.scores[category.key])}`, borderRadius: 10, padding: "8px 10px" }}>
-                    <span className={styles.small}>{category.label}</span><br />
-                    <strong style={{ fontSize: 22 }}>{page.scores[category.key] ?? "—"}</strong><span className={styles.small}> / 100</span>
-                  </li>
-                ))}
-              </ul>
-              <p className={styles.small} style={{ margin: "6px 0" }}>
-                {t("Первый текст: {0}. Главный блок: {1}. Сдвиг макета: {2}. Блокировка: {3} мс.", [seconds(page.metrics.fcpMs), seconds(page.metrics.lcpMs), page.metrics.cls ?? "—", page.metrics.tbtMs ?? "—"])}
-              </p>
-              {page.issues.length > 0 && (
-                <details className={styles.details}>
-                  <summary>{t("Что можно улучшить ({0})", [page.issues.length])}</summary>
-                  <ul className={styles.list}>{page.issues.map((issue) => <li key={`${issue.category}-${issue.id}`}>{issue.categoryLabel}: {issue.title}</li>)}</ul>
-                </details>
-              )}
-            </>
-          )}
+          <PageView page={page} categories={check.categories} />
         </div>
       ))}
+      {check?.result && check.result.desktop !== undefined && (
+        <details className={styles.details} style={{ margin: "10px 0" }}>
+          <summary>{t("На компьютере (главная страница)")}</summary>
+          {check.result.desktop ? <PageView page={check.result.desktop} categories={check.categories} /> : <p className={styles.small}>{t("На размере компьютера страницу измерить не удалось.")}</p>}
+          <p className={styles.small}>{t("Экран 1350 × 940 и быстрая проводная сеть. Это подсказка: пороги проекта проверяются по телефону.")}</p>
+        </details>
+      )}
       {check && (
         <p className={styles.small}>
           {check.note}

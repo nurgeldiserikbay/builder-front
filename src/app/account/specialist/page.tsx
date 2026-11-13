@@ -10,7 +10,7 @@ import styles from "../../projects/journey.module.css";
 import AppHeader from "../../app-header";
 
 type Mine = {
-  profile: { id: string; displayName: string; headline: string; about: string | null; stageKeys: string[]; hourlyRate: number | null; city: string | null; published: boolean; portfolio?: Work[] } | null;
+  profile: { id: string; displayName: string; headline: string; about: string | null; stageKeys: string[]; hourlyRate: number | null; city: string | null; published: boolean; portfolio?: Work[]; blocked?: { at: string; reason: string | null } | null } | null;
   suggestedName: string | null;
   stages: Array<{ key: string; title: string }>;
 };
@@ -97,6 +97,7 @@ export default function SpecialistProfilePage() {
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
         {saved && <p className={`${styles.notice} ${styles.success}`} role="status">{saved}{data?.profile && <> <a href={`/specialists/${data.profile.id}`} style={{ color: "inherit", fontWeight: 700 }}>{t("Посмотреть →")}</a></>}</p>}
         {!data && !error && <p className={styles.muted}>{t("Загружаем…")}</p>}
+        {data?.profile?.blocked && <p className={`${styles.notice} ${styles.error}`} role="alert">{t("Поддержка скрыла карточку из каталога: {0}", [data.profile.blocked.reason ?? ""])}{" "}{t("Исправьте её и сохраните без публикации; опубликовать снова можно после проверки поддержкой — напишите ей.")}</p>}
         {data?.profile && !saved && <p><a href={`/specialists/${data.profile.id}`}>{t("Моя карточка и отзывы →")}</a></p>}
         {data && (
           <form onSubmit={(event) => { event.preventDefault(); void save(true); }}>
@@ -165,7 +166,7 @@ export default function SpecialistProfilePage() {
               </label>
             </div>
             <div className={styles.row}>
-              <button className={styles.button} disabled={busy || uploading !== null || !valid || stages.length === 0}>{busy ? t("Сохраняем…") : published ? t("Сохранить") : t("Опубликовать в каталоге")}</button>
+              <button className={styles.button} disabled={busy || uploading !== null || !valid || stages.length === 0 || Boolean(data.profile?.blocked)}>{busy ? t("Сохраняем…") : published ? t("Сохранить") : t("Опубликовать в каталоге")}</button>
               {published
                 ? <button type="button" className={styles.ghost} disabled={busy} onClick={() => void save(false)}>{t("Скрыть из каталога")}</button>
                 : <button type="button" className={styles.ghost} disabled={busy || !valid} onClick={() => void save(false)}>{t("Сохранить без публикации")}</button>}

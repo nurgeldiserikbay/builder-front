@@ -2444,5 +2444,12 @@
  "Наблюдателю проект передать нельзя — сначала измените его роль.": "A project cannot be handed to an observer — change their role first.",
  "Сейчас передать проект нельзя — посмотрите, что нужно завершить.": "The project cannot be handed over now — see what needs to be settled.",
  "Предложение о передаче уже отправлено.": "A handover offer has already been sent.",
- "Предложения о передаче больше нет — его отменили, отклонили или срок истёк.": "The handover offer no longer exists — it was cancelled, declined or expired."
+ "Предложения о передаче больше нет — его отменили, отклонили или срок истёк.": "The handover offer no longer exists — it was cancelled, declined or expired.",
+ "файл удалён": "file deleted",
+ "Файлы и упоминания": "Files and mentions",
+ "Прикрепить файлы этапа (до {0})": "Attach stage files (up to {0})",
+ "Упомянуть — эти люди получат уведомление": "Mention — these people will be notified",
+ "Загрузить и прикрепить файл": "Upload and attach a file",
+ "К замечанию можно прикрепить до 5 файлов этого этапа.": "Up to 5 files of this stage can be attached to a remark.",
+ "Упомянуть можно до 10 участников проекта или специалистов этого этапа.": "Up to 10 project members or specialists of this stage can be mentioned."
 }

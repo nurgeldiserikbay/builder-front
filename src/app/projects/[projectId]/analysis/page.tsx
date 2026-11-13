@@ -220,6 +220,7 @@ function ReportView({ report, projectId, runId, stages }: { report: Report; proj
           ))}
         </ul>
       )}
+      {report.type === "document" && stages.length > 0 && <BriefCompare projectId={projectId} runId={runId} />}
       {report.summary.routes.length > 0 && (
         <details className={styles.details} style={{ margin: "0 0 10px" }}>
           <summary>{t("Страницы по именам файлов ({0})", [report.summary.routes.length])}</summary>
@@ -310,5 +311,56 @@ function RouteCard({ projectId }: { projectId: string }) {
         </div>
       )}
     </section>
+  );
+}
+
+type Compare = {
+  items: Array<{ paragraph: number; text: string; status: "found" | "partial" | "missing"; stage: { key: string; title: string } | null; matched: string[]; missingWords: string[] }>;
+  totals: { requirements: number; found: number; partial: number; missing: number };
+  comparedStages: Array<{ key: string; title: string }>; notAccepted: Array<{ key: string; title: string }>; note: string;
+};
+
+/** The brief against the accepted stages, by words: what to look at, not a verdict. Computed when asked. */
+function BriefCompare({ projectId, runId }: { projectId: string; runId: string }) {
+  const [data, setData] = useState<Compare | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function run() {
+    setBusy(true); setError("");
+    try { setData(await api<Compare>(`/projects/${projectId}/analysis-runs/${runId}/compare`)); } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
+  }
+  const mark = { found: "✓", partial: "◐", missing: "✗" } as const;
+  const label = { found: t("есть в этапе"), partial: t("частично"), missing: t("не найдено") } as const;
+  const group = (status: keyof typeof mark) => data?.items.filter((item) => item.status === status) ?? [];
+  const list = (items: Compare["items"]) => (
+    <ul style={{ listStyle: "none", padding: 0, margin: "6px 0" }}>
+      {items.map((item) => (
+        <li key={item.paragraph} style={{ marginBottom: 6 }}>
+          <span aria-hidden="true">{mark[item.status]}</span> {item.text}
+          <br /><span className={styles.small}>{t("абзац {0}", [item.paragraph])} · {label[item.status]}{item.stage ? <> · <a href={`/projects/${projectId}/stages/${item.stage.key}`}>«{item.stage.title}»</a></> : null}</span>
+        </li>
+      ))}
+    </ul>
+  );
+  return (
+    <div className={styles.card} style={{ margin: "0 0 12px", padding: 14 }}>
+      <p className={styles.cardTitle} style={{ fontSize: 17 }}>{t("ТЗ и результат этапов")}</p>
+      {!data && <p className={styles.small} style={{ margin: "0 0 8px" }}>{t("Сравним строки требований из документа с тем, что принято на этапах проекта.")}</p>}
+      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
+      {!data && <button type="button" className={styles.secondary} disabled={busy} onClick={() => void run()}>{busy ? t("Сверяем…") : t("Сверить с принятыми этапами")}</button>}
+      {data && (
+        <>
+          <p style={{ margin: "0 0 6px" }}>{data.totals.requirements
+            ? t("Требований: {0} — есть в этапах {1}, частично {2}, не найдено {3}.", [data.totals.requirements, data.totals.found, data.totals.partial, data.totals.missing])
+            : t("В документе не нашлось строк с требованиями: нет разделов о функциях, страницах или содержании и фраз «нужно», «должен».")}</p>
+          <p className={styles.small} style={{ margin: "0 0 6px" }}>{data.comparedStages.length ? t("Сравнили с этапами: {0}.", [data.comparedStages.map((stage) => stage.title).join(", ")]) : t("Принятых этапов пока нет — сравнивать не с чем.")}{data.notAccepted.length ? ` ${t("Ещё не приняты: {0}.", [data.notAccepted.map((stage) => stage.title).join(", ")])}` : ""}</p>
+          {group("missing").length > 0 && <><p className={styles.small} style={{ margin: "8px 0 0" }}><strong>{t("Не найдено в этапах")}</strong></p>{list(group("missing"))}</>}
+          {group("partial").length > 0 && <><p className={styles.small} style={{ margin: "8px 0 0" }}><strong>{t("Частично")}</strong></p>{list(group("partial"))}</>}
+          {group("found").length > 0 && <details className={styles.details}><summary>{t("Есть в этапах ({0})", [group("found").length])}</summary>{list(group("found"))}</details>}
+          <p className={styles.small} style={{ margin: "8px 0 6px" }}>{data.note}</p>
+          <button type="button" className={styles.ghost} disabled={busy} onClick={() => void run()}>{busy ? t("Сверяем…") : t("Сверить ещё раз")}</button>
+        </>
+      )}
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import ApprovalPanel from "./approval";
 import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -157,6 +158,17 @@ export default function StagePage() {
     });
   }
 
+  async function approve() {
+    if (!detail?.current) return;
+    const comment = window.prompt(t("Одобрить версию {0}? Можно оставить комментарий (необязательно).", [detail.current.versionNumber]), "");
+    if (comment === null) return;
+    await run("approve", async () => {
+      const next = await api<StageDetail>(`/projects/${projectId}/stages/${stageKey}/approve`, { method: "POST", body: JSON.stringify({ versionId: detail.current!.id, comment: comment.trim() || null }) });
+      await load();
+      setMessage(next.stage.status === "approved" ? t("Одобрено. Набраны все нужные одобрения — этап принят.") : t("Одобрено: {0} из {1}.", [next.stage.approval.approved ?? 0, next.stage.approval.required ?? 0]));
+    });
+  }
+
   async function requestChanges() {
     const note = window.prompt(t("Что нужно доработать? Специалист увидит этот комментарий."));
     if (!note || note.trim().length < 2) return;
@@ -187,6 +199,7 @@ export default function StagePage() {
   const siteChecks = stage.artifactType === "site" ? ((detail.current?.content as { checks?: SiteCheck[] } | undefined)?.checks ?? []) : [];
   const failedRequired = siteChecks.filter((check) => check.required && check.status === "failed");
   const specialist = detail.viewer.kind === "specialist";
+  const policy = Boolean(stage.approval?.policy);
   const assignment = detail.viewer.assignments.find((item) => item.stageKey === stage.key) ?? null;
   const submitBlocked = dirty || !stage.canSubmit || detail.issues.length > 0 || !stage.inputsReady;
   const submitReason = stage.changesPending ? t("Сначала решите по изменению предыдущего этапа (вверху страницы).") : dirty ? t("Сначала сохраните изменения.") : !detail.current ? t("Сначала сделайте черновик.")
@@ -230,9 +243,12 @@ export default function StagePage() {
         </p>
       )}
       {stage.status === "changes_requested" && stage.reviewNote && (
-        <p className={`${styles.notice} ${styles.warn}`}><strong>{t("Владелец просит доработать:")}</strong> {stage.reviewNote}</p>
+        <p className={`${styles.notice} ${styles.warn}`}><strong>{policy ? t("Просят доработать:") : t("Владелец просит доработать:")}</strong> {stage.reviewNote}</p>
       )}
-      {stage.status === "in_review" && (
+      {stage.status === "in_review" && policy && (
+        <p className={`${styles.notice} ${styles.info}`}>{stage.approval.canApprove ? t("Этап ждёт вашей проверки. Посмотрите результат: одобрите версию или верните с комментарием.") : t("Этап на проверке. Пока проверяющие смотрят, менять его нельзя.")}</p>
+      )}
+      {stage.status === "in_review" && !policy && (
         <p className={`${styles.notice} ${styles.info}`}>{stage.canRequestChanges ? t("Специалист отправил этап вам на приёмку. Посмотрите результат и примите его или верните с комментарием.") : t("Этап на приёмке у владельца. Пока он проверяет, менять его нельзя.")}</p>
       )}
 
@@ -523,6 +539,7 @@ export default function StagePage() {
 
       </div>
       <aside className={styles.context} aria-label={t("Об этапе")}>
+      {!specialist && stage.status !== "locked" && <ApprovalPanel key={JSON.stringify(stage.approval.policy)} projectId={projectId} stageKey={stageKey} approval={stage.approval} onChange={() => void load()} />}
       <section className={styles.card} aria-label={t("Зачем этот этап")}>
         <p className={styles.cardTitle}>{t("Зачем этот этап")}</p>
         <p style={{ margin: "0 0 8px" }}>{stage.purpose}</p>
@@ -615,6 +632,17 @@ export default function StagePage() {
               <span className={styles.bottomText}>{t("Есть несохранённые изменения.")}</span>
               <button className={styles.ghost} disabled={Boolean(busy)} onClick={() => void load()}>{t("Отменить")}</button>
               <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("save", async () => { await saveDraft(); })}>{busy === "save" ? t("Сохраняем…") : t("Сохранить")}</button>
+            </>
+          ) : policy && stage.status === "in_review" ? (
+            <>
+              <span className={styles.bottomText}>{t("Одобрено {0} из {1} нужных.", [stage.approval.approved ?? 0, stage.approval.required ?? 0])}{" "}{stage.approval.approveBlocker === "AUTHOR_CANNOT_APPROVE" ? t("Свою версию одобряют другие.") : stage.approval.approveBlocker === "ALREADY_APPROVED" ? t("Вы уже одобрили.") : ""}</span>
+              {stage.canRequestChanges && <button className={styles.ghost} disabled={Boolean(busy)} onClick={requestChanges}>{t("Вернуть на доработку")}</button>}
+              {stage.approval.canApprove && <button className={styles.button} disabled={Boolean(busy) || failedRequired.length > 0} onClick={approve}>{busy === "approve" ? t("Одобряем…") : t("Одобрить версию")}</button>}
+            </>
+          ) : policy ? (
+            <>
+              <span className={styles.bottomText}>{stage.canSubmit ? submitReason.replace(t("Владелец проверит результат и примет этап или вернёт с комментарием."), t("Проверяющие посмотрят результат и одобрят его или вернут с комментарием.")) : t("Этап принимают проверяющие после отправки на проверку.")}</span>
+              {stage.canSubmit && <button className={styles.button} disabled={Boolean(busy) || submitBlocked} onClick={submit}>{busy === "submit" ? t("Отправляем…") : t("Отправить на проверку")}</button>}
             </>
           ) : stage.status === "in_review" && !stage.canRequestChanges ? (
             <span className={styles.bottomText}>{t("На приёмке у владельца проекта.")}</span>

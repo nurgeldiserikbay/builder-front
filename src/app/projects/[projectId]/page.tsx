@@ -14,6 +14,7 @@ import ProjectMap from "./project-map";
 import BudgetCard from "./budget-card";
 import WalletCard from "./wallet-card";
 import AppHeader from "../../app-header";
+import TeamCard from "./team-card";
 
 type ResultPackage = { generatedAt: string; complete: boolean; openItems: string[]; siteReady: boolean; files: Array<{ name: string; mimeType: string; content: string }> };
 
@@ -31,15 +32,18 @@ export default function JourneyPage() {
   const [result, setResult] = useState<ResultPackage | null>(null);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<"map" | "list">("map");
-  type Tab = "stages" | "money" | "publish" | "decisions" | "result";
+  type Tab = "stages" | "team" | "money" | "publish" | "decisions" | "result";
   const [tab, setTab] = useState<Tab>("stages");
+  // Money, publishing and decisions are for those who run the project; every team member sees stages, the team and the result.
+  const managing = ["owner", "manager"].includes(journey?.project.role ?? "");
   const tabs: Array<{ key: Tab; label: string }> = [
-    { key: "stages", label: t("Этапы") }, { key: "money", label: t("Деньги") }, { key: "publish", label: t("Публикация") },
-    { key: "decisions", label: t("Решения") }, { key: "result", label: t("Результат") },
+    { key: "stages", label: t("Этапы") }, { key: "team", label: t("Команда") },
+    ...(managing ? [{ key: "money" as const, label: t("Деньги") }, { key: "publish" as const, label: t("Публикация") }, { key: "decisions" as const, label: t("Решения") }] : []),
+    { key: "result", label: t("Результат") },
   ];
   useEffect(() => {
     const fromHash = window.location.hash.slice(1);
-    if (["stages", "money", "publish", "decisions", "result"].includes(fromHash)) setTab(fromHash as Tab);
+    if (["stages", "team", "money", "publish", "decisions", "result"].includes(fromHash)) setTab(fromHash as Tab);
   }, []);
   function openTab(next: Tab) {
     setTab(next);
@@ -166,7 +170,9 @@ export default function JourneyPage() {
             <p className={styles.small} style={{ margin: "16px 0 0", maxWidth: "80ch" }}>{t("Этап открывается, когда приняты те, от которых он зависит. Этапы в одной строке делаются одновременно: они построены на общем утверждённом контракте. Принятый этап можно изменить позже — следующие этапы получат уведомление.")}</p>
             </>}
 
-            {tab === "money" && !specialist && <>
+            {tab === "team" && !specialist && <TeamCard projectId={projectId} />}
+
+            {tab === "money" && !specialist && managing && <>
             <p className={styles.small} style={{ margin: "0 0 14px" }} hidden={specialist}>
               {journey.ai.configured
                 ? t("ИИ подключён: на каждом этапе он делает черновик, а вы говорите, что поменять.{0}", [journey.ai.month ? t(" Запросов по тарифу «{0}» в этом месяце: осталось {1} из {2}.", [journey.ai.month.planTitle, journey.ai.month.left, journey.ai.month.limit]) : ""])
@@ -178,7 +184,7 @@ export default function JourneyPage() {
               </div>
             </>}
 
-            {tab === "publish" && !specialist && (
+            {tab === "publish" && !specialist && managing && (
               <div className={styles.panels}>
                 <QuickEditCard projectId={projectId} onPublished={() => void load()} />
                 <PublishCard projectId={projectId} onChange={() => void load()} />
@@ -203,7 +209,7 @@ export default function JourneyPage() {
               </div>
             )}
 
-            {tab === "decisions" && !specialist && <>
+            {tab === "decisions" && !specialist && managing && <>
             <section aria-labelledby="code-title">
               <h2 id="code-title" className={styles.h2}>{t("Технологии, код и адрес")}</h2>
               <div className={styles.tiles}>

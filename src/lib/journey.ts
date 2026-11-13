@@ -236,6 +236,7 @@ const messages: Record<string, string> = {
   ROLLBACK_VERSION_NOT_FOUND: t("Эту версию нельзя вернуть: вернуть можно только сборку, которая уже была на сайте."),
   ROLLBACK_ALREADY_LIVE: t("Эта версия уже на сайте."),
   PUBLICATION_CHANGED: t("Пока вы смотрели, сайт уже обновили. Обновите страницу."),
+  PORTFOLIO_TOO_MANY: t("В портфолио — не больше 12 работ."),
   PROJECT_BALANCE_LOW: t("На балансе проекта не хватает денег на запрос к ИИ. Владелец может пополнить баланс на странице проекта — работать вручную можно и без этого."),
   TOP_UP_AMOUNT_INVALID: t("Сумма пополнения вне допустимых границ."),
   PAYMENTS_NOT_CONFIGURED: t("Оплата пока не подключена на этом сервере BuildPath."),
@@ -270,6 +271,10 @@ export function explainError(error: unknown): string {
   const code = error.message;
   if (messages[code]) return messages[code];
   if (code.startsWith("QUICK_EDIT_CONTACT_INVALID")) return messages.QUICK_EDIT_CONTACT_INVALID!;
+  if (code.startsWith("PORTFOLIO_URL_INVALID")) return t("Ссылка на работу должна начинаться с https:// и вести на сайт (не на IP-адрес и не на localhost).");
+  if (code.startsWith("PORTFOLIO_URL_DUPLICATE")) return t("Эта ссылка уже есть в портфолио.");
+  if (code.startsWith("PORTFOLIO_TITLE_INVALID")) return t("У каждой работы должно быть название — от 3 до 80 символов.");
+  if (code.startsWith("PORTFOLIO_DESCRIPTION_TOO_LONG")) return t("Описание работы — не больше 500 символов.");
   if (code.startsWith("STAGE_INCOMPLETE")) return t("Этап ещё не заполнен до конца — посмотрите список «Чего не хватает».");
   if (code.startsWith("FIELD_TOO_LONG")) return t("Один из текстов слишком длинный. Сократите его.");
   if (code.startsWith("FIELD_REQUIRED")) return t("Заполните обязательные поля.");

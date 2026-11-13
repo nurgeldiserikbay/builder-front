@@ -14,6 +14,7 @@ type Review = { id: string; rating: number; text: string | null; reply: string |
 type Profile = {
   id: string; displayName: string; headline: string; about: string | null; city: string | null; hourlyRate: number | null; stages: Array<{ key: string; title: string }>;
   rating: number | null; reviewCount: number; reviews: Review[]; completedStages: number; own: boolean; published: boolean;
+  portfolio?: Array<{ title: string; description: string | null; url: string | null; stageTitle: string | null; host: string | null }>;
 };
 
 export default function SpecialistPage() {
@@ -70,6 +71,22 @@ export default function SpecialistPage() {
             )}
             {profile.own && <p><a className={styles.secondary} href="/account/specialist">{t("Изменить карточку")}</a></p>}
             {profile.about && <section className={styles.card}><p className={styles.cardTitle}>{t("О себе")}</p><p style={{ margin: 0, whiteSpace: "pre-line" }}>{profile.about}</p></section>}
+            {Boolean(profile.portfolio?.length) && (
+              <section className={styles.card} aria-labelledby="works-title">
+                <p id="works-title" className={styles.cardTitle}>{t("Примеры работ")}</p>
+                <ul className={styles.versions}>
+                  {profile.portfolio!.map((work, index) => (
+                    <li key={index}>
+                      <strong>{work.title}</strong>{work.stageTitle ? <span className={styles.small}>{" · "}{t(work.stageTitle)}</span> : null}
+                      {work.description && <p style={{ margin: "4px 0 0", whiteSpace: "pre-line" }}>{work.description}</p>}
+                      {/* The link is the specialist's word: no referrer, no search weight, a new tab. */}
+                      {work.url && <p style={{ margin: "4px 0 0" }}><a href={work.url} target="_blank" rel="noopener noreferrer nofollow ugc">{work.host} ↗</a></p>}
+                    </li>
+                  ))}
+                </ul>
+                <p className={styles.small}>{t("Ссылки указал специалист, BuildPath их не проверял.")}</p>
+              </section>
+            )}
             <section className={styles.card} aria-labelledby="reviews-title">
               <p id="reviews-title" className={styles.cardTitle}>{t("Отзывы владельцев")}</p>
               {profile.reviews.length === 0 && <p style={{ margin: 0 }} className={styles.muted}>{t("Отзывов пока нет. Их оставляют владельцы проектов после приёмки этапа.")}</p>}

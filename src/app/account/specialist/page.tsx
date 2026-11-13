@@ -9,10 +9,13 @@ import styles from "../../projects/journey.module.css";
 import AppHeader from "../../app-header";
 
 type Mine = {
-  profile: { id: string; displayName: string; headline: string; about: string | null; stageKeys: string[]; hourlyRate: number | null; city: string | null; published: boolean } | null;
+  profile: { id: string; displayName: string; headline: string; about: string | null; stageKeys: string[]; hourlyRate: number | null; city: string | null; published: boolean; portfolio?: Work[] } | null;
   suggestedName: string | null;
   stages: Array<{ key: string; title: string }>;
 };
+
+type Work = { title: string; description: string | null; url: string | null; stageKey: string | null };
+const MAX_WORKS = 12;
 
 /** The specialist's own card in the catalog. */
 export default function SpecialistProfilePage() {
@@ -25,6 +28,7 @@ export default function SpecialistProfilePage() {
   const [rate, setRate] = useState("");
   const [city, setCity] = useState("");
   const [published, setPublished] = useState(false);
+  const [works, setWorks] = useState<Work[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
@@ -39,6 +43,7 @@ export default function SpecialistProfilePage() {
     setRate(profile?.hourlyRate ? String(profile.hourlyRate) : "");
     setCity(profile?.city ?? "");
     setPublished(profile?.published ?? false);
+    setWorks(profile?.portfolio ?? []);
   }
 
   useEffect(() => {
@@ -53,14 +58,23 @@ export default function SpecialistProfilePage() {
     try {
       const next = await api<Mine>("/me/specialist-profile", {
         method: "PUT",
-        body: JSON.stringify({ displayName: name, headline, about: about.trim() || null, stageKeys: stages, hourlyRate: rate ? Number(rate) : null, city: city.trim() || null, published: publish }),
+        body: JSON.stringify({ displayName: name, headline, about: about.trim() || null, stageKeys: stages, hourlyRate: rate ? Number(rate) : null, city: city.trim() || null, published: publish,
+          portfolio: works.map((work) => ({ title: work.title.trim(), description: work.description?.trim() || null, url: work.url?.trim() || null, stageKey: work.stageKey })) }),
       });
       fill(next);
       setSaved(publish ? t("Сохранено. Карточка видна в каталоге.") : t("Сохранено. Карточка скрыта из каталога."));
     } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
   }
 
-  const valid = name.trim().length >= 2 && headline.trim().length >= 5;
+  const worksValid = works.every((work) => work.title.trim().length >= 3 && (!work.url?.trim() || /^https?:\/\/[^\s/]+\.[^\s]+/i.test(work.url.trim())));
+  const valid = name.trim().length >= 2 && headline.trim().length >= 5 && worksValid;
+  const setWork = (index: number, patch: Partial<Work>) => setWorks(works.map((work, at) => (at === index ? { ...work, ...patch } : work)));
+  const move = (index: number, by: number) => {
+    const next = [...works];
+    const [item] = next.splice(index, 1);
+    next.splice(index + by, 0, item!);
+    setWorks(next);
+  };
   return (
     <div className={styles.shell}>
       <AppHeader back={{ href: "/account", label: t("← Аккаунт") }} title={t("Карточка специалиста")} />
@@ -96,6 +110,29 @@ export default function SpecialistProfilePage() {
               <span className={styles.label}>{t("О себе и опыт")}</span>
               <textarea className={styles.textarea} value={about} maxLength={2000} onChange={(event) => setAbout(event.target.value)} />
             </label>
+            <fieldset className={styles.field} style={{ border: 0, padding: 0 }}>
+              <legend className={styles.label}>{t("Примеры работ")}</legend>
+              <span className={styles.why}>{t("Что вы уже сделали: сайт, тексты, оформление. Ссылку владельцы откроют сами — BuildPath её не проверяет, поэтому указывайте только свои работы и с согласия заказчика.")}</span>
+              {works.map((work, index) => (
+                <div key={index} className={styles.card} style={{ margin: "8px 0", padding: 14 }}>
+                  <input className={styles.input} placeholder={t("Название, например «Сайт кондитерской»")} aria-label={t("Название работы")} value={work.title} maxLength={80} onChange={(event) => setWork(index, { title: event.target.value })} />
+                  <textarea className={styles.textarea} style={{ minHeight: 60, marginTop: 8 }} placeholder={t("Что вы сделали (необязательно)")} aria-label={t("Что вы сделали")} value={work.description ?? ""} maxLength={500} onChange={(event) => setWork(index, { description: event.target.value })} />
+                  <input className={styles.input} style={{ marginTop: 8 }} inputMode="url" placeholder="https://" aria-label={t("Ссылка на работу")} value={work.url ?? ""} maxLength={300} onChange={(event) => setWork(index, { url: event.target.value })} />
+                  {work.url?.trim() && !/^https?:\/\/[^\s/]+\.[^\s]+/i.test(work.url.trim()) && <span className={styles.why} style={{ color: "#7a1f1f" }}>{t("Ссылка должна начинаться с https:// и вести на сайт.")}</span>}
+                  <div className={styles.chips} role="group" aria-label={t("Этап")} style={{ marginTop: 8 }}>
+                    {data.stages.map((item) => (
+                      <button key={item.key} type="button" className={styles.choice} style={{ width: "auto" }} aria-pressed={work.stageKey === item.key} onClick={() => setWork(index, { stageKey: work.stageKey === item.key ? null : item.key })}>{t(item.title)}</button>
+                    ))}
+                  </div>
+                  <div className={styles.row} style={{ marginTop: 8 }}>
+                    <button type="button" className={styles.ghost} disabled={index === 0} onClick={() => move(index, -1)} aria-label={t("Выше")}>↑</button>
+                    <button type="button" className={styles.ghost} disabled={index === works.length - 1} onClick={() => move(index, 1)} aria-label={t("Ниже")}>↓</button>
+                    <button type="button" className={styles.ghost} onClick={() => setWorks(works.filter((_, at) => at !== index))}>{t("Убрать")}</button>
+                  </div>
+                </div>
+              ))}
+              {works.length < MAX_WORKS && <button type="button" className={styles.secondary} onClick={() => setWorks([...works, { title: "", description: null, url: null, stageKey: null }])}>{t("+ Добавить работу")}</button>}
+            </fieldset>
             <div className={styles.row} style={{ alignItems: "flex-start" }}>
               <label className={styles.field} style={{ flex: "1 1 180px" }}>
                 <span className={styles.label}>{t("Ставка от, ₸ в час")}</span>

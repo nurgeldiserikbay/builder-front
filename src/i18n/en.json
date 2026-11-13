@@ -2465,5 +2465,16 @@
  "Разобрать": "Analyse",
  "Только анализ: код или ТЗ": "Analysis only: code or brief",
  "Загрузите ZIP-архив, ТЗ в PDF или Word, или дайте ссылку на репозиторий GitHub — получите отчёт: технологии и ключи в коде, пропущенные разделы и размытые формулировки в ТЗ. Без этапов разработки, ничего не меняется.": "Upload a ZIP archive, a brief in PDF or Word, or give a GitHub repository link and get a report: technologies and keys in code, missing sections and vague wording in a brief. No development stages; nothing is changed.",
- "Разобрать можно ZIP-архив, PDF, Word или текстовый файл.": "A ZIP archive, PDF, Word or text file can be analysed."
+ "Разобрать можно ZIP-архив, PDF, Word или текстовый файл.": "A ZIP archive, PDF, Word or text file can be analysed.",
+ "Добавлено в замечания этапа": "Added to the stage remarks",
+ "Этап для замечания": "Stage for the remark",
+ "В замечания этапа": "To stage remarks",
+ "Перейти к доработке": "Move on to improvements",
+ "Если по отчёту решили делать сайт заново или дорабатывать — добавьте проекту этапы. Отчёты и файлы останутся, находки можно будет отправить в замечания этапов. С этого момента проект занимает место в тарифе.": "If the report made you decide to rebuild or improve the site, add stages to the project. Reports and files stay, and findings can be sent to stage remarks. From then on the project uses a plan slot.",
+ "Выбрать тип проекта…": "Choose a project type…",
+ "Тип проекта": "Project type",
+ "Добавить этапы": "Add stages",
+ "Этапы проекту добавляет его владелец.": "Stages are added by the project owner.",
+ "У проекта уже есть этапы.": "The project already has stages.",
+ "Находка не найдена в отчёте.": "The finding is not in the report."
 }

@@ -145,6 +145,7 @@ export default function JourneyPage() {
               )}
               <div className={styles.spacer} />
               <a className={styles.back} href={`/projects/${projectId}/history`}>{t("История запросов к ИИ →")}</a>
+              {!specialist && <a className={styles.back} href={`/projects/${projectId}/analysis`}>{t("Разбор кода →")}</a>}
             </div>
             {view === "map" && <ProjectMap projectId={projectId} stages={journey.stages} aiOn={journey.ai.configured} />}
             {view === "list" && <ol className={styles.stageList}>

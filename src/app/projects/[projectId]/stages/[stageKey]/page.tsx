@@ -2,6 +2,7 @@
 
 import ApprovalPanel from "./approval";
 import CommentsPanel from "./comments";
+import StageFilesPanel from "./files";
 import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -578,6 +579,7 @@ export default function StagePage() {
         <CommentsPanel projectId={projectId} stageKey={stageKey} onChange={() => void load()}
           targetLabel={(key) => (stage.artifactType === "content" ? (detail.current?.content as Content | undefined)?.sections.find((section) => section.key === key)?.title || key : stage.fields?.find((field) => field.key === key)?.label ?? key)} />
       )}
+      {stage.status !== "locked" && <StageFilesPanel projectId={projectId} stageKey={stageKey} />}
       {!specialist && stage.status !== "locked" && <ApprovalPanel key={JSON.stringify(stage.approval.policy)} projectId={projectId} stageKey={stageKey} approval={stage.approval} onChange={() => void load()} />}
       <section className={styles.card} aria-label={t("Зачем этот этап")}>
         <p className={styles.cardTitle}>{t("Зачем этот этап")}</p>

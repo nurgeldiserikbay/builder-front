@@ -7,15 +7,16 @@ import { explainError, isPlanMessage } from "@/lib/journey";
 import styles from "../journey.module.css";
 
 type Role = { key: string; title: string; explanation: string; invitable: boolean };
-type Member = { id: string; userId: string; role: string; roleTitle: string; you: boolean; name: string; email: string | null; since: string; canChange: boolean };
+type Member = { id: string; userId: string; role: string; roleTitle: string; you: boolean; name: string; email: string | null; since: string; canChange: boolean; stageKeys: string[] };
 type Invitation = { id: string; email: string; role: string; roleTitle: string; expiresAt: string; expired: boolean };
-type Team = { viewerRole: string; canManage: boolean; limit: number; roles: Role[]; members: Member[]; invitations: Invitation[]; affectedStages?: string[] };
+type Team = { viewerRole: string; canManage: boolean; limit: number; roles: Role[]; members: Member[]; invitations: Invitation[]; affectedStages?: string[]; stages: Array<{ key: string; title: string }> };
 
 /** The project team: who is in it with which role; the owner and managers invite, change roles and remove. */
 export default function TeamCard({ projectId }: { projectId: string }) {
   const [team, setTeam] = useState<Team | null>(null);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("contributor");
+  const [stageKeys, setStageKeys] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState<{ url: string; emailSent: boolean } | null>(null);
@@ -30,7 +31,7 @@ export default function TeamCard({ projectId }: { projectId: string }) {
     event.preventDefault();
     setBusy(true); setError(""); setSent(null);
     try {
-      const result = await api<{ inviteUrl: string; emailSent: boolean }>(`/projects/${projectId}/team/invitations`, { method: "POST", body: JSON.stringify({ email, role }) });
+      const result = await api<{ inviteUrl: string; emailSent: boolean }>(`/projects/${projectId}/team/invitations`, { method: "POST", body: JSON.stringify({ email, role, ...(role === "contributor" ? { stageKeys } : {}) }) });
       setSent({ url: result.inviteUrl, emailSent: result.emailSent });
       setEmail("");
       await load();
@@ -65,6 +66,7 @@ export default function TeamCard({ projectId }: { projectId: string }) {
               <span>
                 <strong>{member.name}</strong>{member.you && <> {t("(вы)")}</>}
                 {member.email && member.email !== member.name && <><br /><span className={styles.small}>{member.email}</span></>}
+                {member.role === "contributor" && <><br /><span className={styles.small}>{member.stageKeys.length ? t("Этапы: {0}", [member.stageKeys.map((key) => team.stages.find((stage) => stage.key === key)?.title ?? key).join(", ")]) : t("Все этапы")}</span></>}
               </span>
               {member.canChange ? (
                 <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -75,6 +77,12 @@ export default function TeamCard({ projectId }: { projectId: string }) {
                   <button type="button" className={styles.ghost} disabled={busy} onClick={() => void act(`members/${member.id}/remove`, undefined, t("Убрать {0} из команды? Доступ закроется сразу, история действий останется.", [member.name]))}>{t("Убрать")}</button>
                 </span>
               ) : <span className={styles.small}>{member.roleTitle}</span>}
+              {member.canChange && member.role === "contributor" && (
+                <details style={{ flexBasis: "100%" }}>
+                  <summary className={styles.small}>{t("На каких этапах работает")}</summary>
+                  <StagePicker stages={team.stages} value={member.stageKeys} disabled={busy} onChange={(next) => void act(`members/${member.id}/stages`, { stageKeys: next })} />
+                </details>
+              )}
             </li>
           ))}
         </ul>
@@ -106,6 +114,12 @@ export default function TeamCard({ projectId }: { projectId: string }) {
               </select>
             </label>
             {chosen && <p className={styles.small} style={{ margin: 0 }}>{chosen.explanation}</p>}
+            {role === "contributor" && (
+              <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+                <legend className={styles.small}>{t("Этапы (ничего не отмечено — все этапы)")}</legend>
+                <StagePicker stages={team.stages} value={stageKeys} disabled={busy} onChange={setStageKeys} />
+              </fieldset>
+            )}
             <button className={`${styles.button} ${styles.block}`} disabled={busy || !email}>{busy ? t("Отправляем…") : t("Отправить приглашение")}</button>
           </form>
           {sent && (
@@ -123,6 +137,21 @@ export default function TeamCard({ projectId }: { projectId: string }) {
         <h2 id="team-roles-title" className={styles.h2}>{t("Что может каждая роль")}</h2>
         <ul className={styles.list}>{team.roles.map((item) => <li key={item.key}><strong>{item.title}</strong> — {item.explanation}</li>)}</ul>
       </section>
+    </div>
+  );
+}
+
+/** Stages a contributor works on; none ticked means every stage. */
+function StagePicker({ stages, value, onChange, disabled }: { stages: Array<{ key: string; title: string }>; value: string[]; onChange: (next: string[]) => void; disabled: boolean }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px" }}>
+      {stages.map((stage) => (
+        <label key={stage.key} style={{ display: "flex", gap: 6, alignItems: "center", minHeight: 36 }}>
+          <input type="checkbox" disabled={disabled} checked={value.includes(stage.key)} style={{ width: 20, height: 20 }}
+            onChange={(event) => onChange(event.target.checked ? [...value, stage.key] : value.filter((key) => key !== stage.key))} />
+          {stage.title}
+        </label>
+      ))}
     </div>
   );
 }

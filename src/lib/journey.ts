@@ -64,11 +64,11 @@ export type Preset = { id: string; label: string; hint: string; background?: str
 export type Suggestion = { id: string; text: string; targetKey: string | null; status: "proposed" | "applied" | "dismissed"; createdAt: string; author: string | null };
 
 export type Approval = {
-  policy: { mode: "one" | "all" | "quorum"; reviewers: string[]; quorum: number | null; authorMayApprove: boolean } | null;
+  policy: { mode: "one" | "all" | "quorum"; reviewers: string[]; quorum: number | null; authorMayApprove: boolean; order: "parallel" | "sequential" } | null;
   policyText: string | null; candidates: Array<{ userId: string; name: string; role: string }>; canEditPolicy: boolean;
   reviewers?: Array<{ userId: string; name: string; approved: boolean; active: boolean; author: boolean }>;
   approvals?: Array<{ name: string; comment: string | null; createdAt: string }>;
-  approved?: number; required?: number; broken?: boolean; canApprove?: boolean; approveBlocker?: string | null; isReviewer?: boolean;
+  approved?: number; required?: number; broken?: boolean; next?: string | null; canApprove?: boolean; approveBlocker?: string | null; isReviewer?: boolean;
 };
 
 export type QualityReport = {
@@ -83,7 +83,7 @@ export type StageDetail = {
   viewer: ViewerInfo;
   suggestions: Suggestion[];
   stage: {
-    canSubmit: boolean; canRequestChanges: boolean; canInvite: boolean; canSuggest: boolean; reviewNote: string | null; approval: Approval;
+    canSubmit: boolean; canRequestChanges: boolean; canInvite: boolean; canSuggest: boolean; reviewNote: string | null; approval: Approval; blockingComments?: number;
     key: string; title: string; purpose: string; outcome: string; artifactType: ArtifactType; status: StageStatus; statusLabel: string; statusExplanation: string;
     acceptance: string[]; acceptExplanation: string; importHint: string | null; fields: FieldDefinition[] | null; lockedKeys: string[]; acceptedVersionId: string | null;
     canEdit: boolean; canAccept: boolean; canReopen: boolean; canImport: boolean; inputsReady: boolean; changesPending?: boolean;
@@ -274,6 +274,14 @@ const messages: Record<string, string> = {
   IMAGE_IN_USE: t("Это фото стоит на сайте. Сначала уберите его из блока."),
   IMAGE_NOT_FOUND: t("Фото не найдено — возможно, его уже удалили."),
   IMAGE_ALT_TOO_LONG: t("Описание фото слишком длинное — до 200 символов."),
+  BLOCKING_COMMENTS_OPEN: t("Есть открытые блокирующие замечания — их нужно закрыть до приёмки."),
+  NOT_YOUR_TURN: t("Сейчас очередь другого проверяющего."),
+  STAGE_KEYS_INVALID: t("Выберите этапы этого проекта."),
+  STAGE_KEYS_ONLY_FOR_CONTRIBUTORS: t("Этапы назначаются только исполнителям."),
+  COMMENT_FORBIDDEN: t("Наблюдатель не пишет замечания."),
+  COMMENT_BLOCKING_FORBIDDEN: t("Блокирующее замечание может оставить владелец, администратор или проверяющий этапа."),
+  COMMENT_RESOLVE_FORBIDDEN: t("Закрыть замечание может его автор, владелец или администратор."),
+  COMMENT_LIMIT_REACHED: t("На этапе слишком много замечаний."),
   PLAN_NO_TEAM: t("Команда проекта доступна на тарифах «Старт» и «Бизнес». Посмотрите тарифы."),
   TEAM_LIMIT_REACHED: t("В команде уже 20 человек вместе с приглашениями. Отмените лишние приглашения или уберите участника."),
   TEAM_MANAGE_FORBIDDEN: t("Управлять командой может владелец или администратор проекта."),

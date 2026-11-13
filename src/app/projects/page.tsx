@@ -11,8 +11,9 @@ import AppHeader from "../app-header";
 type Workspace = { id: string; name: string; role: string };
 type Assignment = { id: string; projectId: string; projectName: string; stageKey: string; stageTitle: string; stageStatus: string; role: string; roleTitle: string; status: string };
 type TeamProject = { id: string; name: string; status: string; ownerName: string | null; role: string; roleTitle: string };
-type Project = { id: string; name: string; status: string; projectType: string | null; createdAt: string; updatedAt: string };
+type Project = { id: string; name: string; status: string; projectType: string | null; startMode?: string; createdAt: string; updatedAt: string };
 
+const ANALYSIS = "__analysis" as const;
 const projectStatus: Record<string, string> = { draft: t("Черновик"), active: t("В работе"), paused: t("На паузе"), completed: t("Завершён"), archived: t("В архиве"), live: t("Опубликован") };
 
 export default function ProjectsPage() {
@@ -26,7 +27,7 @@ export default function ProjectsPage() {
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   const [step, setStep] = useState(1);
-  const [typeKey, setTypeKey] = useState<CatalogType["key"] | null>(null);
+  const [typeKey, setTypeKey] = useState<CatalogType["key"] | typeof ANALYSIS | null>(null);
   const [name, setName] = useState("");
   const [start, setStart] = useState<string>("");
   const [siteLocale, setSiteLocale] = useState<"ru" | "en">(() => (getLocale() === "en" ? "en" : "ru"));
@@ -51,7 +52,8 @@ export default function ProjectsPage() {
         setWorkspace(first);
         if (first) {
           const list = await api<Project[]>(`/projects?workspaceId=${encodeURIComponent(first.id)}`);
-          setProjects(list.filter((project) => project.projectType));
+          // Projects without a route are «Только анализ»: code analysis and site checks, no development stages.
+          setProjects(list.filter((project) => project.projectType || project.startMode === "analysis_only"));
           if (!list.some((project) => project.projectType) && mine.length === 0 && master.places.length === 0 && team.length === 0) setCreating(true);
         }
       } catch (caught) {
@@ -66,16 +68,20 @@ export default function ProjectsPage() {
   const type = types.find((item) => item.key === typeKey) ?? null;
   const startOptions = type ? type.stages.filter((stage, index) => index > 0 && stage.importHint) : [];
 
+  const analysisOnly = typeKey === ANALYSIS;
+
   async function create() {
-    if (!workspace || !type) return;
+    if (!workspace || (!type && !analysisOnly)) return;
     setBusy(true);
     setError("");
     try {
       const project = await api<Project>("/projects", {
         method: "POST",
-        body: JSON.stringify({ workspaceId: workspace.id, name: name.trim(), startMode: "build", locale: siteLocale, projectType: type.key, ...(start ? { startStageKey: start } : {}) }),
+        body: JSON.stringify(analysisOnly
+          ? { workspaceId: workspace.id, name: name.trim(), startMode: "analysis_only", locale: getLocale() }
+          : { workspaceId: workspace.id, name: name.trim(), startMode: "build", locale: siteLocale, projectType: type!.key, ...(start ? { startStageKey: start } : {}) }),
       });
-      router.push(`/projects/${project.id}`);
+      router.push(analysisOnly ? `/projects/${project.id}/analysis` : `/projects/${project.id}`);
     } catch (caught) {
       setError(explainError(caught));
       setBusy(false);
@@ -100,8 +106,8 @@ export default function ProjectsPage() {
             </div>
             <div className={styles.projectGrid}>
               {projects.filter((project) => project.status !== "archived").map((project) => (
-                <a key={project.id} className={styles.projectCard} href={`/projects/${project.id}`}>
-                  <span className={styles.small}>{types.find((item) => item.key === project.projectType)?.title ?? t("Проект")}</span>
+                <a key={project.id} className={styles.projectCard} href={project.projectType ? `/projects/${project.id}` : `/projects/${project.id}/analysis`}>
+                  <span className={styles.small}>{project.projectType ? types.find((item) => item.key === project.projectType)?.title ?? t("Проект") : t("Только анализ")}</span>
                   <strong>{project.name}</strong>
                   <span className={`${styles.chip} ${styles[project.status === "live" || project.status === "completed" ? "done" : project.status === "active" ? "active" : "closed"]}`} style={{ alignSelf: "flex-start" }}>{projectStatus[project.status] ?? project.status}</span>
                 </a>
@@ -149,7 +155,7 @@ export default function ProjectsPage() {
 
         {!loading && creating && (
           <>
-            <p className={styles.kicker}>{t("Новый проект · шаг")}{" "}{step}{" "}{t("из 3")}</p>
+            <p className={styles.kicker}>{t("Новый проект · шаг")}{" "}{step}{" "}{analysisOnly ? t("из 2") : t("из 3")}</p>
             {step === 1 && (
               <>
                 <h1 className={styles.h1}>{t("Какой сайт вам нужен?")}</h1>
@@ -164,6 +170,11 @@ export default function ProjectsPage() {
                     </button>
                   ))}
                 </div>
+                <button type="button" className={styles.typeCard} aria-pressed={analysisOnly} onClick={() => setTypeKey(ANALYSIS)} style={{ marginTop: 14, width: "100%" }}>
+                  <strong style={{ fontSize: 18 }}>{t("Только анализ готового кода")}</strong>
+                  <p style={{ margin: "6px 0" }}>{t("Загрузите ZIP-архив или дайте ссылку на репозиторий GitHub — получите отчёт: технологии, страницы, ключи и пароли в коде, пробелы в документации. Без этапов разработки, код не меняется.")}</p>
+                  <p className={styles.small} style={{ margin: 0 }}>{t("Не занимает место в тарифе. Проверить опубликованный сайт можно в «Сверке сайта».")}</p>
+                </button>
                 <p className={styles.small} style={{ marginTop: 14 }}>{t("Мобильные приложения, магазины с оплатой и личные кабинеты появятся позже.")}</p>
                 <div className={styles.row} style={{ marginTop: 18 }}>
                   {projects.length > 0 && <button className={styles.ghost} onClick={() => setCreating(false)}>{t("Отмена")}</button>}
@@ -180,7 +191,7 @@ export default function ProjectsPage() {
                   <span className={styles.label}>{t("Название проекта")}</span>
                   <input className={styles.input} value={name} maxLength={120} autoFocus placeholder={t("Например: Сайт для тортов")} onChange={(event) => setName(event.target.value)} />
                 </label>
-                <fieldset className={styles.field} style={{ border: 0, padding: 0, margin: "16px 0 20px" }}>
+                {!analysisOnly && <fieldset className={styles.field} style={{ border: 0, padding: 0, margin: "16px 0 20px" }}>
                   <legend className={styles.label}>{t("Язык сайта")}</legend>
                   <div className={styles.row} role="radiogroup" aria-label={t("Язык сайта")}>
                     {(["ru", "en"] as const).map((code) => (
@@ -190,11 +201,13 @@ export default function ProjectsPage() {
                     ))}
                   </div>
                   <span className={styles.small}>{t("На этом языке будут кнопки, формы и страницы записи на сайте, письма вашим клиентам, шаблоны и черновики ИИ. Интерфейс BuildPath остаётся на вашем языке. Поменять язык сайта после создания пока нельзя.")}</span>
-                </fieldset>
+                </fieldset>}
                 <div className={styles.row}>
                   <button className={styles.ghost} onClick={() => setStep(1)}>{t("Назад")}</button>
                   <div className={styles.spacer} />
-                  <button className={styles.button} disabled={!name.trim()} onClick={() => setStep(3)}>{t("Дальше")}</button>
+                  {analysisOnly
+                    ? <button className={styles.button} disabled={busy || !name.trim() || !workspace} onClick={create}>{busy ? t("Создаём…") : t("Создать и перейти к разбору")}</button>
+                    : <button className={styles.button} disabled={!name.trim()} onClick={() => setStep(3)}>{t("Дальше")}</button>}
                 </div>
               </>
             )}

@@ -1,10 +1,11 @@
 "use client";
 
 import { t } from "@/lib/i18n";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
-import { explainError } from "@/lib/journey";
+import { explainError, portfolioPhotos, shrinkPhoto } from "@/lib/journey";
+import WorkPhoto from "../../specialists/work-photo";
 import styles from "../../projects/journey.module.css";
 import AppHeader from "../../app-header";
 
@@ -14,7 +15,7 @@ type Mine = {
   stages: Array<{ key: string; title: string }>;
 };
 
-type Work = { title: string; description: string | null; url: string | null; stageKey: string | null };
+type Work = { title: string; description: string | null; url: string | null; stageKey: string | null; photoId?: string | null };
 const MAX_WORKS = 12;
 
 /** The specialist's own card in the catalog. */
@@ -32,6 +33,9 @@ export default function SpecialistProfilePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
+  const [uploading, setUploading] = useState<number | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const photoFor = useRef<number | null>(null);
 
   function fill(next: Mine) {
     setData(next);
@@ -59,7 +63,7 @@ export default function SpecialistProfilePage() {
       const next = await api<Mine>("/me/specialist-profile", {
         method: "PUT",
         body: JSON.stringify({ displayName: name, headline, about: about.trim() || null, stageKeys: stages, hourlyRate: rate ? Number(rate) : null, city: city.trim() || null, published: publish,
-          portfolio: works.map((work) => ({ title: work.title.trim(), description: work.description?.trim() || null, url: work.url?.trim() || null, stageKey: work.stageKey })) }),
+          portfolio: works.map((work) => ({ title: work.title.trim(), description: work.description?.trim() || null, url: work.url?.trim() || null, stageKey: work.stageKey, photoId: work.photoId ?? null })) }),
       });
       fill(next);
       setSaved(publish ? t("Сохранено. Карточка видна в каталоге.") : t("Сохранено. Карточка скрыта из каталога."));
@@ -68,6 +72,14 @@ export default function SpecialistProfilePage() {
 
   const worksValid = works.every((work) => work.title.trim().length >= 3 && (!work.url?.trim() || /^https?:\/\/[^\s/]+\.[^\s]+/i.test(work.url.trim())));
   const valid = name.trim().length >= 2 && headline.trim().length >= 5 && worksValid;
+  async function addPhoto(index: number, file: File | undefined) {
+    if (!file) return;
+    setUploading(index); setError(""); setSaved("");
+    try {
+      const photo = await portfolioPhotos.upload(await shrinkPhoto(file));
+      setWorks((current) => current.map((work, at) => (at === index ? { ...work, photoId: photo.id } : work)));
+    } catch (caught) { setError(explainError(caught)); } finally { setUploading(null); }
+  }
   const setWork = (index: number, patch: Partial<Work>) => setWorks(works.map((work, at) => (at === index ? { ...work, ...patch } : work)));
   const move = (index: number, by: number) => {
     const next = [...works];
@@ -112,9 +124,16 @@ export default function SpecialistProfilePage() {
             </label>
             <fieldset className={styles.field} style={{ border: 0, padding: 0 }}>
               <legend className={styles.label}>{t("Примеры работ")}</legend>
-              <span className={styles.why}>{t("Что вы уже сделали: сайт, тексты, оформление. Ссылку владельцы откроют сами — BuildPath её не проверяет, поэтому указывайте только свои работы и с согласия заказчика.")}</span>
+              <span className={styles.why}>{t("Что вы уже сделали: сайт, тексты, оформление. Ссылку владельцы откроют сами — BuildPath её не проверяет, поэтому указывайте только свои работы и с согласия заказчика.")}{" "}{t("К работе можно добавить фото или снимок экрана: мы проверим файл и уберём из него служебные данные (место съёмки, модель телефона). Фото видят только вошедшие пользователи, пока карточка опубликована.")}</span>
               {works.map((work, index) => (
                 <div key={index} className={styles.card} style={{ margin: "8px 0", padding: 14 }}>
+                  {work.photoId && <div style={{ marginBottom: 8 }}><WorkPhoto photoId={work.photoId} alt={work.title || t("Фото работы")} /></div>}
+                  <div className={styles.row} style={{ marginBottom: 8 }}>
+                    <button type="button" className={styles.ghost} disabled={uploading !== null} onClick={() => { photoFor.current = index; fileRef.current?.click(); }}>
+                      {uploading === index ? t("Загружаем фото…") : work.photoId ? t("Заменить фото") : t("+ Фото работы")}
+                    </button>
+                    {work.photoId && <button type="button" className={styles.ghost} disabled={uploading !== null} onClick={() => setWork(index, { photoId: null })}>{t("Убрать фото")}</button>}
+                  </div>
                   <input className={styles.input} placeholder={t("Название, например «Сайт кондитерской»")} aria-label={t("Название работы")} value={work.title} maxLength={80} onChange={(event) => setWork(index, { title: event.target.value })} />
                   <textarea className={styles.textarea} style={{ minHeight: 60, marginTop: 8 }} placeholder={t("Что вы сделали (необязательно)")} aria-label={t("Что вы сделали")} value={work.description ?? ""} maxLength={500} onChange={(event) => setWork(index, { description: event.target.value })} />
                   <input className={styles.input} style={{ marginTop: 8 }} inputMode="url" placeholder="https://" aria-label={t("Ссылка на работу")} value={work.url ?? ""} maxLength={300} onChange={(event) => setWork(index, { url: event.target.value })} />
@@ -131,6 +150,7 @@ export default function SpecialistProfilePage() {
                   </div>
                 </div>
               ))}
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/*" hidden onChange={(event) => { const at = photoFor.current; if (at !== null) void addPhoto(at, event.target.files?.[0]); event.target.value = ""; }} />
               {works.length < MAX_WORKS && <button type="button" className={styles.secondary} onClick={() => setWorks([...works, { title: "", description: null, url: null, stageKey: null }])}>{t("+ Добавить работу")}</button>}
             </fieldset>
             <div className={styles.row} style={{ alignItems: "flex-start" }}>
@@ -145,7 +165,7 @@ export default function SpecialistProfilePage() {
               </label>
             </div>
             <div className={styles.row}>
-              <button className={styles.button} disabled={busy || !valid || stages.length === 0}>{busy ? t("Сохраняем…") : published ? t("Сохранить") : t("Опубликовать в каталоге")}</button>
+              <button className={styles.button} disabled={busy || uploading !== null || !valid || stages.length === 0}>{busy ? t("Сохраняем…") : published ? t("Сохранить") : t("Опубликовать в каталоге")}</button>
               {published
                 ? <button type="button" className={styles.ghost} disabled={busy} onClick={() => void save(false)}>{t("Скрыть из каталога")}</button>
                 : <button type="button" className={styles.ghost} disabled={busy || !valid} onClick={() => void save(false)}>{t("Сохранить без публикации")}</button>}

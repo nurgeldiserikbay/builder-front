@@ -14,6 +14,7 @@ import { ContentEditor, DesignPicker, FieldsForm } from "./editors";
 import { SpecialistsPanel, SuggestionsPanel } from "./specialists";
 import ChangesPanel from "./changes";
 import QualityReportView from "./quality-report";
+import QualityProfilePicker from "./quality-profile-picker";
 import BrowserCheckPanel from "./browser-check";
 import { TimesheetPanel } from "./timesheet";
 import { ScheduleEditor, type Schedule } from "./schedule-editor";
@@ -478,6 +479,7 @@ export default function StagePage() {
               </ul>
               <p className={styles.small}>{t("Это автоматические проверки содержимого. Они не заменяют просмотр сайта на вашем телефоне.")}</p>
               <QualityReportView report={quality} />
+              <QualityProfilePicker projectId={projectId} />
               {detail.current && <BrowserCheckPanel key={detail.current.id} projectId={projectId} versionId={detail.current.id} />}
             </>
           )}

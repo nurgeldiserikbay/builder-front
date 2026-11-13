@@ -7,6 +7,7 @@ import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import { formatTenge } from "@/lib/money";
 import styles from "../../projects/journey.module.css";
+import WorkPhoto from "../work-photo";
 import AppHeader from "../../app-header";
 import { Rating, Stars, inviteTarget } from "../stars";
 
@@ -14,7 +15,7 @@ type Review = { id: string; rating: number; text: string | null; reply: string |
 type Profile = {
   id: string; displayName: string; headline: string; about: string | null; city: string | null; hourlyRate: number | null; stages: Array<{ key: string; title: string }>;
   rating: number | null; reviewCount: number; reviews: Review[]; completedStages: number; own: boolean; published: boolean;
-  portfolio?: Array<{ title: string; description: string | null; url: string | null; stageTitle: string | null; host: string | null }>;
+  portfolio?: Array<{ title: string; description: string | null; url: string | null; stageTitle: string | null; host: string | null; photoId?: string | null }>;
 };
 
 export default function SpecialistPage() {
@@ -77,6 +78,7 @@ export default function SpecialistPage() {
                 <ul className={styles.versions}>
                   {profile.portfolio!.map((work, index) => (
                     <li key={index}>
+                      {work.photoId && <div style={{ marginBottom: 8 }}><WorkPhoto photoId={work.photoId} alt={work.title} /></div>}
                       <strong>{work.title}</strong>{work.stageTitle ? <span className={styles.small}>{" · "}{t(work.stageTitle)}</span> : null}
                       {work.description && <p style={{ margin: "4px 0 0", whiteSpace: "pre-line" }}>{work.description}</p>}
                       {/* The link is the specialist's word: no referrer, no search weight, a new tab. */}
@@ -84,7 +86,7 @@ export default function SpecialistPage() {
                     </li>
                   ))}
                 </ul>
-                <p className={styles.small}>{t("Ссылки указал специалист, BuildPath их не проверял.")}</p>
+                <p className={styles.small}>{t("Ссылки и фото добавил специалист, BuildPath их не проверял.")}</p>
               </section>
             )}
             <section className={styles.card} aria-labelledby="reviews-title">

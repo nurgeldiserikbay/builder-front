@@ -18,6 +18,7 @@ import { TechPlanView, type TechPlan } from "./techplan-view";
 import { ProcessEditor, blankProcess, type BusinessProcess } from "./process-editor";
 import { SitemapEditor, blankSitemap } from "./sitemap-editor";
 import { CatalogEditor } from "./catalog-editor";
+import { FeaturesEditor, HandoffView, PrototypeView, ScreensEditor, blankFeatures, blankScreens, type AppFeatures, type AppScreens } from "./webapp-editors";
 import { formatTenge } from "@/lib/money";
 import styles from "../../../journey.module.css";
 import AppHeader from "../../../../app-header";
@@ -197,7 +198,7 @@ export default function StagePage() {
   const accepted = stage.status === "approved" || stage.status === "imported";
   const aiUsable = ai.level !== "none" && ai.configured && stage.canEdit && stage.inputsReady;
   const issueKeys = detail.issues.map((issue) => issue.key);
-  const siteChecks = stage.artifactType === "site" ? ((detail.current?.content as { checks?: SiteCheck[] } | undefined)?.checks ?? []) : [];
+  const siteChecks = stage.artifactType === "site" || stage.artifactType === "handoff" ? ((detail.current?.content as { checks?: SiteCheck[] } | undefined)?.checks ?? []) : [];
   const quality = stage.artifactType === "site" ? ((detail.current?.content as { quality?: QualityReport | null } | undefined)?.quality ?? null) : null;
   const failedRequired = [...siteChecks.filter((check) => check.required && check.status === "failed"),
     ...(stage.artifactType === "site" && detail.current && (!quality || quality.status === "failed") ? [{ id: "quality", status: "failed" as const, title: t("Проверка перед публикацией"), details: "", required: true }] : [])];
@@ -360,6 +361,35 @@ export default function StagePage() {
         <CatalogEditor projectId={projectId} value={draft as Catalog} onChange={edit} options={detail.options.catalog} disabled={!stage.canEdit}
           issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
       )}
+      {/* Web application: functions and roles, screens */}
+      {(stage.artifactType === "features" || stage.artifactType === "screens") && !detail.current && draft === null && stage.canEdit && (
+        <section className={styles.card} aria-label={t("Как начать")}>
+          <p className={styles.cardTitle}>{stage.artifactType === "features" ? t("Как начнём функции?") : t("Как начнём экраны?")}</p>
+          <div style={{ display: "grid", gap: 10 }}>
+            {ai.configured && stage.inputsReady && (
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{busy === "ai" ? t("ИИ думает…") : stage.artifactType === "features" ? t("✨ Пусть ИИ предложит роли и функции") : t("✨ Пусть ИИ предложит экраны")}</button>
+            )}
+            {!ai.configured && ai.templateAvailable && stage.inputsReady && (
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{stage.artifactType === "features" ? t("Взять из бизнес-процесса") : t("Сделать экраны по функциям")}</button>
+            )}
+            <button className={styles.secondary} onClick={() => edit(stage.artifactType === "features" ? blankFeatures() : blankScreens())}>{t("Описать самому с чистого листа")}</button>
+          </div>
+          {!stage.inputsReady && <p className={styles.small}>{t("Черновик станет доступен, когда будут приняты предыдущие этапы.")}</p>}
+        </section>
+      )}
+      {stage.artifactType === "features" && stage.status !== "locked" && draft !== null && (
+        <FeaturesEditor value={draft as AppFeatures} onChange={edit} disabled={!stage.canEdit} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
+      )}
+      {stage.artifactType === "screens" && stage.status !== "locked" && draft !== null && (
+        <ScreensEditor value={draft as AppScreens} onChange={edit} features={(detail.inputs.find((input) => input.key === "features")?.content as AppFeatures | null) ?? null}
+          disabled={!stage.canEdit} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
+      )}
+      {stage.artifactType === "screens" && detail.current && !dirty && <PrototypeView projectId={projectId} version={detail.current.versionNumber} />}
+      {stage.artifactType === "handoff" && stage.status !== "locked" && (
+        <HandoffView projectId={projectId} content={(detail.current?.content as Parameters<typeof HandoffView>[0]["content"]) ?? null} canBuild={stage.canEdit} inputsReady={stage.inputsReady}
+          onBuilt={async () => { await load(); setMessage(t("Пакет собран. Посмотрите проверки и скачайте архив.")); }} />
+      )}
+
       {/* Starting point for an empty sitemap */}
       {stage.artifactType === "sitemap" && !detail.current && draft === null && stage.canEdit && (
         <section className={styles.card} aria-label={t("Как начать")}>

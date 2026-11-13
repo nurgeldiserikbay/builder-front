@@ -7,7 +7,7 @@ import { DataDiagram, SequenceDiagram, type DataEntity, type Sequence } from "./
 type Item = { title: string; plain: string; technical: string };
 type Coverage = { scenario: string; actor: string; action: string; capability: string; status: "built" | "manual" | "not_built"; how: string };
 export type TechPlan = {
-  planVersion: string; kind?: "booking" | "site"; summary: string; features: Item[]; roles: Item[]; data: Item[];
+  planVersion: string; kind?: "booking" | "site" | "store" | "app"; summary: string; features: Item[]; roles: Item[]; data: Item[];
   components?: Item[]; dataModel?: Array<DataEntity & { fields: Array<{ name: string; type: string }> }>; sequences?: Sequence[]; coverage?: Coverage[] | null;
   pages: Array<{ path: string; title: string; plain: string }>; notifications: string[]; hosting: Array<{ option: string; plain: string }>;
   limits: string[]; api: string; ownerNotes: string | null;
@@ -108,9 +108,9 @@ export function TechPlanView({ plan, outdated, notes, onNotes, disabled, onRefre
       </section>
       {plan.api && <section className={styles.card} aria-label={t("Контракт API")}>
         <p className={styles.cardTitle}>{t("Контракт API")}</p>
-        <p className={styles.small} style={{ marginTop: 0 }}>{plan.kind === "site" ? t("Точное описание формы заявки в формате OpenAPI — передайте разработчику, если он будет что-то дорабатывать.") : t("Точное описание адресов и форм записи в формате OpenAPI — передайте разработчику, если он будет что-то дорабатывать. Сайт на BuildPath и программа для своего сервера работают по нему одинаково.")}</p>
+        <p className={styles.small} style={{ marginTop: 0 }}>{plan.kind === "app" ? t("Черновик контракта API приложения в формате OpenAPI: ресурсы из схемы данных, вход и роли. Разработчик дополнит его, когда будет писать код.") : plan.kind === "site" ? t("Точное описание формы заявки в формате OpenAPI — передайте разработчику, если он будет что-то дорабатывать.") : t("Точное описание адресов и форм записи в формате OpenAPI — передайте разработчику, если он будет что-то дорабатывать. Сайт на BuildPath и программа для своего сервера работают по нему одинаково.")}</p>
         <details><summary className={styles.small}>{t("Показать")}</summary><pre style={{ whiteSpace: "pre-wrap", fontSize: 14, overflowX: "auto" }}>{plan.api}</pre></details>
-        <button className={styles.ghost} style={{ marginTop: 8 }} onClick={() => download(plan.kind === "site" ? "lead-api.yaml" : "booking-api.yaml", plan.api, "text/yaml")}>{plan.kind === "site" ? t("Скачать lead-api.yaml") : t("Скачать booking-api.yaml")}</button>
+        <button className={styles.ghost} style={{ marginTop: 8 }} onClick={() => download(plan.kind === "app" ? "api.yaml" : plan.kind === "site" ? "lead-api.yaml" : "booking-api.yaml", plan.api, "text/yaml")}>{plan.kind === "app" ? t("Скачать api.yaml") : plan.kind === "site" ? t("Скачать lead-api.yaml") : t("Скачать booking-api.yaml")}</button>
       </section>}
       <section className={styles.card} aria-label={t("Заметки")}>
         <label className={styles.field} style={{ margin: 0 }}>

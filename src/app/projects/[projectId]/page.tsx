@@ -7,6 +7,7 @@ import { ApiError, api } from "@/lib/api";
 import { download, explainError, isPlanMessage, statusTone, type Journey } from "@/lib/journey";
 import styles from "../journey.module.css";
 import PublishCard from "./publish-card";
+import QuickEditCard from "./quick-edit-card";
 import InsightsCard from "./insights-card";
 import MonitoringCard from "./monitoring-card";
 import ProjectMap from "./project-map";
@@ -179,6 +180,7 @@ export default function JourneyPage() {
 
             {tab === "publish" && !specialist && (
               <div className={styles.panels}>
+                <QuickEditCard projectId={projectId} onPublished={() => void load()} />
                 <PublishCard projectId={projectId} onChange={() => void load()} />
                 <MonitoringCard projectId={projectId} />
                 <InsightsCard projectId={projectId} />

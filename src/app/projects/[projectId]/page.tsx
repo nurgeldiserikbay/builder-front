@@ -38,7 +38,8 @@ export default function JourneyPage() {
   const managing = ["owner", "manager"].includes(journey?.project.role ?? "");
   const tabs: Array<{ key: Tab; label: string }> = [
     { key: "stages", label: t("Этапы") }, { key: "team", label: t("Команда") },
-    ...(managing ? [{ key: "money" as const, label: t("Деньги") }, { key: "publish" as const, label: t("Публикация") }, { key: "decisions" as const, label: t("Решения") }] : []),
+    // A web application is not published by BuildPath: its result is the package for developers.
+    ...(managing ? [{ key: "money" as const, label: t("Деньги") }, ...(journey?.project.projectType === "web_app" ? [] : [{ key: "publish" as const, label: t("Публикация") }]), { key: "decisions" as const, label: t("Решения") }] : []),
     { key: "result", label: t("Результат") },
   ];
   useEffect(() => {

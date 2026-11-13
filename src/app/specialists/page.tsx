@@ -10,7 +10,7 @@ import styles from "../projects/journey.module.css";
 import AppHeader from "../app-header";
 import { Rating, inviteTarget } from "./stars";
 
-type Card = { id: string; displayName: string; headline: string; city: string | null; hourlyRate: number | null; stages: Array<{ key: string; title: string }>; rating: number | null; reviews: number; completedStages: number };
+type Card = { id: string; displayName: string; headline: string; city: string | null; hourlyRate: number | null; stages: Array<{ key: string; title: string }>; rating: number | null; reviews: number; completedStages: number; works?: number };
 type Catalog = { specialists: Card[]; stages: Array<{ key: string; title: string }> };
 
 /** Catalog of specialists. Opened from a stage («Найти в каталоге»), it keeps that stage so the owner can invite in one tap. */
@@ -70,6 +70,7 @@ export default function SpecialistsPage() {
             <div className={styles.chips}>{card.stages.map((item) => <span key={item.key} className={`${styles.chip} ${styles.closed}`}>{t(item.title)}</span>)}</div>
             <p className={styles.small} style={{ margin: "8px 0 0" }}>
               {t("Принято этапов: {0}", [card.completedStages])}
+              {card.works ? t(" · работ в портфолио: {0}", [card.works]) : ""}
               {card.hourlyRate !== null ? t(" · от {0} в час", [formatTenge(card.hourlyRate)]) : ""}
               {card.city ? ` · ${card.city}` : ""}
             </p>

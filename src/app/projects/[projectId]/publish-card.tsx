@@ -1,6 +1,6 @@
 "use client";
 
-import { t } from "@/lib/i18n";
+import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { isPlanMessage, explainError, type Publication } from "@/lib/journey";
@@ -82,10 +82,13 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
           <p className={styles.small} style={{ margin: "0 0 10px" }}>{t("Опубликована сборка версии")}{" "}{state.publication.publishedVersionNumber}.{!state.publication.domain && state.domainsAvailable && <> <a href={`/projects/${projectId}/choices/domain`}>{t("Подключить свой домен →")}</a></>}</p>
           {state.outdated && state.canManage && (
             <div className={`${styles.notice} ${styles.warn}`}>
-              {t("Есть новая принятая сборка (версия")}{" "}{state.acceptedBuild?.versionNumber}{t("), которой ещё нет на сайте.")}
+              {state.rolledBack
+                ? t("На сайте сейчас прошлая версия {0}, которую вы вернули. Принятая сборка — версия {1}: вернуть её на сайт можно этой кнопкой.", [state.publication.publishedVersionNumber ?? "—", state.acceptedBuild?.versionNumber ?? "—"])
+                : <>{t("Есть новая принятая сборка (версия")}{" "}{state.acceptedBuild?.versionNumber}{t("), которой ещё нет на сайте.")}</>}
               <div style={{ marginTop: 8 }}><button className={styles.button} disabled={Boolean(busy)} onClick={publish}>{busy === "publish" ? t("Обновляем…") : t("Обновить сайт")}</button></div>
             </div>
           )}
+          <SiteHistory projectId={projectId} key={`${state.publication.publishedVersionNumber}-${state.acceptedBuild?.versionNumber}`} onRolledBack={(next) => { setState(next); onChange(); setMessage(t("Вернули прошлую версию. На сайте она появится в течение пары минут.")); }} />
           {state.canManage && (
             <button className={styles.danger} disabled={Boolean(busy)} onClick={() => {
               if (!window.confirm(t("Снять сайт с публикации? Он перестанет открываться по ссылке. Заявки и проект сохранятся, опубликовать снова можно в любой момент."))) return;
@@ -162,5 +165,47 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
         </div>
       )}
     </section>
+  );
+}
+
+type History = { canRollback: boolean; versions: Array<{ versionId: string; versionNumber: number; builtAt: string; lastPublishedAt: string | null; live: boolean; accepted: boolean }> };
+
+/** Versions that have been on the live site, and putting one of them back — e.g. when the last change did not work out. */
+function SiteHistory({ projectId, onRolledBack }: { projectId: string; onRolledBack: (next: Publication) => void }) {
+  const [history, setHistory] = useState<History | null>(null);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  useEffect(() => { api<History>(`/projects/${projectId}/publication/history`).then(setHistory).catch(() => undefined); }, [projectId]);
+  if (!history || history.versions.length < 2) return null;
+  const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(dateLocale(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
+
+  async function rollback(versionId: string, number: number) {
+    if (!window.confirm(t("Вернуть на сайт версию {0}? Этапы и принятая сборка не изменятся — новую версию можно будет вернуть кнопкой «Обновить сайт».", [number]))) return;
+    setBusy(versionId); setError("");
+    try { onRolledBack(await api<Publication>(`/projects/${projectId}/publication/rollback`, { method: "POST", body: JSON.stringify({ versionId, confirm: true }) })); }
+    catch (caught) { setError(explainError(caught)); } finally { setBusy(""); }
+  }
+
+  return (
+    <details className={styles.details} style={{ margin: "0 0 12px" }}>
+      <summary>{t("Прошлые версии сайта")}</summary>
+      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
+      <ul className={styles.versions}>
+        {history.versions.map((version) => (
+          <li key={version.versionId}>
+            <div className={styles.row} style={{ justifyContent: "space-between" }}>
+              <span>
+                <strong>{t("Версия {0}", [version.versionNumber])}</strong>
+                <span className={styles.small}>{" · "}{t("опубликована {0}", [when(version.lastPublishedAt)])}</span>
+                {version.live && <span className={`${styles.chip} ${styles.done}`} style={{ marginLeft: 8 }}>{t("сейчас на сайте")}</span>}
+                {version.accepted && !version.live && <span className={`${styles.chip} ${styles.closed}`} style={{ marginLeft: 8 }}>{t("принятая")}</span>}
+              </span>
+              {history.canRollback && !version.live && <button className={styles.ghost} disabled={Boolean(busy)} onClick={() => void rollback(version.versionId, version.versionNumber)}>{busy === version.versionId ? t("Возвращаем…") : t("Вернуть эту версию")}</button>}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className={styles.small}>{t("Вернуть можно только версию, которая уже была на сайте. Меняется лишь то, что видят посетители; заявки и записи не теряются.")}</p>
+    </details>
   );
 }

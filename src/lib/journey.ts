@@ -299,6 +299,8 @@ const messages: Record<string, string> = {
   ANALYSIS_NOT_READY: t("Отчёт ещё готовится."),
   REPO_URL_NOT_GITHUB: t("Нужна ссылка на репозиторий GitHub: https://github.com/владелец/репозиторий."),
   REPO_REF_INVALID: t("Неверное имя ветки."),
+  BROWSER_CHECK_RUNNING: t("Проверка в браузере уже идёт."),
+  BROWSER_CHECK_LIMIT: t("Эту сборку уже проверяли 5 раз. Соберите сайт заново, чтобы проверить снова."),
   COMMENT_FORBIDDEN: t("Наблюдатель не пишет замечания."),
   COMMENT_BLOCKING_FORBIDDEN: t("Блокирующее замечание может оставить владелец, администратор или проверяющий этапа."),
   COMMENT_RESOLVE_FORBIDDEN: t("Закрыть замечание может его автор, владелец или администратор."),

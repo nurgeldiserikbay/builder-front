@@ -14,6 +14,7 @@ import { ContentEditor, DesignPicker, FieldsForm } from "./editors";
 import { SpecialistsPanel, SuggestionsPanel } from "./specialists";
 import ChangesPanel from "./changes";
 import QualityReportView from "./quality-report";
+import BrowserCheckPanel from "./browser-check";
 import { TimesheetPanel } from "./timesheet";
 import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
@@ -477,6 +478,7 @@ export default function StagePage() {
               </ul>
               <p className={styles.small}>{t("Это автоматические проверки содержимого. Они не заменяют просмотр сайта на вашем телефоне.")}</p>
               <QualityReportView report={quality} />
+              {detail.current && <BrowserCheckPanel key={detail.current.id} projectId={projectId} versionId={detail.current.id} />}
             </>
           )}
           {detail.current && !preview && <button className={styles.ghost} style={{ marginTop: 10 }} onClick={() => run("preview", () => showPreview(detail.current!.id))}>{t("Показать сайт")}</button>}

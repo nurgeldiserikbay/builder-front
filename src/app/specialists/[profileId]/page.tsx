@@ -8,6 +8,7 @@ import { explainError } from "@/lib/journey";
 import { formatTenge } from "@/lib/money";
 import styles from "../../projects/journey.module.css";
 import WorkPhoto from "../work-photo";
+import ProfileReport from "./profile-report";
 import AppHeader from "../../app-header";
 import { Rating, Stars, inviteTarget } from "../stars";
 
@@ -15,6 +16,7 @@ type Review = { id: string; rating: number; text: string | null; reply: string |
 type Profile = {
   id: string; displayName: string; headline: string; about: string | null; city: string | null; hourlyRate: number | null; stages: Array<{ key: string; title: string }>;
   rating: number | null; reviewCount: number; reviews: Review[]; completedStages: number; own: boolean; published: boolean;
+  blocked?: { at: string; reason: string | null } | null; canReport?: boolean; reportPending?: boolean;
   portfolio?: Array<{ title: string; description: string | null; url: string | null; stageTitle: string | null; host: string | null; photoId?: string | null }>;
 };
 
@@ -58,7 +60,8 @@ export default function SpecialistPage() {
         {!profile && !error && <p className={styles.muted}>{t("Загружаем…")}</p>}
         {profile && (
           <>
-            {profile.own && !profile.published && <p className={`${styles.notice} ${styles.warn}`}>{t("Карточка скрыта: её видите только вы.")}{" "}<a href="/account/specialist">{t("Опубликовать →")}</a></p>}
+            {profile.own && profile.blocked && <p className={`${styles.notice} ${styles.error}`} role="alert">{t("Поддержка скрыла карточку из каталога: {0}", [profile.blocked.reason ?? ""])}{" "}{t("Исправьте её; опубликовать снова можно после проверки поддержкой.")}</p>}
+            {profile.own && !profile.published && !profile.blocked && <p className={`${styles.notice} ${styles.warn}`}>{t("Карточка скрыта: её видите только вы.")}{" "}<a href="/account/specialist">{t("Опубликовать →")}</a></p>}
             <p className={styles.kicker}>{profile.stages.map((item) => t(item.title)).join(" · ")}</p>
             <h1 className={styles.h1}>{profile.displayName}</h1>
             <p style={{ fontSize: 18, marginTop: 0 }}>{profile.headline}</p>
@@ -126,6 +129,7 @@ export default function SpecialistPage() {
                 ))}
               </ul>
             </section>
+            {!profile.own && <ProfileReport profileId={profile.id} works={profile.portfolio ?? []} pending={Boolean(profile.reportPending)} onSent={() => undefined} />}
           </>
         )}
       </main>

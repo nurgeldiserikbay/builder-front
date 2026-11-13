@@ -171,8 +171,8 @@ export default function ProjectsPage() {
                   ))}
                 </div>
                 <button type="button" className={styles.typeCard} aria-pressed={analysisOnly} onClick={() => setTypeKey(ANALYSIS)} style={{ marginTop: 14, width: "100%" }}>
-                  <strong style={{ fontSize: 18 }}>{t("Только анализ готового кода")}</strong>
-                  <p style={{ margin: "6px 0" }}>{t("Загрузите ZIP-архив или дайте ссылку на репозиторий GitHub — получите отчёт: технологии, страницы, ключи и пароли в коде, пробелы в документации. Без этапов разработки, код не меняется.")}</p>
+                  <strong style={{ fontSize: 18 }}>{t("Только анализ: код или ТЗ")}</strong>
+                  <p style={{ margin: "6px 0" }}>{t("Загрузите ZIP-архив, ТЗ в PDF или Word, или дайте ссылку на репозиторий GitHub — получите отчёт: технологии и ключи в коде, пропущенные разделы и размытые формулировки в ТЗ. Без этапов разработки, ничего не меняется.")}</p>
                   <p className={styles.small} style={{ margin: 0 }}>{t("Не занимает место в тарифе. Проверить опубликованный сайт можно в «Сверке сайта».")}</p>
                 </button>
                 <p className={styles.small} style={{ marginTop: 14 }}>{t("Мобильные приложения, магазины с оплатой и личные кабинеты появятся позже.")}</p>

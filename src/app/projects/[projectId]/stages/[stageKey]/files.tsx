@@ -60,7 +60,7 @@ export default function StageFilesPanel({ projectId, stageKey }: { projectId: st
               {file.note && <p className={styles.small} style={{ margin: "2px 0", whiteSpace: "pre-wrap" }}>{file.note}</p>}
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
                 <button type="button" className={styles.ghost} onClick={() => void stageFiles.download(projectId, stageKey, file).catch((caught) => setError(explainError(caught)))}>{t("Скачать")}</button>
-                {file.canAnalyze && <a className={styles.ghost} href={`/projects/${projectId}/analysis?file=${file.id}`}>{t("Разобрать код")}</a>}
+                {file.canAnalyze && <a className={styles.ghost} href={`/projects/${projectId}/analysis?file=${file.id}`}>{t("Разобрать")}</a>}
                 {file.canDelete && <button type="button" className={styles.ghost} disabled={busy} onClick={() => void remove(file.id, file.name)}>{t("Удалить")}</button>}
               </div>
             </li>

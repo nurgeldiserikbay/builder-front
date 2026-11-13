@@ -45,7 +45,7 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
     });
   }
 
-  async function setChannels(patch: Partial<{ notifyTelegram: boolean; notifyEmail: boolean }>) {
+  async function setChannels(patch: Partial<{ notifyTelegram: boolean; notifyEmail: boolean; formQuestion: boolean }>) {
     if (!state?.publication) return;
     await run("settings", async () => {
       setState(await api<Publication>(`/projects/${projectId}/publication/settings`, {
@@ -171,6 +171,14 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
               : <span className={styles.small}>{t("Отправка писем пока не настроена на платформе.")}</span>}
           </div>
           <p className={styles.small}>{t("Все заявки также сохраняются в проекте.")}{" "}<a className={styles.back} href={`/projects/${projectId}/leads`}>{t("Заявки (")}{state.leadsCount}) →</a></p>
+          {state.publication && (
+            <div style={{ marginTop: 10 }}>
+              <label style={{ display: "flex", gap: 8, alignItems: "flex-start", minHeight: 40 }}>
+                <input type="checkbox" checked={state.publication.formQuestion} disabled={Boolean(busy) || !state.canManage} onChange={(event) => void setChannels({ formQuestion: event.target.checked })} style={{ width: 20, height: 20, flex: "none" }} />
+                <span>{t("Вопрос от спама в формах")}<br /><span className={styles.small}>{t("Посетитель отвечает на простой пример вроде «3 + 4». Включите, если приходят заявки от роботов. Без этого формы и так защищены: слишком быстрые отправки и повторы с одного устройства не принимаются.")}</span></span>
+              </label>
+            </div>
+          )}
         </div>
       )}
     </section>

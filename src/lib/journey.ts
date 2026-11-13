@@ -44,7 +44,7 @@ export type Brief = Record<string, string | null>;
 export type Offer = { services: Array<{ name: string; description: string | null; price: string | null }>; hours: string | null };
 export type SectionType = "hero" | "about" | "services" | "benefits" | "steps" | "faq" | "contacts" | "cta";
 /** page: key of the «Карта сайта» page on a multi-page site. */
-export type Section = { key: string; type: SectionType; title: string; text: string; items: Array<{ title: string; text: string }>; buttonLabel: string | null; imageId?: string | null; page?: string };
+export type Section = { key: string; type: SectionType; title: string; text: string; items: Array<{ title: string; text: string }>; buttonLabel: string | null; imageId?: string | null; gallery?: string[]; page?: string };
 export type ProjectImage = { id: string; width: number; height: number; sizeBytes: number; alt: string; createdAt: string; inUse: boolean };
 export type PageSeo = { page: string; title: string; description: string };
 /** seo is the home page; pageSeo the other pages of a multi-page site. */
@@ -289,6 +289,8 @@ const messages: Record<string, string> = {
   POLICY_QUORUM_INVALID: t("Число одобрений должно быть от 1 до числа проверяющих."),
   QUALITY_GATE_FAILED: t("Сайт не прошёл проверку перед публикацией. Посмотрите замечания на этапе «Сборка», исправьте и соберите заново."),
   BUILD_NOT_QUALITY_CHECKED: t("Эта сборка сделана до проверки качества. Соберите сайт заново на этапе «Сборка»."),
+  CROP_TOO_SMALL: t("Слишком маленький кусок фото — увеличьте рамку."),
+  CROP_INVALID: t("Не получилось обрезать фото. Попробуйте ещё раз."),
   PLAN_NO_SPECIALISTS: t("Приглашать специалистов можно на тарифах «Старт» и «Бизнес». Посмотрите тарифы."),
 };
 
@@ -322,7 +324,7 @@ export function explainError(error: unknown): string {
 }
 
 export type Publication = {
-  publication: { slug: string; url: string; status: "live" | "unpublished"; publishedAt: string; unpublishedAt: string | null; publishedVersionNumber: number | null; notifyTelegram: boolean; notifyEmail: boolean; domain: SiteDomain | null } | null;
+  publication: { slug: string; url: string; status: "live" | "unpublished"; publishedAt: string; unpublishedAt: string | null; publishedVersionNumber: number | null; notifyTelegram: boolean; notifyEmail: boolean; formQuestion: boolean; domain: SiteDomain | null } | null;
   domainsAvailable: boolean;
   domainCheck?: { ok: boolean; found: string[] };
   acceptedBuild: { versionId: string; versionNumber: number; hasForm: boolean; quality: Pick<QualityReport, "status" | "summary" | "categories" | "profile"> | null } | null;
@@ -374,6 +376,9 @@ export const images = {
   setAlt: (projectId: string, imageId: string, alt: string) =>
     api<{ items: ProjectImage[]; limit: number }>(`/projects/${projectId}/images/${imageId}/alt`, { method: "POST", body: JSON.stringify({ alt }) }),
   remove: (projectId: string, imageId: string) => api<{ items: ProjectImage[]; limit: number }>(`/projects/${projectId}/images/${imageId}`, { method: "DELETE" }),
+  /** A cropped copy; the rectangle is in fractions of the photo (0–1). */
+  crop: (projectId: string, imageId: string, rect: { x: number; y: number; width: number; height: number }) =>
+    api<ProjectImage>(`/projects/${projectId}/images/${imageId}/crop`, { method: "POST", body: JSON.stringify(rect) }),
   async objectUrl(projectId: string, imageId: string): Promise<string> {
     const response = await fetch(`${API_BASE_URL}/projects/${projectId}/images/${imageId}`, { credentials: "include" });
     if (!response.ok) throw new ApiError(response.status, "IMAGE_NOT_FOUND");

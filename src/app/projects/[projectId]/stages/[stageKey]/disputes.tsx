@@ -3,11 +3,11 @@
 import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { explainError } from "@/lib/journey";
+import { explainError, saveFromApi } from "@/lib/journey";
 import { formatTenge } from "@/lib/money";
 import styles from "../../../journey.module.css";
 
-type Message = { id: string; side: "owner" | "specialist" | "staff"; mine: boolean; text: string; createdAt: string };
+type Message = { id: string; side: "owner" | "specialist" | "staff"; mine: boolean; text: string; createdAt: string; file: { name: string; mime: string; bytes: number } | null };
 type Dispute = {
   id: string; kind: string; openedBySide: "owner" | "specialist"; mine: boolean; claim: string; claimAmount: number | null; status: "open" | "resolved" | "withdrawn";
   outcome: string | null; resolutionNote: string | null; resolvedAt: string | null; createdAt: string; paymentCreated: boolean; messages: Message[]; canWrite: boolean; canWithdraw: boolean;
@@ -56,6 +56,18 @@ export function DisputesBlock({ assignmentId }: { assignmentId: string }) {
     setReply((current) => ({ ...current, [id]: "" }));
     return next;
   });
+  const attach = (id: string, file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setError(t("Файл больше 5 МБ. Сожмите скриншот или PDF.")); return; }
+    void act(async () => {
+      const form = new FormData();
+      form.append("file", file, file.name);
+      if ((reply[id] ?? "").trim().length >= 2) form.append("text", (reply[id] ?? "").trim());
+      const next = await api<Data>(`/disputes/${id}/attachments`, { method: "POST", body: form });
+      setReply((current) => ({ ...current, [id]: "" }));
+      return next;
+    });
+  };
   const withdraw = (id: string) => { if (window.confirm(t("Отозвать спор? Его можно будет открыть заново."))) void act(() => api<Data>(`/disputes/${id}/withdraw`, { method: "POST" })); };
 
   if (!data) return null;
@@ -75,7 +87,9 @@ export function DisputesBlock({ assignmentId }: { assignmentId: string }) {
           {dispute.messages.length > 0 && (
             <ul className={styles.versions} style={{ margin: "6px 0" }}>
               {dispute.messages.map((message) => (
-                <li key={message.id}><strong>{who(message)}:</strong> <span style={{ whiteSpace: "pre-line" }}>{message.text}</span> <span className={styles.small}>{new Date(message.createdAt).toLocaleDateString(dateLocale())}</span></li>
+                <li key={message.id}><strong>{who(message)}:</strong> <span style={{ whiteSpace: "pre-line" }}>{message.text}</span> <span className={styles.small}>{new Date(message.createdAt).toLocaleDateString(dateLocale())}</span>
+                  {message.file && <> <button type="button" className={styles.ghost} style={{ minHeight: 36, padding: "0 8px" }} onClick={() => void saveFromApi(`/disputes/${dispute.id}/files/${message.id}`, message.file!.name).catch((caught) => setError(explainError(caught)))}>📎 {message.file.name}</button></>}
+                </li>
               ))}
             </ul>
           )}
@@ -91,6 +105,10 @@ export function DisputesBlock({ assignmentId }: { assignmentId: string }) {
                 onChange={(event) => setReply((current) => ({ ...current, [dispute.id]: event.target.value }))} />
               <div className={styles.row}>
                 <button className={styles.secondary} disabled={busy || (reply[dispute.id] ?? "").trim().length < 2} onClick={() => void send(dispute.id)}>{t("Отправить")}</button>
+                <label className={styles.ghost} style={{ cursor: busy ? "not-allowed" : "pointer" }}>
+                  📎 {t("Скриншот или PDF")}
+                  <input type="file" hidden disabled={busy} accept=".png,.jpg,.jpeg,.webp,.pdf" onChange={(event) => { attach(dispute.id, event.target.files?.[0]); event.target.value = ""; }} />
+                </label>
                 {dispute.canWithdraw && <button className={styles.ghost} disabled={busy} onClick={() => withdraw(dispute.id)}>{t("Отозвать спор")}</button>}
               </div>
             </div>

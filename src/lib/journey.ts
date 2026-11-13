@@ -233,6 +233,9 @@ const messages: Record<string, string> = {
   QUICK_EDIT_NO_CHANGES: t("Ничего не поменялось."),
   QUICK_EDIT_CHECKS_FAILED: t("Изменения приняты, но новая сборка не прошла обязательные проверки, поэтому на сайте пока прежняя версия. Откройте этап «Сборка», чтобы увидеть, что исправить."),
   QUICK_EDIT_CONTACT_INVALID: t("Проверьте контакт: телефон — только цифры, пробелы, скобки, + и -; почта — вида name@mail.kz."),
+  ROLLBACK_VERSION_NOT_FOUND: t("Эту версию нельзя вернуть: вернуть можно только сборку, которая уже была на сайте."),
+  ROLLBACK_ALREADY_LIVE: t("Эта версия уже на сайте."),
+  PUBLICATION_CHANGED: t("Пока вы смотрели, сайт уже обновили. Обновите страницу."),
   PROJECT_BALANCE_LOW: t("На балансе проекта не хватает денег на запрос к ИИ. Владелец может пополнить баланс на странице проекта — работать вручную можно и без этого."),
   TOP_UP_AMOUNT_INVALID: t("Сумма пополнения вне допустимых границ."),
   PAYMENTS_NOT_CONFIGURED: t("Оплата пока не подключена на этом сервере BuildPath."),
@@ -287,7 +290,7 @@ export type Publication = {
   domainsAvailable: boolean;
   domainCheck?: { ok: boolean; found: string[] };
   acceptedBuild: { versionId: string; versionNumber: number; hasForm: boolean } | null;
-  outdated: boolean; canManage: boolean; suggestedSlug: string; baseDomain: string; urlTemplate: string;
+  outdated: boolean; rolledBack?: boolean; canManage: boolean; suggestedSlug: string; baseDomain: string; urlTemplate: string;
   channels: { telegram: { configured: boolean; linked: boolean; username: string | null; botUsername: string | null }; email: { configured: boolean; address: string } };
   leadsCount: number;
 };

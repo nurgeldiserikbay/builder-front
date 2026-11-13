@@ -2,6 +2,7 @@
 
 import { t } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
+import PhotoCrop from "./photo-crop";
 import { explainError, images, shrinkPhoto, type Content, type Design, type FieldDefinition, type Offer, type PageSeo, type Preset, type ProjectImage, type Section, type SectionType, type SitemapPage } from "@/lib/journey";
 import styles from "../../../journey.module.css";
 
@@ -115,10 +116,11 @@ export function usePhotoLibrary(projectId: string) {
 }
 type PhotoLibrary = ReturnType<typeof usePhotoLibrary>;
 
-export function PhotoControl({ projectId, library, imageId, onSelect, disabled, sectionLabel }: {
-  projectId: string; library: PhotoLibrary; imageId: string | null; onSelect: (id: string | null) => void; disabled: boolean; sectionLabel: string;
+export function PhotoControl({ projectId, library, imageId, onSelect, disabled, sectionLabel, addLabel }: {
+  projectId: string; library: PhotoLibrary; imageId: string | null; onSelect: (id: string | null) => void; disabled: boolean; sectionLabel: string; addLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [cropping, setCropping] = useState(false);
   const [pending, setPending] = useState<{ blob: Blob; url: string } | null>(null);
   const [alt, setAlt] = useState("");
   const [busy, setBusy] = useState(false);
@@ -155,6 +157,10 @@ export function PhotoControl({ projectId, library, imageId, onSelect, disabled, 
     try { library.apply(await images.remove(projectId, id)); } catch (problem) { setError(explainError(problem)); }
   };
 
+  if (imageId && !open && cropping && current) {
+    return <PhotoCrop projectId={projectId} image={current} url={library.urls[current.id]} onCancel={() => setCropping(false)}
+      onDone={async (created) => { await library.reload(); onSelect(created.id); setCropping(false); }} />;
+  }
   if (imageId && !open) {
     return (
       <div className={styles.field}>
@@ -171,6 +177,7 @@ export function PhotoControl({ projectId, library, imageId, onSelect, disabled, 
         {!disabled && (
           <div className={styles.row}>
             <button type="button" className={styles.secondary} onClick={() => setOpen(true)}>{t("Заменить")}</button>
+            {current && <button type="button" className={styles.secondary} onClick={() => setCropping(true)}>{t("Обрезать")}</button>}
             <button type="button" className={styles.danger} onClick={() => onSelect(null)}>{t("Убрать фото из блока")}</button>
           </div>
         )}
@@ -178,7 +185,7 @@ export function PhotoControl({ projectId, library, imageId, onSelect, disabled, 
     );
   }
   if (disabled) return null;
-  if (!open) return <button type="button" className={styles.secondary} onClick={() => setOpen(true)}>{t("+ Добавить фото")}</button>;
+  if (!open) return <button type="button" className={styles.secondary} onClick={() => setOpen(true)}>{addLabel ?? t("+ Добавить фото")}</button>;
   const others = (library.items ?? []).filter((item) => item.id !== imageId);
   return (
     <div className={styles.photoPanel} aria-label={t("Фото для блока «{0}»", [sectionLabel])}>
@@ -220,6 +227,51 @@ export function PhotoControl({ projectId, library, imageId, onSelect, disabled, 
         </>
       )}
       {error && <p className={`${styles.notice} ${styles.warn}`} role="alert">{error}</p>}
+    </div>
+  );
+}
+
+const GALLERY_LIMIT = 12;
+
+/** Extra photos of a section shown as a grid on the site; order is the order on the page. */
+function GalleryControl({ projectId, library, ids, onChange, disabled, sectionLabel }: {
+  projectId: string; library: PhotoLibrary; ids: string[]; onChange: (next: string[]) => void; disabled: boolean; sectionLabel: string;
+}) {
+  const move = (index: number, by: number) => {
+    const next = [...ids];
+    const [item] = next.splice(index, 1);
+    next.splice(Math.max(0, Math.min(next.length, index + by)), 0, item!);
+    onChange(next);
+  };
+  if (!ids.length && disabled) return null;
+  return (
+    <div className={styles.field}>
+      <span className={styles.label}>{t("Галерея")}{ids.length ? ` · ${ids.length}/${GALLERY_LIMIT}` : ""}</span>
+      {ids.length === 0 && <span className={styles.why}>{t("Несколько фото сеткой под текстом блока — например, работы или интерьер.")}</span>}
+      {ids.length > 0 && (
+        <div className={styles.photoGrid}>
+          {ids.map((id, index) => {
+            const item = library.items?.find((photo) => photo.id === id);
+            return (
+              <div key={id} className={styles.photoCell}>
+                {library.urls[id] ? <img src={library.urls[id]} alt={item?.alt ?? ""} style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8 }} /> : <div style={{ aspectRatio: "1", background: "#eee", borderRadius: 8 }} />}
+                {!item && <span className={styles.why}>{t("Фото удалено")}</span>}
+                {!disabled && (
+                  <span style={{ display: "flex", gap: 4 }}>
+                    <button type="button" className={styles.ghost} disabled={index === 0} onClick={() => move(index, -1)} aria-label={t("Раньше")}>←</button>
+                    <button type="button" className={styles.ghost} disabled={index === ids.length - 1} onClick={() => move(index, 1)} aria-label={t("Позже")}>→</button>
+                    <button type="button" className={styles.ghost} onClick={() => onChange(ids.filter((other) => other !== id))} aria-label={t("Убрать из галереи")}>✕</button>
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {!disabled && ids.length < GALLERY_LIMIT && (
+        <PhotoControl projectId={projectId} library={library} imageId={null} disabled={disabled} sectionLabel={sectionLabel} addLabel={t("+ Добавить в галерею")}
+          onSelect={(id) => { if (id && !ids.includes(id)) onChange([...ids, id]); }} />
+      )}
     </div>
   );
 }
@@ -323,6 +375,10 @@ export function ContentEditor({ projectId, content, onChange, sectionTypes, disa
           {(photoTypes.includes(section.type) || section.imageId) && (
             <PhotoControl projectId={projectId} library={library} imageId={section.imageId ?? null} disabled={disabled} sectionLabel={sectionTypes[section.type]}
               onSelect={(id) => updateSection(section.key, { imageId: id })} />
+          )}
+          {(photoTypes.includes(section.type) || (section.gallery?.length ?? 0) > 0) && (
+            <GalleryControl projectId={projectId} library={library} ids={section.gallery ?? []} disabled={disabled} sectionLabel={sectionTypes[section.type]}
+              onChange={(next) => updateSection(section.key, { gallery: next.length ? next : undefined })} />
           )}
           {aiAvailable && !disabled && <AskAiInline onAsk={(instruction) => onAskAi(section.key, instruction)} />}
         </article>

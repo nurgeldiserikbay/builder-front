@@ -9,7 +9,8 @@ import styles from "../journey.module.css";
 type Role = { key: string; title: string; explanation: string; invitable: boolean };
 type Member = { id: string; userId: string; role: string; roleTitle: string; you: boolean; name: string; email: string | null; since: string; canChange: boolean; stageKeys: string[] };
 type Invitation = { id: string; email: string; role: string; roleTitle: string; expiresAt: string; expired: boolean };
-type Team = { viewerRole: string; canManage: boolean; limit: number; roles: Role[]; members: Member[]; invitations: Invitation[]; affectedStages?: string[]; stages: Array<{ key: string; title: string }> };
+type Ownership = { offer: { id: string; toUserId: string; toName: string; keepAccess: boolean; expiresAt: string; forYou: boolean } | null; canOffer: boolean; blockers: Array<{ code: string; text: string }> };
+type Team = { viewerRole: string; canManage: boolean; limit: number; roles: Role[]; members: Member[]; invitations: Invitation[]; affectedStages?: string[]; stages: Array<{ key: string; title: string }>; ownership?: Ownership };
 
 /** The project team: who is in it with which role; the owner and managers invite, change roles and remove. */
 export default function TeamCard({ projectId }: { projectId: string }) {
@@ -133,6 +134,10 @@ export default function TeamCard({ projectId }: { projectId: string }) {
         </section>
       )}
 
+      {team.ownership && (team.ownership.offer || team.ownership.canOffer) && (
+        <OwnershipCard projectId={projectId} team={team} ownership={team.ownership} onChange={() => void load()} />
+      )}
+
       <section className={styles.card} aria-labelledby="team-roles-title">
         <h2 id="team-roles-title" className={styles.h2}>{t("Что может каждая роль")}</h2>
         <ul className={styles.list}>{team.roles.map((item) => <li key={item.key}><strong>{item.title}</strong> — {item.explanation}</li>)}</ul>
@@ -153,5 +158,85 @@ function StagePicker({ stages, value, onChange, disabled }: { stages: Array<{ ke
         </label>
       ))}
     </div>
+  );
+}
+
+/**
+ * Handing the project to another member. The owner offers; the recipient sees the terms and accepts or declines.
+ * Money and credentials of the owner tied to the project block the handover, and the card says what to settle.
+ */
+function OwnershipCard({ projectId, team, ownership, onChange }: { projectId: string; team: Team; ownership: Ownership; onChange: () => void }) {
+  const candidates = team.members.filter((member) => !member.you && member.role !== "viewer");
+  const [to, setTo] = useState(candidates[0]?.id ?? "");
+  const [keepAccess, setKeepAccess] = useState(true);
+  const [confirmName, setConfirmName] = useState("");
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const offer = ownership.offer;
+  const blocked = ownership.blockers.length > 0;
+
+  async function send(path: string, body?: unknown) {
+    setBusy(true); setError("");
+    try { await api(`/projects/${projectId}/team/ownership${path}`, { method: "POST", ...(body ? { body: JSON.stringify(body) } : {}) }); onChange(); if (path === "/accept") window.location.reload(); }
+    catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
+  }
+
+  return (
+    <section className={styles.card} aria-labelledby="ownership-title">
+      <p className={styles.kicker}>{t("Владелец проекта")}</p>
+      <h2 id="ownership-title" className={styles.h2}>{offer?.forYou ? t("Вам предлагают стать владельцем") : t("Передать проект")}</h2>
+      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
+      {blocked && (
+        <div className={`${styles.notice} ${styles.warn}`}>
+          <p style={{ margin: "0 0 6px" }}><strong>{t("Сейчас передать нельзя:")}</strong></p>
+          <ul className={styles.list} style={{ margin: 0 }}>{ownership.blockers.map((item) => <li key={item.code}>{item.text}</li>)}</ul>
+        </div>
+      )}
+      {offer?.forYou && (
+        <>
+          <p>{t("Если вы согласитесь, проект перейдёт в ваш аккаунт и будет считаться в вашем тарифе: место проекта, опубликованный сайт и команда. Запросы к ИИ, будущие оплаты специалистам и публикация — от вашего имени.")}</p>
+          <p className={styles.small}>{offer.keepAccess ? t("Прежний владелец останется в команде администратором — вы сможете это изменить.") : t("Прежний владелец потеряет доступ к проекту.")}{" "}{t("Предложение действует до {0}.", [new Date(offer.expiresAt).toLocaleDateString(dateLocale())])}</p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" className={styles.button} disabled={busy || blocked} onClick={() => void send("/accept")}>{busy ? t("Подождите…") : t("Стать владельцем")}</button>
+            <button type="button" className={styles.ghost} disabled={busy} onClick={() => void send("/decline")}>{t("Отказаться")}</button>
+          </div>
+        </>
+      )}
+      {offer && !offer.forYou && (
+        <>
+          <p>{t("Вы предложили передать проект: {0}. Пока предложение не принято, ничего не меняется.", [offer.toName])}</p>
+          <p className={styles.small}>{t("Предложение действует до {0}.", [new Date(offer.expiresAt).toLocaleDateString(dateLocale())])}</p>
+          <button type="button" className={styles.secondary} disabled={busy} onClick={() => void send("/cancel")}>{t("Отменить предложение")}</button>
+        </>
+      )}
+      {!offer && ownership.canOffer && (
+        candidates.length === 0 ? <p className={styles.small}>{t("Передать проект можно участнику команды, кроме наблюдателя. Сначала пригласите его.")}</p> : !open ? (
+          <>
+            <p className={styles.small}>{t("Новый владелец получит проект в свой аккаунт и тариф. Он должен согласиться; до этого ничего не меняется.")}</p>
+            <button type="button" className={styles.secondary} disabled={blocked} onClick={() => setOpen(true)}>{t("Передать проект…")}</button>
+          </>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            <label className={styles.small}>{t("Кому")}
+              <select className={styles.select} value={to} onChange={(event) => setTo(event.target.value)}>
+                {candidates.map((member) => <option key={member.id} value={member.id}>{member.name} · {member.roleTitle}</option>)}
+              </select>
+            </label>
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <input type="checkbox" checked={keepAccess} onChange={(event) => setKeepAccess(event.target.checked)} style={{ width: 20, height: 20, flex: "none" }} />
+              <span className={styles.small}>{t("Остаться в команде администратором")}</span>
+            </label>
+            <label className={styles.small}>{t("Чтобы подтвердить, введите название проекта")}
+              <input className={styles.input} value={confirmName} onChange={(event) => setConfirmName(event.target.value)} autoComplete="off" />
+            </label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" className={styles.danger} disabled={busy || !to || !confirmName.trim()} onClick={() => void send("", { toMemberId: to, keepAccess, confirmName })}>{busy ? t("Подождите…") : t("Предложить передачу")}</button>
+              <button type="button" className={styles.ghost} onClick={() => setOpen(false)}>{t("Отмена")}</button>
+            </div>
+          </div>
+        )
+      )}
+    </section>
   );
 }

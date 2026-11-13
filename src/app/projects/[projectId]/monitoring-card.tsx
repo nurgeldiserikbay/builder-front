@@ -85,7 +85,8 @@ export default function MonitoringCard({ projectId }: { projectId: string }) {
               ))}
             </ul>
           </>
-        ) : <p className={styles.small} style={{ margin: "0 0 6px" }}>{t("Проверим HTTPS, защитные заголовки и robots.txt по адресу, который видят посетители.")}</p>}
+        ) : <p className={styles.small} style={{ margin: "0 0 6px" }}>{t("Проверим HTTPS, срок сертификата, защитные заголовки и robots.txt по адресу, который видят посетители.")}</p>}
+        <p className={styles.small} style={{ margin: "0 0 6px" }}>{t("Раз в сутки BuildPath проверяет адрес сам и напишет вам, если что-то из того, что было в порядке, сломалось — например, сертификат скоро закончится.")}</p>
         {data.canChange && <button type="button" className={styles.ghost} disabled={busy} onClick={() => void checkAddress()}>{busy ? t("Проверяем…") : live ? t("Проверить ещё раз") : t("Проверить адрес")}</button>}
       </div>
       <label style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, minHeight: 40 }}>

@@ -273,6 +273,11 @@ const messages: Record<string, string> = {
   IMAGE_LIMIT_REACHED: t("В проекте уже 30 фото. Удалите ненужные, чтобы добавить новые."),
   IMAGE_IN_USE: t("Это фото стоит на сайте. Сначала уберите его из блока."),
   IMAGE_NOT_FOUND: t("Фото не найдено — возможно, его уже удалили."),
+  PORTFOLIO_PHOTO_LIMIT: t("Загружено слишком много фото. Сохраните карточку — фото, которые не стоят на работах, удалятся, — и попробуйте снова."),
+  PORTFOLIO_PHOTO_IN_USE: t("Это фото стоит на работе. Сначала уберите его с работы."),
+  PHOTO_NOT_FOUND: t("Фото не найдено — возможно, его уже удалили."),
+  QUALITY_PROFILE_FORBIDDEN: t("Профиль проверки качества выбирают владелец или менеджер проекта."),
+  QUALITY_PROFILE_NOT_FOUND: t("Такого профиля проверки нет или он сейчас не действует. Выберите другой."),
   IMAGE_ALT_TOO_LONG: t("Описание фото слишком длинное — до 200 символов."),
   BLOCKING_COMMENTS_OPEN: t("Есть открытые блокирующие замечания — их нужно закрыть до приёмки."),
   NOT_YOUR_TURN: t("Сейчас очередь другого проверяющего."),
@@ -351,6 +356,7 @@ export function explainError(error: unknown): string {
   if (code.startsWith("PORTFOLIO_URL_INVALID")) return t("Ссылка на работу должна начинаться с https:// и вести на сайт (не на IP-адрес и не на localhost).");
   if (code.startsWith("PORTFOLIO_URL_DUPLICATE")) return t("Эта ссылка уже есть в портфолио.");
   if (code.startsWith("PORTFOLIO_TITLE_INVALID")) return t("У каждой работы должно быть название — от 3 до 80 символов.");
+  if (code.startsWith("PORTFOLIO_PHOTO_INVALID")) return t("Фото на работе не найдено — загрузите его ещё раз.");
   if (code.startsWith("PORTFOLIO_DESCRIPTION_TOO_LONG")) return t("Описание работы — не больше 500 символов.");
   if (code.startsWith("STAGE_INCOMPLETE")) return t("Этап ещё не заполнен до конца — посмотрите список «Чего не хватает».");
   if (code.startsWith("FIELD_TOO_LONG")) return t("Один из текстов слишком длинный. Сократите его.");
@@ -459,6 +465,20 @@ export const images = {
   async objectUrl(projectId: string, imageId: string): Promise<string> {
     const response = await fetch(`${API_BASE_URL}/projects/${projectId}/images/${imageId}`, { credentials: "include" });
     if (!response.ok) throw new ApiError(response.status, "IMAGE_NOT_FOUND");
+    return URL.createObjectURL(await response.blob());
+  },
+};
+
+/** Photos on specialist portfolio works; served only with the session cookie, so fetched as blobs. */
+export const portfolioPhotos = {
+  upload: (file: Blob) => {
+    const form = new FormData();
+    form.append("file", file, "photo.jpg");
+    return api<{ id: string; width: number; height: number }>("/me/specialist-profile/photos", { method: "POST", body: form });
+  },
+  async objectUrl(photoId: string): Promise<string> {
+    const response = await fetch(`${API_BASE_URL}/specialist-photos/${photoId}`, { credentials: "include" });
+    if (!response.ok) throw new ApiError(response.status, "PHOTO_NOT_FOUND");
     return URL.createObjectURL(await response.blob());
   },
 };

@@ -9,7 +9,7 @@ import styles from "../journey.module.css";
 type Role = { key: string; title: string; explanation: string; invitable: boolean };
 type Member = { id: string; userId: string; role: string; roleTitle: string; you: boolean; name: string; email: string | null; since: string; canChange: boolean; stageKeys: string[] };
 type Invitation = { id: string; email: string; role: string; roleTitle: string; expiresAt: string; expired: boolean };
-type Ownership = { offer: { id: string; toUserId: string; toName: string; keepAccess: boolean; expiresAt: string; forYou: boolean } | null; canOffer: boolean; blockers: Array<{ code: string; text: string }> };
+type Ownership = { offer: { id: string; toUserId: string; toName: string; keepAccess: boolean; expiresAt: string; forYou: boolean } | null; canOffer: boolean; blockers: Array<{ code: string; text: string }>; invite?: { email: string; expiresAt: string } | null };
 type Team = { viewerRole: string; canManage: boolean; limit: number; roles: Role[]; members: Member[]; invitations: Invitation[]; affectedStages?: string[]; stages: Array<{ key: string; title: string }>; ownership?: Ownership };
 
 /** The project team: who is in it with which role; the owner and managers invite, change roles and remove. */
@@ -134,7 +134,7 @@ export default function TeamCard({ projectId }: { projectId: string }) {
         </section>
       )}
 
-      {team.ownership && (team.ownership.offer || team.ownership.canOffer) && (
+      {team.ownership && (team.ownership.offer || team.ownership.canOffer || team.ownership.invite) && (
         <OwnershipCard projectId={projectId} team={team} ownership={team.ownership} onChange={() => void load()} />
       )}
 
@@ -167,7 +167,11 @@ function StagePicker({ stages, value, onChange, disabled }: { stages: Array<{ ke
  */
 function OwnershipCard({ projectId, team, ownership, onChange }: { projectId: string; team: Team; ownership: Ownership; onChange: () => void }) {
   const candidates = team.members.filter((member) => !member.you && member.role !== "viewer");
-  const [to, setTo] = useState(candidates[0]?.id ?? "");
+  // A member of the team, or OUTSIDE — someone invited by e-mail who gets the offer when they join.
+  const OUTSIDE = "__outside";
+  const [to, setTo] = useState(candidates[0]?.id ?? OUTSIDE);
+  const [email, setEmail] = useState("");
+  const [sentTo, setSentTo] = useState<{ url: string; emailSent: boolean } | null>(null);
   const [keepAccess, setKeepAccess] = useState(true);
   const [confirmName, setConfirmName] = useState("");
   const [open, setOpen] = useState(false);
@@ -180,6 +184,13 @@ function OwnershipCard({ projectId, team, ownership, onChange }: { projectId: st
     setBusy(true); setError("");
     try { await api(`/projects/${projectId}/team/ownership${path}`, { method: "POST", ...(body ? { body: JSON.stringify(body) } : {}) }); onChange(); if (path === "/accept") window.location.reload(); }
     catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
+  }
+  async function inviteOutside() {
+    setBusy(true); setError("");
+    try {
+      const result = await api<{ inviteUrl: string; emailSent: boolean }>(`/projects/${projectId}/team/ownership-invite`, { method: "POST", body: JSON.stringify({ email: email.trim(), keepAccess, confirmName }) });
+      setSentTo({ url: result.inviteUrl, emailSent: result.emailSent }); setOpen(false); onChange();
+    } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
   }
 
   return (
@@ -210,8 +221,17 @@ function OwnershipCard({ projectId, team, ownership, onChange }: { projectId: st
           <button type="button" className={styles.secondary} disabled={busy} onClick={() => void send("/cancel")}>{t("Отменить предложение")}</button>
         </>
       )}
+      {!offer && ownership.invite && (
+        <>
+          <p>{t("Вы пригласили {0} принять проект. Когда он войдёт в команду по ссылке из письма, он получит предложение и сам решит. До этого ничего не меняется.", [ownership.invite.email])}</p>
+          <p className={styles.small}>{t("Приглашение действует до {0}. Отменить его можно в списке приглашений выше.", [new Date(ownership.invite.expiresAt).toLocaleDateString(dateLocale())])}</p>
+          {sentTo && !sentTo.emailSent && (
+            <p className={`${styles.notice} ${styles.warn}`}>{t("Письмо не отправлено — передайте ссылку сами:")} <span style={{ overflowWrap: "anywhere" }}>{sentTo.url}</span></p>
+          )}
+        </>
+      )}
       {!offer && ownership.canOffer && (
-        candidates.length === 0 ? <p className={styles.small}>{t("Передать проект можно участнику команды, кроме наблюдателя. Сначала пригласите его.")}</p> : !open ? (
+        !open ? (
           <>
             <p className={styles.small}>{t("Новый владелец получит проект в свой аккаунт и тариф. Он должен согласиться; до этого ничего не меняется.")}</p>
             <button type="button" className={styles.secondary} disabled={blocked} onClick={() => setOpen(true)}>{t("Передать проект…")}</button>
@@ -221,8 +241,15 @@ function OwnershipCard({ projectId, team, ownership, onChange }: { projectId: st
             <label className={styles.small}>{t("Кому")}
               <select className={styles.select} value={to} onChange={(event) => setTo(event.target.value)}>
                 {candidates.map((member) => <option key={member.id} value={member.id}>{member.name} · {member.roleTitle}</option>)}
+                <option value={OUTSIDE}>{t("Человеку не из команды — по почте")}</option>
               </select>
             </label>
+            {to === OUTSIDE && (
+              <label className={styles.small}>{t("Почта нового владельца")}
+                <input className={styles.input} type="email" inputMode="email" autoComplete="off" value={email} maxLength={254} onChange={(event) => setEmail(event.target.value)} />
+                <span className={styles.why}>{t("Он получит письмо, войдёт или зарегистрируется с этой почтой и попадёт в команду администратором, а затем увидит условия передачи и решит. Тариф с командой для этого не нужен.")}</span>
+              </label>
+            )}
             <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
               <input type="checkbox" checked={keepAccess} onChange={(event) => setKeepAccess(event.target.checked)} style={{ width: 20, height: 20, flex: "none" }} />
               <span className={styles.small}>{t("Остаться в команде администратором")}</span>
@@ -231,7 +258,8 @@ function OwnershipCard({ projectId, team, ownership, onChange }: { projectId: st
               <input className={styles.input} value={confirmName} onChange={(event) => setConfirmName(event.target.value)} autoComplete="off" />
             </label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button type="button" className={styles.danger} disabled={busy || !to || !confirmName.trim()} onClick={() => void send("", { toMemberId: to, keepAccess, confirmName })}>{busy ? t("Подождите…") : t("Предложить передачу")}</button>
+              <button type="button" className={styles.danger} disabled={busy || !to || !confirmName.trim() || (to === OUTSIDE && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))}
+                onClick={() => void (to === OUTSIDE ? inviteOutside() : send("", { toMemberId: to, keepAccess, confirmName }))}>{busy ? t("Подождите…") : to === OUTSIDE ? t("Пригласить и предложить проект") : t("Предложить передачу")}</button>
               <button type="button" className={styles.ghost} onClick={() => setOpen(false)}>{t("Отмена")}</button>
             </div>
           </div>

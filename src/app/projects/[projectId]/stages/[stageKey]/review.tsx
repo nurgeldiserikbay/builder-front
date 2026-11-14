@@ -16,6 +16,7 @@ export type ReviewFinding = {
 export type StageReview = {
   rulesVersion: string; score: number; blocking: number; findings: ReviewFinding[]; uncoveredBlocking: string[];
   overrides: Array<{ id: string; findingIds: string[]; reason: string; author: string; createdAt: string }>;
+  ai?: { createdAt: string; findings: Array<Omit<ReviewFinding, "code" | "overridden" | "severity"> & { severity: "important" | "minor" }> } | null;
 };
 
 const severityText = () => ({ blocking: t("Блокирует переход"), important: t("Важно"), minor: t("Мелочь") });
@@ -60,6 +61,33 @@ export default function ReviewPanel({ projectId, stageKey, versionId, review, ca
     field?.focus();
   };
 
+  type Item = { id: string; severity: ReviewFinding["severity"]; category: ReviewFinding["category"]; where: string; message: string; fix: string; overridden?: boolean };
+  const renderItem = (finding: Item, advice: boolean) => (
+            <li key={finding.id} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "10px 12px" }}>
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: pickable && !finding.overridden ? "pointer" : "default" }}>
+                {pickable && !finding.overridden && (
+                  <input type="checkbox" checked={chosen.includes(finding.id)} onChange={() => toggle(finding.id)} style={{ width: 22, height: 22, marginTop: 2, flex: "none" }}
+                    aria-label={t("Выбрать замечание «{0}»", [finding.message])} />
+                )}
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                    <span className={`${styles.chip} ${styles[severityTone[finding.severity]]}`} style={{ marginTop: 0, fontSize: 13 }}>{severity[finding.severity]}</span>
+                    {advice && <span className={`${styles.chip} ${styles.closed}`} style={{ marginTop: 0, fontSize: 13 }}>{t("Совет ИИ")}</span>}
+                    {finding.overridden && <span className={`${styles.chip} ${styles.closed}`} style={{ marginTop: 0, fontSize: 13 }}>{t("Пропущено с объяснением")}</span>}
+                    <span className={styles.small} style={{ margin: 0 }}>{category[finding.category]} · {finding.where}</span>
+                  </span>
+                  <span style={{ display: "block", marginTop: 6 }}>{finding.message}</span>
+                  <span className={styles.small} style={{ display: "block", margin: "4px 0 0" }}><b>{t("Что сделать.")}</b> {finding.fix}</span>
+                </span>
+              </label>
+            </li>
+  );
+  const aiFindings = review.ai?.findings ?? [];
+  const askAi = () => act("ai", async () => {
+    const result = await api<{ findings: unknown[] }>(`/projects/${projectId}/stages/${stageKey}/review/ai`, { method: "POST" });
+    await onChanged(result.findings.length ? t("ИИ посмотрел версию и дал советов: {0}.", [result.findings.length]) : t("ИИ посмотрел версию и не нашёл, что улучшить."));
+  });
+
   return (
     <section className={styles.card} aria-labelledby="review-title">
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
@@ -73,29 +101,28 @@ export default function ReviewPanel({ projectId, stageKey, versionId, review, ca
 
       {review.findings.length > 0 && (
         <ul style={{ listStyle: "none", padding: 0, margin: "12px 0 0", display: "grid", gap: 10 }} aria-label={t("Замечания проверки")}>
-          {review.findings.map((finding) => (
-            <li key={finding.id} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "10px 12px" }}>
-              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: pickable && !finding.overridden ? "pointer" : "default" }}>
-                {pickable && !finding.overridden && (
-                  <input type="checkbox" checked={chosen.includes(finding.id)} onChange={() => toggle(finding.id)} style={{ width: 22, height: 22, marginTop: 2, flex: "none" }}
-                    aria-label={t("Выбрать замечание «{0}»", [finding.message])} />
-                )}
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                    <span className={`${styles.chip} ${styles[severityTone[finding.severity]]}`} style={{ marginTop: 0, fontSize: 13 }}>{severity[finding.severity]}</span>
-                    {finding.overridden && <span className={`${styles.chip} ${styles.closed}`} style={{ marginTop: 0, fontSize: 13 }}>{t("Пропущено с объяснением")}</span>}
-                    <span className={styles.small} style={{ margin: 0 }}>{category[finding.category]} · {finding.where}</span>
-                  </span>
-                  <span style={{ display: "block", marginTop: 6 }}>{finding.message}</span>
-                  <span className={styles.small} style={{ display: "block", margin: "4px 0 0" }}><b>{t("Что сделать.")}</b> {finding.fix}</span>
-                </span>
-              </label>
-            </li>
-          ))}
+          {review.findings.map((finding) => renderItem(finding, false))}
         </ul>
       )}
 
-      {open.length > 0 && (
+      <div style={{ marginTop: 16, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+        <p className={styles.label} style={{ margin: "0 0 4px" }}>{t("Советы ИИ")}</p>
+        <p className={styles.small} style={{ marginTop: 0 }}>{review.ai
+          ? t("ИИ посмотрел эту версию {0}. Советы не блокируют переход и не меняют оценку: ИИ может ошибаться, решайте сами.", [new Date(review.ai.createdAt).toLocaleString(dateLocale())])
+          : t("ИИ ещё не смотрел эту версию. Он ищет то, что правила не ловят: противоречия с прошлыми этапами, пропущенные случаи, двусмысленные формулировки. Это один запрос к ИИ.")}</p>
+        {aiFindings.length > 0 && (
+          <ul style={{ listStyle: "none", padding: 0, margin: "8px 0 0", display: "grid", gap: 10 }} aria-label={t("Советы ИИ")}>
+            {aiFindings.map((finding) => renderItem(finding, true))}
+          </ul>
+        )}
+        {canFix && aiConfigured && (
+          <button className={`${styles.secondary} ${styles.block}`} style={{ marginTop: 10 }} disabled={Boolean(busy)} onClick={askAi}>
+            {busy === "ai" ? t("ИИ проверяет…") : review.ai ? t("Попросить ИИ проверить ещё раз") : t("Попросить ИИ проверить")}
+          </button>
+        )}
+      </div>
+
+      {(open.length > 0 || aiFindings.length > 0) && (
         <div style={{ display: "grid", gap: 8, marginTop: 14 }}>
           {canFix && aiConfigured && (
             <button className={`${styles.button} ${styles.block}`} disabled={Boolean(busy) || chosen.length === 0} onClick={fix}>

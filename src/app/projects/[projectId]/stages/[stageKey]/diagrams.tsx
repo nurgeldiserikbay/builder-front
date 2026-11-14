@@ -205,3 +205,181 @@ export function KindLegend() {
     </div>
   );
 }
+
+type FlowScreen = { key: string; title: string; role: string; links: string[] };
+
+/**
+ * Screens of each role as a map: the role's first screen on top, then the screens one click away, and so on. Only links
+ * that lead deeper are drawn; links back are counted in the box. Screens that cannot be reached and links to another
+ * role's screens are marked red — the same things the quality review reports.
+ */
+export function ScreenFlowDiagram({ screens, roles }: { screens: FlowScreen[]; roles: Array<{ key: string; name: string }> }) {
+  const byKey = new Map(screens.map((screen) => [screen.key, screen]));
+  const roleKeys = [...roles.map((role) => role.key), ...new Set(screens.map((screen) => screen.role).filter((key) => !roles.some((role) => role.key === key)))];
+  const box = { width: 124, height: 50 }; const gapX = 14; const gapY = 36; const pad = 6;
+  return (
+    <>
+      {roleKeys.map((roleKey) => {
+        const own = screens.filter((screen) => screen.role === roleKey);
+        if (!own.length) return null;
+        const roleName = roles.find((role) => role.key === roleKey)?.name ?? roleKey;
+        // Breadth-first from the role's first screen: the level is the number of clicks.
+        const level = new Map<string, number>([[own[0]!.key, 0]]);
+        const parent = new Map<string, string>();
+        const queue = [own[0]!.key];
+        while (queue.length) {
+          const current = queue.shift()!;
+          for (const next of byKey.get(current)?.links ?? []) {
+            const target = byKey.get(next);
+            if (target && target.role === roleKey && !level.has(next)) { level.set(next, level.get(current)! + 1); parent.set(next, current); queue.push(next); }
+          }
+        }
+        const rows: FlowScreen[][] = [];
+        for (const screen of own) if (level.has(screen.key)) (rows[level.get(screen.key)!] ??= []).push(screen);
+        const lost = own.filter((screen) => !level.has(screen.key));
+        if (lost.length) rows.push(lost);
+        const widest = Math.max(...rows.map((row) => row.length));
+        const width = pad * 2 + widest * box.width + (widest - 1) * gapX;
+        const lostTop = lost.length ? 18 : 0;
+        const height = pad * 2 + rows.length * box.height + (rows.length - 1) * gapY + lostTop;
+        const position = new Map<string, { x: number; y: number }>();
+        rows.forEach((row, r) => {
+          const rowWidth = row.length * box.width + (row.length - 1) * gapX;
+          const left = (width - rowWidth) / 2;
+          const y = pad + r * (box.height + gapY) + (lost.length && r === rows.length - 1 ? lostTop : 0);
+          row.forEach((screen, c) => position.set(screen.key, { x: left + c * (box.width + gapX), y }));
+        });
+        return (
+          <div key={roleKey} style={{ marginBottom: 12 }}>
+            <p className={styles.label} style={{ margin: "8px 0 0" }}>{roleName}</p>
+            <Scroll label={t("Схема переходов между экранами роли «{0}»", [roleName])}>
+              <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block", minWidth: width }}>
+                <defs>{arrowMarker(`flow-${roleKey}`, "#4b5550")}</defs>
+                {[...parent].map(([child, from]) => {
+                  const a = position.get(from)!; const b = position.get(child)!;
+                  const x1 = a.x + box.width / 2; const y1 = a.y + box.height; const x2 = b.x + box.width / 2; const y2 = b.y - 2;
+                  const mid = (y1 + y2) / 2;
+                  return <path key={child} d={`M${x1},${y1} V${mid} H${x2} V${y2}`} fill="none" stroke="#4b5550" strokeWidth={1.2} markerEnd={`url(#flow-${roleKey})`} />;
+                })}
+                {lost.length > 0 && <text x={pad} y={position.get(lost[0]!.key)!.y - 6} fontSize={11} fill="#b3261e" fontWeight={700}>{t("Сюда нельзя попасть")}</text>}
+                {own.map((screen) => {
+                  const at = position.get(screen.key)!;
+                  const unreachable = !level.has(screen.key);
+                  const foreign = screen.links.some((link) => byKey.get(link) && byKey.get(link)!.role !== roleKey);
+                  const broken = screen.links.some((link) => !byKey.has(link));
+                  const back = screen.links.filter((link) => byKey.get(link)?.role === roleKey && parent.get(link) !== screen.key).length;
+                  const danger = unreachable || foreign || broken;
+                  const notes = [back ? t("↩ ещё {0}", [back]) : "", foreign ? t("→ чужая роль") : "", broken ? t("→ нет экрана") : ""].filter(Boolean).join(" · ");
+                  return (
+                    <g key={screen.key}>
+                      <rect x={at.x} y={at.y} width={box.width} height={box.height} rx={8} fill={danger ? "#fdecea" : level.get(screen.key) === 0 ? "#e3f3ea" : "#fff"}
+                        stroke={danger ? "#b3261e" : "#13804f"} strokeWidth={1.2} strokeDasharray={unreachable ? "4 3" : undefined} />
+                      <foreignObject x={at.x + 4} y={at.y + 2} width={box.width - 8} height={box.height - 4}>
+                        <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", lineHeight: 1.2, overflow: "hidden" }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "#1c241f", wordBreak: "break-word" }}>{screen.title}</span>
+                          {notes && <span style={{ fontSize: 10, color: danger ? "#b3261e" : "#5b635e" }}>{notes}</span>}
+                        </div>
+                      </foreignObject>
+                    </g>
+                  );
+                })}
+              </svg>
+            </Scroll>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+type MapFeature = { key: string; title: string; roles: string[]; priority: "must" | "should" | "later" };
+
+/** Who does what: features down, roles across, the priority of each feature. A role without a tick anywhere does nothing. */
+export function FeatureRoleMap({ roles, features }: { roles: Array<{ key: string; name: string }>; features: MapFeature[] }) {
+  if (!roles.length || !features.length) return null;
+  const priority = { must: { text: t("обязательно"), color: "#13804f" }, should: { text: t("желательно"), color: "#2d6da3" }, later: { text: t("позже"), color: "#8a8f8a" } };
+  const cell: React.CSSProperties = { padding: "6px 8px", borderBottom: "1px solid #e1e6e2", fontSize: 13, verticalAlign: "top" };
+  return (
+    <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", margin: "8px 0" }}>
+      <table style={{ borderCollapse: "collapse", minWidth: 120 + roles.length * 84 }} aria-label={t("Карта функций по ролям")}>
+        <thead>
+          <tr>
+            <th style={{ ...cell, textAlign: "left", position: "sticky", left: 0, background: "var(--surface, #fff)" }}>{t("Функция")}</th>
+            {roles.map((role) => {
+              const idle = !features.some((feature) => feature.roles.includes(role.key));
+              return <th key={role.key} style={{ ...cell, textAlign: "center", color: idle ? "#b3261e" : undefined }} title={idle ? t("У роли нет функций") : undefined}>{role.name}{idle ? " !" : ""}</th>;
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {features.map((feature) => (
+            <tr key={feature.key}>
+              <td style={{ ...cell, position: "sticky", left: 0, background: "var(--surface, #fff)", maxWidth: 180 }}>
+                <span style={{ display: "block", fontWeight: 600 }}>{feature.title}</span>
+                <span style={{ fontSize: 11.5, color: priority[feature.priority].color }}>{priority[feature.priority].text}</span>
+              </td>
+              {roles.map((role) => <td key={role.key} style={{ ...cell, textAlign: "center", color: "#13804f", fontWeight: 800 }} aria-label={feature.roles.includes(role.key) ? t("да") : t("нет")}>{feature.roles.includes(role.key) ? "✓" : ""}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * The parts of the system: the person who uses it → what they see → the server, and below, in one group, everything the
+ * server works with (data, sign-in, notifications, integrations). With two parts or fewer it is a simple chain.
+ */
+export function ArchitectureDiagram({ who, components }: { who: string; components: Array<{ title: string; plain: string }> }) {
+  if (!components.length) return null;
+  const width = 300; const boxH = 58; const gap = 26; const small = { w: 132, h: 54, gapX: 12, gapY: 10 };
+  const chain = [{ title: who, plain: "" }, ...components.slice(0, 2)];
+  const rest = components.slice(2);
+  const chainBottom = 4 + chain.length * boxH + (chain.length - 1) * gap;
+  const rows = Math.ceil(rest.length / 2);
+  const groupTop = chainBottom + gap; const groupHead = 22;
+  const groupHeight = rest.length ? groupHead + rows * small.h + (rows - 1) * small.gapY + 12 : 0;
+  const height = (rest.length ? groupTop + groupHeight : chainBottom) + 6;
+  const label = (title: string, plain: string, size: number) => (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "center", lineHeight: 1.25, overflow: "hidden" }}>
+      <span style={{ fontSize: size, fontWeight: 800 }}>{title}</span>
+      {plain && <span style={{ fontSize: 10.5 }}>{plain.length > 80 ? `${plain.slice(0, 79)}…` : plain}</span>}
+    </div>
+  );
+  return (
+    <Scroll label={t("Схема архитектуры")}>
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block", minWidth: width, margin: "0 auto" }}>
+        <defs>{arrowMarker("arch-arrow", "#2d6da3")}</defs>
+        {chain.map((item, i) => {
+          const y = 4 + i * (boxH + gap);
+          const colors = i === 0 ? kindColors.client : kindColors.system;
+          return (
+            <g key={i}>
+              {i > 0 && <line x1={width / 2} y1={y - gap + 2} x2={width / 2} y2={y - 3} stroke="#2d6da3" strokeWidth={1.3} markerEnd="url(#arch-arrow)" />}
+              <rect x={4} y={y} width={width - 8} height={boxH} rx={10} fill={colors.fill} stroke={colors.stroke} strokeWidth={1.2} />
+              <foreignObject x={10} y={y + 3} width={width - 20} height={boxH - 6}><div style={{ height: "100%", color: colors.text }}>{label(item.title, item.plain, 12.5)}</div></foreignObject>
+            </g>
+          );
+        })}
+        {rest.length > 0 && (
+          <g>
+            <line x1={width / 2} y1={chainBottom + 2} x2={width / 2} y2={groupTop - 3} stroke="#2d6da3" strokeWidth={1.3} markerEnd="url(#arch-arrow)" />
+            <rect x={4} y={groupTop} width={width - 8} height={groupHeight} rx={12} fill="none" stroke="#2d6da3" strokeDasharray="5 4" />
+            <text x={14} y={groupTop + 15} fontSize={11} fill="#173a5a" fontWeight={700}>{t("С чем работает сервер")}</text>
+            {rest.map((item, i) => {
+              const x = 4 + 10 + (i % 2) * (small.w + small.gapX);
+              const y = groupTop + groupHead + Math.floor(i / 2) * (small.h + small.gapY);
+              return (
+                <g key={i}>
+                  <rect x={x} y={y} width={small.w} height={small.h} rx={8} fill={kindColors.system.fill} stroke={kindColors.system.stroke} strokeWidth={1} />
+                  <foreignObject x={x + 4} y={y + 2} width={small.w - 8} height={small.h - 4}><div style={{ height: "100%", color: kindColors.system.text }}>{label(item.title, "", 11.5)}</div></foreignObject>
+                </g>
+              );
+            })}
+          </g>
+        )}
+      </svg>
+    </Scroll>
+  );
+}

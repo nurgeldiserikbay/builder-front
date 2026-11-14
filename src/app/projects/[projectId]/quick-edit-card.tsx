@@ -5,12 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import styles from "../journey.module.css";
+import { HoursForm, ProductsForm, type QuickMaster, type QuickProduct } from "./quick-edit-data";
 
 type Contacts = { phone: string | null; messenger: string | null; email: string | null; address: string | null };
 type Pending = { stageKey: string; stageTitle: string; versionId: string; request: string; changes: string[] };
 type State = {
   available: boolean; reason: string | null; targets: Array<{ key: string; title: string; status: string | null }>; pending: Pending | null;
   aiConfigured: boolean; contacts: Contacts | null; locked: Record<string, string[]>;
+  products: QuickProduct[] | null; schedule: { masters: QuickMaster[] } | null;
   published?: { buildVersion: number; changes?: string[]; contacts?: Array<{ field: string; before: string | null; after: string | null }> };
 };
 
@@ -27,12 +29,12 @@ const reasons: Record<string, string> = {
 };
 
 /**
- * «Изменить сайт»: contacts by a simple form, texts and look by a request to the AI with the changes and a preview
+ * «Изменить сайт»: contacts, prices and stock, working hours by simple forms; texts and look by a request to the AI with the changes and a preview
  * before anything reaches the live site.
  */
 export default function QuickEditCard({ projectId, onPublished }: { projectId: string; onPublished: () => void }) {
   const [state, setState] = useState<State | null>(null);
-  const [mode, setMode] = useState<"contacts" | "texts">("contacts");
+  const [mode, setMode] = useState<"contacts" | "prices" | "hours" | "texts">("contacts");
   const [contacts, setContacts] = useState<Contacts>({ phone: null, messenger: null, email: null, address: null });
   const [confirmContacts, setConfirmContacts] = useState(false);
   const [request, setRequest] = useState("");
@@ -112,8 +114,13 @@ export default function QuickEditCard({ projectId, onPublished }: { projectId: s
         <>
           <div className={styles.chips} role="group" aria-label={t("Что поменять")} style={{ margin: "0 0 12px" }}>
             <button type="button" className={styles.choice} style={{ width: "auto" }} aria-pressed={mode === "contacts"} onClick={() => setMode("contacts")}>{t("Контакты")}</button>
+            {state.products && <button type="button" className={styles.choice} style={{ width: "auto" }} aria-pressed={mode === "prices"} onClick={() => setMode("prices")}>{t("Цены и наличие")}</button>}
+            {state.schedule && <button type="button" className={styles.choice} style={{ width: "auto" }} aria-pressed={mode === "hours"} onClick={() => setMode("hours")}>{t("Часы работы")}</button>}
             <button type="button" className={styles.choice} style={{ width: "auto" }} aria-pressed={mode === "texts"} onClick={() => setMode("texts")}>{t("Тексты или внешний вид")}</button>
           </div>
+
+          {mode === "prices" && state.products && <ProductsForm<State> projectId={projectId} products={state.products} onDone={(next) => { apply(next); setDone(t("Цены и наличие обновлены на сайте.")); onPublished(); }} />}
+          {mode === "hours" && state.schedule && <HoursForm<State> projectId={projectId} masters={state.schedule.masters} onDone={(next) => { apply(next); setDone(t("Часы работы обновлены на сайте.")); onPublished(); }} />}
 
           {mode === "contacts" && state.contacts && (
             <div>

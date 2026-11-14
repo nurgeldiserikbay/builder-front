@@ -8,7 +8,7 @@ import { explainError } from "@/lib/journey";
 import styles from "../../projects/journey.module.css";
 import AppHeader from "../../app-header";
 
-type Invite = { projectName: string; invitedBy: string | null; role: string; roleTitle: string; roleExplanation: string; expired: boolean; revoked: boolean; accepted: boolean };
+type Invite = { projectName: string; invitedBy: string | null; role: string; roleTitle: string; roleExplanation: string; expired: boolean; revoked: boolean; accepted: boolean; ownership?: boolean };
 
 /** Invitation to a project team: what the role allows, then joining with the invited address. */
 export default function TeamInvitePage() {
@@ -27,8 +27,9 @@ export default function TeamInvitePage() {
   async function accept() {
     setBusy(true); setError("");
     try {
-      const result = await api<{ projectId: string }>(`/team-invites/${token}/accept`, { method: "POST" });
-      router.replace(`/projects/${result.projectId}`);
+      const result = await api<{ projectId: string; ownershipOffered?: boolean }>(`/team-invites/${token}/accept`, { method: "POST" });
+      // A hand-over: straight to the team tab, where the offer is waiting.
+      router.replace(`/projects/${result.projectId}${result.ownershipOffered ? "#team" : ""}`);
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) setSignedIn(false);
       setError(explainError(caught));
@@ -49,6 +50,12 @@ export default function TeamInvitePage() {
           <>
             <p className={styles.kicker}>{t("Приглашение в команду")}</p>
             <h1 className={styles.h1}>{invite.invitedBy ? t("{0} приглашает вас в проект «{1}»", [invite.invitedBy, invite.projectName]) : t("Вас приглашают в проект «{0}»", [invite.projectName])}</h1>
+            {invite.ownership && (
+              <section className={`${styles.notice} ${styles.info}`}>
+                <p style={{ margin: "0 0 6px" }}><strong>{t("Вам предлагают стать владельцем этого проекта.")}</strong></p>
+                <p style={{ margin: 0 }}>{t("Сначала вы войдёте в команду администратором. Затем во вкладке «Команда» увидите условия передачи и решите: принять проект в свой аккаунт или отказаться. Пока вы не согласились, проект остаётся у прежнего владельца.")}</p>
+              </section>
+            )}
             <section className={styles.card}>
               <p className={styles.cardTitle}>{t("Ваша роль:")}{" "}{invite.roleTitle}</p>
               <p style={{ margin: 0 }}>{invite.roleExplanation}</p>

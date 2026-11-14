@@ -278,6 +278,11 @@ const messages: Record<string, string> = {
   BROWSER_CHECK_REQUIRED: t("Проверка в браузере не получилась, а правила проекта её требуют. Нажмите «Проверить ещё раз» в блоке «Проверка в браузере»."),
   BROWSER_GATE_FAILED: t("Сайт не уложился в пороги из правил проекта. Что не так — в блоке «Проверка в браузере»."),
   QUICK_EDIT_WAITS_FOR_BROWSER_CHECK: t("Изменения собраны. По правилам проекта новую сборку сначала проверяют в браузере: примите и опубликуйте её на этапе «Сборка», когда проверка пройдёт. Пока на сайте прежняя версия."),
+  QUICK_EDIT_PRODUCT_UNKNOWN: t("Такого товара в каталоге уже нет. Обновите страницу."),
+  QUICK_EDIT_MASTER_UNKNOWN: t("Такого мастера в расписании уже нет. Обновите страницу."),
+  QUICK_EDIT_PRODUCTS_INVALID: t("Проверьте цены и наличие: что-то заполнено неверно."),
+  QUICK_EDIT_HOURS_INVALID: t("Проверьте часы работы: конец дня должен быть позже начала."),
+  OWNERSHIP_INVITE_OPEN: t("Уже есть приглашение принять проект. Отмените его в списке приглашений, чтобы отправить новое."),
   COMPARE_ANALYZE_AGAIN: t("Этот разбор сделан до того, как появилась сверка с этапами. Разберите документ ещё раз — новый отчёт можно будет сверить."),
   COMPARE_NOT_A_DOCUMENT: t("Сверять с этапами можно только разбор документа (ТЗ)."),
   PROFILE_BLOCKED: t("Поддержка скрыла карточку из каталога. Её можно сохранить без публикации; опубликовать снова — после проверки поддержкой."),
@@ -370,6 +375,8 @@ export function explainError(error: unknown): string {
   if (code.startsWith("PORTFOLIO_URL_INVALID")) return t("Ссылка на работу должна начинаться с https:// и вести на сайт (не на IP-адрес и не на localhost).");
   if (code.startsWith("PORTFOLIO_URL_DUPLICATE")) return t("Эта ссылка уже есть в портфолио.");
   if (code.startsWith("PORTFOLIO_TITLE_INVALID")) return t("У каждой работы должно быть название — от 3 до 80 символов.");
+  if (code.startsWith("QUICK_EDIT_PRODUCT_PRICE_INVALID")) return t("Цена должна быть целым числом тенге, не больше 10 000 000.");
+  if (code.startsWith("QUICK_EDIT_HOURS_INVALID")) return t("Проверьте часы работы: конец дня должен быть позже начала.");
   if (code.startsWith("PORTFOLIO_PHOTO_INVALID")) return t("Фото на работе не найдено — загрузите его ещё раз.");
   if (code.startsWith("PORTFOLIO_DESCRIPTION_TOO_LONG")) return t("Описание работы — не больше 500 символов.");
   if (code.startsWith("STAGE_INCOMPLETE")) return t("Этап ещё не заполнен до конца — посмотрите список «Чего не хватает».");

@@ -96,6 +96,7 @@ export type StageDetail = {
   current: { id: string; versionNumber: number; origin: string; note: string | null; createdAt: string; content: unknown } | null;
   issues: Array<{ key: string; message: string }>;
   review?: StageReview | null;
+  outputs?: { version: string; for: string[]; items: Array<{ key: string; text: string; level: "required" | "recommended"; met: boolean }> } | null;
   versions: Array<{ id: string; versionNumber: number; origin: string; note: string | null; createdAt: string; accepted: boolean;
     provenance: { provider: string; model: string | null; instruction: string | null; targetKey: string | null; rulesApplied: number } | null }>;
   rules: Array<{ id: string; kind: "stage_rule" | "project_rule"; status: "active" | "disabled"; text: string; createdAt: string }>;
@@ -389,6 +390,7 @@ export function explainError(error: unknown): string {
   if (code.startsWith("QUICK_EDIT_HOURS_INVALID")) return t("Проверьте часы работы: конец дня должен быть позже начала.");
   if (code.startsWith("PORTFOLIO_PHOTO_INVALID")) return t("Фото на работе не найдено — загрузите его ещё раз.");
   if (code.startsWith("PORTFOLIO_DESCRIPTION_TOO_LONG")) return t("Описание работы — не больше 500 символов.");
+  if (code.startsWith("STAGE_OUTPUTS_MISSING")) return t("Этап ещё не отдаёт следующим этапам всё нужное — смотрите карточку «Что получит следующий этап».");
   if (code.startsWith("REVIEW_BLOCKING_OPEN")) return t("Проверка качества нашла блокирующие замечания. Исправьте их или объясните, почему этап можно принять (карточка «Проверка качества»).");
   if (code.startsWith("STAGE_INCOMPLETE")) return t("Этап ещё не заполнен до конца — посмотрите список «Чего не хватает».");
   if (code.startsWith("FIELD_TOO_LONG")) return t("Один из текстов слишком длинный. Сократите его.");

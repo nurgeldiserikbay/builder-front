@@ -2686,5 +2686,12 @@
  "На этом этапе своя проверка — ИИ-проверка здесь не нужна.": "This stage has its own checks — an AI review is not used here.",
  "Замечания проверки к этому месту": "Review findings about this place",
  "совет ИИ": "AI advice",
- "Показать на схеме": "Show on the diagram"
+ "Показать на схеме": "Show on the diagram",
+ "Этап ещё не отдаёт следующим этапам всё нужное — смотрите карточку «Что получит следующий этап».": "The stage does not yet give the next stages everything they need — see the «What the next stage gets» card.",
+ "Этап ещё не отдаёт следующим этапам всё обязательное — смотрите «Что получит следующий этап».": "The stage does not yet give the next stages everything required — see «What the next stage gets».",
+ "Что получит следующий этап": "What the next stage gets",
+ "Это нужно этапам: {0}. Обязательное должно быть готово до приёмки, желательное делает следующие этапы лучше.": "Needed by: {0}. Required items must be ready before acceptance; recommended ones make the next stages better.",
+ "Обязательное должно быть готово до приёмки, желательное делает результат лучше.": "Required items must be ready before acceptance; recommended ones make the result better.",
+ "готово": "ready",
+ "обязательно — пока не готово": "required — not ready yet"
 }

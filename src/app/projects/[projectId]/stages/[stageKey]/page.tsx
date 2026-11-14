@@ -225,7 +225,8 @@ export default function StagePage() {
     for (const finding of detail.review.findings) if (finding.target && !finding.overridden) (reviewFlags[finding.target] ??= []).push({ id: finding.id, severity: finding.severity, where: finding.where, message: finding.message, fix: finding.fix, advice: false });
     for (const finding of detail.review.ai?.findings ?? []) if (finding.target) (reviewFlags[finding.target] ??= []).push({ id: finding.id, severity: finding.severity, where: finding.where, message: finding.message, fix: finding.fix, advice: true });
   }
-  const acceptReason = stage.blockingComments ? t("Есть открытые блокирующие замечания — их нужно закрыть до приёмки.") : reviewBlocked ? t("Проверка качества нашла блокирующие замечания — исправьте их или объясните, почему этап можно принять.") : stage.waitingBranches?.length ? t("Ждём решения по изменениям (вверху страницы).") : stage.changesPending ? t("Сначала решите по изменению предыдущего этапа (вверху страницы).") : dirty ? t("Сначала сохраните изменения.")
+  const outputsMissing = (detail.outputs?.items ?? []).filter((item) => item.level === "required" && !item.met).length;
+  const acceptReason = stage.blockingComments ? t("Есть открытые блокирующие замечания — их нужно закрыть до приёмки.") : outputsMissing ? t("Этап ещё не отдаёт следующим этапам всё обязательное — смотрите «Что получит следующий этап».") : reviewBlocked ? t("Проверка качества нашла блокирующие замечания — исправьте их или объясните, почему этап можно принять.") : stage.waitingBranches?.length ? t("Ждём решения по изменениям (вверху страницы).") : stage.changesPending ? t("Сначала решите по изменению предыдущего этапа (вверху страницы).") : dirty ? t("Сначала сохраните изменения.")
     : !stage.inputsReady ? t("Сначала примите предыдущие этапы.")
       : detail.issues.length > 0 ? t("Заполните то, чего не хватает (список выше).")
         : failedRequired.length > 0 ? t("Исправьте непройденные проверки.")
@@ -526,6 +527,27 @@ export default function StagePage() {
         <section className={`${styles.notice} ${styles.warn}`} aria-label={t("Чего не хватает")}>
           <strong>{t("Чего не хватает, чтобы принять этап:")}</strong>
           <ul className={styles.list}>{[...new Set(detail.issues.map((issue) => issue.message))].map((text) => <li key={text}>{text}</li>)}</ul>
+        </section>
+      )}
+
+      {/* What the stages built on this one get from it */}
+      {detail.outputs && detail.outputs.items.length > 0 && !dirty && (
+        <section className={styles.card} aria-labelledby="outputs-title">
+          <p id="outputs-title" className={styles.cardTitle}>{t("Что получит следующий этап")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{detail.outputs.for.length
+            ? t("Это нужно этапам: {0}. Обязательное должно быть готово до приёмки, желательное делает следующие этапы лучше.", [detail.outputs.for.join(", ")])
+            : t("Обязательное должно быть готово до приёмки, желательное делает результат лучше.")}</p>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+            {detail.outputs.items.map((item) => (
+              <li key={item.key} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <span aria-hidden style={{ fontWeight: 800, color: item.met ? "#13804f" : item.level === "required" ? "#b3261e" : "#a86a12", minWidth: 18 }}>{item.met ? "✓" : item.level === "required" ? "✗" : "○"}</span>
+                <span>
+                  {item.text}
+                  <span className={styles.small} style={{ display: "block", margin: 0 }}>{item.met ? t("готово") : item.level === "required" ? t("обязательно — пока не готово") : t("желательно")}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

@@ -102,7 +102,7 @@ export default function CommentsPanel({ projectId, stageKey, targetLabel, onChan
       {closed.length > 0 && <button type="button" className={styles.ghost} onClick={() => setShowResolved(!showResolved)}>{showResolved ? t("Скрыть закрытые") : t("Показать закрытые ({0})", [closed.length])}</button>}
       {state.canWrite && (
         <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
-          <textarea className={styles.input} placeholder={t("Замечание к результату этапа")} aria-label={t("Новое замечание")} value={text} maxLength={2000} onChange={(event) => setText(event.target.value)} />
+          <textarea id="new-comment" className={styles.input} placeholder={t("Замечание к результату этапа")} aria-label={t("Новое замечание")} value={text} maxLength={2000} onChange={(event) => setText(event.target.value)} />
           {state.targets.length > 0 && (
             <label className={styles.small}>{t("К какой части")}
               <select className={styles.input} value={target} onChange={(event) => setTarget(event.target.value)}>

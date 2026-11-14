@@ -2,6 +2,7 @@ import { t } from "@/lib/i18n";
 import type { ScheduleOptions } from "@/app/projects/[projectId]/stages/[stageKey]/schedule-editor";
 import type { TechPlanOptions } from "@/app/projects/[projectId]/stages/[stageKey]/techplan-view";
 import type { ProcessOptions } from "@/app/projects/[projectId]/stages/[stageKey]/process-editor";
+import type { StageReview } from "@/app/projects/[projectId]/stages/[stageKey]/review";
 import { API_BASE_URL, ApiError, api } from "./api";
 
 export type StageStatus = "locked" | "ready" | "awaiting_lead" | "in_progress" | "in_review" | "changes_requested" | "approved" | "stale" | "imported" | "skipped" | "blocked";
@@ -86,7 +87,7 @@ export type StageDetail = {
     canSubmit: boolean; canRequestChanges: boolean; canInvite: boolean; canSuggest: boolean; reviewNote: string | null; approval: Approval; blockingComments?: number;
     key: string; title: string; purpose: string; outcome: string; artifactType: ArtifactType; status: StageStatus; statusLabel: string; statusExplanation: string;
     acceptance: string[]; acceptExplanation: string; importHint: string | null; fields: FieldDefinition[] | null; lockedKeys: string[]; acceptedVersionId: string | null;
-    canEdit: boolean; canAccept: boolean; canReopen: boolean; canImport: boolean; inputsReady: boolean; changesPending?: boolean;
+    canEdit: boolean; canAccept: boolean; canReopen: boolean; canImport: boolean; inputsReady: boolean; changesPending?: boolean; canOverrideReview?: boolean;
     contract?: { explanation: string } | null;
     waitingBranches?: Array<{ stageKey: string; title: string; sourceKey: string; sourceTitle: string }>;
     impact?: { opens: Array<{ key: string; title: string }>; willNotify: Array<{ key: string; title: string; status: string }> };
@@ -94,6 +95,7 @@ export type StageDetail = {
   inputs: Array<{ key: string; title: string; satisfied: boolean; versionNumber: number | null; content: unknown }>;
   current: { id: string; versionNumber: number; origin: string; note: string | null; createdAt: string; content: unknown } | null;
   issues: Array<{ key: string; message: string }>;
+  review?: StageReview | null;
   versions: Array<{ id: string; versionNumber: number; origin: string; note: string | null; createdAt: string; accepted: boolean;
     provenance: { provider: string; model: string | null; instruction: string | null; targetKey: string | null; rulesApplied: number } | null }>;
   rules: Array<{ id: string; kind: "stage_rule" | "project_rule"; status: "active" | "disabled"; text: string; createdAt: string }>;
@@ -299,6 +301,12 @@ const messages: Record<string, string> = {
   QUALITY_PROFILE_NOT_FOUND: t("Такого профиля проверки нет или он сейчас не действует. Выберите другой."),
   IMAGE_ALT_TOO_LONG: t("Описание фото слишком длинное — до 200 символов."),
   BLOCKING_COMMENTS_OPEN: t("Есть открытые блокирующие замечания — их нужно закрыть до приёмки."),
+  REASON_TOO_SHORT: t("Напишите объяснение хотя бы одним понятным предложением."),
+  REASON_TOO_LONG: t("Объяснение слишком длинное — не больше 1000 символов."),
+  FINDING_NOT_BLOCKING: t("Проверка уже изменилась: обновите страницу и посмотрите замечания ещё раз."),
+  FINDINGS_NOT_FOUND: t("Этих замечаний больше нет — возможно, их уже исправили. Обновите страницу."),
+  INVALID_FINDING_IDS: t("Выберите замечания из списка проверки."),
+  NOTHING_TO_FIX: t("Сначала сделайте черновик этапа."),
   NOT_YOUR_TURN: t("Сейчас очередь другого проверяющего."),
   STAGE_KEYS_INVALID: t("Выберите этапы этого проекта."),
   STAGE_KEYS_ONLY_FOR_CONTRIBUTORS: t("Этапы назначаются только исполнителям."),
@@ -379,6 +387,7 @@ export function explainError(error: unknown): string {
   if (code.startsWith("QUICK_EDIT_HOURS_INVALID")) return t("Проверьте часы работы: конец дня должен быть позже начала.");
   if (code.startsWith("PORTFOLIO_PHOTO_INVALID")) return t("Фото на работе не найдено — загрузите его ещё раз.");
   if (code.startsWith("PORTFOLIO_DESCRIPTION_TOO_LONG")) return t("Описание работы — не больше 500 символов.");
+  if (code.startsWith("REVIEW_BLOCKING_OPEN")) return t("Проверка качества нашла блокирующие замечания. Исправьте их или объясните, почему этап можно принять (карточка «Проверка качества»).");
   if (code.startsWith("STAGE_INCOMPLETE")) return t("Этап ещё не заполнен до конца — посмотрите список «Чего не хватает».");
   if (code.startsWith("FIELD_TOO_LONG")) return t("Один из текстов слишком длинный. Сократите его.");
   if (code.startsWith("FIELD_REQUIRED")) return t("Заполните обязательные поля.");

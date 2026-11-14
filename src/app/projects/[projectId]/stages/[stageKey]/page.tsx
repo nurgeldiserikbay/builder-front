@@ -2,6 +2,7 @@
 
 import ApprovalPanel from "./approval";
 import CommentsPanel from "./comments";
+import ReviewPanel from "./review";
 import StageFilesPanel from "./files";
 import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
@@ -216,7 +217,8 @@ export default function StagePage() {
     ? (detail.current.content as Content).sections.map((section) => ({ key: section.key, label: section.title || detail.options.sectionTypes[section.type] })) : [];
   const acceptBlocked = dirty || !stage.canAccept || detail.issues.length > 0 || failedRequired.length > 0;
   const impactText = stage.impact?.willNotify.length ? t("Этапы {0} получат уведомление об изменении.", [stage.impact.willNotify.map((item) => `«${item.title}»`).join(", ")]) : stage.impact?.opens.length ? t("Откроется: {0}.", [stage.impact.opens.map((item) => `«${item.title}»`).join(", ")]) : "";
-  const acceptReason = stage.blockingComments ? t("Есть открытые блокирующие замечания — их нужно закрыть до приёмки.") : stage.waitingBranches?.length ? t("Ждём решения по изменениям (вверху страницы).") : stage.changesPending ? t("Сначала решите по изменению предыдущего этапа (вверху страницы).") : dirty ? t("Сначала сохраните изменения.")
+  const reviewBlocked = detail.review?.uncoveredBlocking.length ?? 0;
+  const acceptReason = stage.blockingComments ? t("Есть открытые блокирующие замечания — их нужно закрыть до приёмки.") : reviewBlocked ? t("Проверка качества нашла блокирующие замечания — исправьте их или объясните, почему этап можно принять.") : stage.waitingBranches?.length ? t("Ждём решения по изменениям (вверху страницы).") : stage.changesPending ? t("Сначала решите по изменению предыдущего этапа (вверху страницы).") : dirty ? t("Сначала сохраните изменения.")
     : !stage.inputsReady ? t("Сначала примите предыдущие этапы.")
       : detail.issues.length > 0 ? t("Заполните то, чего не хватает (список выше).")
         : failedRequired.length > 0 ? t("Исправьте непройденные проверки.")
@@ -518,6 +520,15 @@ export default function StagePage() {
           <ul className={styles.list}>{[...new Set(detail.issues.map((issue) => issue.message))].map((text) => <li key={text}>{text}</li>)}</ul>
         </section>
       )}
+
+      {/* Quality review: findings, AI fix, own remark, override with a reason */}
+      {detail.current && detail.review && !dirty && stage.status !== "locked" && (
+        <ReviewPanel projectId={projectId} stageKey={stageKey} versionId={detail.current.id} review={detail.review}
+          canFix={stage.canEdit && stage.inputsReady && ai.level !== "none"} aiConfigured={ai.configured}
+          canOverride={Boolean(stage.canOverrideReview) && !accepted}
+          onChanged={async (text) => { await load(); setPreview(null); setMessage(text); }} />
+      )}
+      {detail.review && dirty && <p className={styles.small}>{t("Проверка качества обновится после сохранения.")}</p>}
 
       {/* AI instruction panel */}
       {ai.level !== "none" && stage.artifactType !== "brief" && detail.current && stage.canEdit && (

@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import { makeZip } from "@/lib/zip";
 import styles from "../../../journey.module.css";
+import { FeatureRoleMap, ScreenFlowDiagram } from "./diagrams";
 
 export type AppRole = { key: string; name: string; description: string };
 export type AppFeature = { key: string; title: string; description: string; roles: string[]; priority: "must" | "should" | "later"; acceptance: string[] };
@@ -85,6 +86,14 @@ export function FeaturesEditor({ value, onChange, disabled, issues }: { value: A
         )}
       </section>
 
+      {value.roles.length > 0 && value.features.length > 0 && (
+        <section className={styles.card} aria-labelledby="feature-map-title">
+          <p id="feature-map-title" className={styles.cardTitle}>{t("Карта функций по ролям")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{t("Кто что делает в приложении. Роль без единой галочки отмечена «!» — ей нечего делать. Таблица широкая — листайте вбок.")}</p>
+          <FeatureRoleMap roles={value.roles} features={value.features} />
+        </section>
+      )}
+
       <section className={styles.card} aria-labelledby="data-title">
         <p id="data-title" className={styles.cardTitle}>{t("Данные и интеграции")}</p>
         <label className={styles.small}>{t("Какие данные хранит приложение")}
@@ -107,6 +116,13 @@ export function ScreensEditor({ value, onChange, features, disabled, issues }: {
   return (
     <div style={{ display: "grid", gap: 14 }}>
       {issues.length > 0 && <div className={`${styles.notice} ${styles.warn}`}><strong>{t("Чего не хватает")}</strong><ul className={styles.list}>{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div>}
+      {value.screens.length > 0 && (
+        <section className={styles.card} aria-labelledby="screen-flow-title">
+          <p id="screen-flow-title" className={styles.cardTitle}>{t("Схема переходов")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{t("Сверху — стартовый экран роли, ниже — экраны, куда можно перейти, по числу нажатий. «↩ ещё N» — переходы назад или вбок. Красным — экраны, куда нельзя попасть, и переходы на экраны другой роли или на несуществующий экран.")}</p>
+          <ScreenFlowDiagram screens={value.screens} roles={roles} />
+        </section>
+      )}
       {roles.map((role) => {
         const own = value.screens.filter((screen) => screen.role === role.key);
         return (

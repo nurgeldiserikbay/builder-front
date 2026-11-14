@@ -2,7 +2,7 @@
 
 import { t } from "@/lib/i18n";
 import styles from "../../../journey.module.css";
-import { DataDiagram, SequenceDiagram, type DataEntity, type Sequence } from "./diagrams";
+import { ArchitectureDiagram, DataDiagram, SequenceDiagram, type DataEntity, type Sequence } from "./diagrams";
 
 type Item = { title: string; plain: string; technical: string };
 type Coverage = { scenario: string; actor: string; action: string; capability: string; status: "built" | "manual" | "not_built"; how: string };
@@ -75,6 +75,13 @@ export function TechPlanView({ plan, outdated, notes, onNotes, disabled, onRefre
               </li>
             ))}
           </ul>
+        </section>
+      )}
+      {(plan.components?.length ?? 0) > 0 && (
+        <section className={styles.card} aria-labelledby="arch-title">
+          <p id="arch-title" className={styles.cardTitle}>{t("Схема архитектуры")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{t("Из чего состоит система: человек открывает сайт или приложение, оно обращается к серверу, а сервер работает с данными и остальными частями. Подробнее о каждой части — в списке «Из чего состоит» ниже.")}</p>
+          <ArchitectureDiagram who={plan.kind === "app" ? t("Пользователь приложения") : t("Посетитель сайта")} components={plan.components!} />
         </section>
       )}
       <Items title={t("Из чего состоит")} items={plan.components ?? []} />

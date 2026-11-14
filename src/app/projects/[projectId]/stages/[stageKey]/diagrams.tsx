@@ -2,6 +2,7 @@
 
 // Diagrams drawn from stage data: the process by roles (swimlanes), the data diagram and a scenario step by step.
 // Plain SVG with HTML labels, sized for a phone; wide diagrams scroll sideways.
+import { useState } from "react";
 import { t } from "@/lib/i18n";
 import styles from "../../../journey.module.css";
 
@@ -379,6 +380,68 @@ export function ArchitectureDiagram({ who, components }: { who: string; componen
             })}
           </g>
         )}
+      </svg>
+    </Scroll>
+  );
+}
+
+type ModuleFeature = { key: string; title: string; roles: string[]; data?: string[] };
+
+/**
+ * The module map: roles → features → data. Tapping a role, a feature or a record keeps only its connections bright.
+ * A feature with no data and a record no feature uses are red — the latter is also a finding of the quality review.
+ */
+export function ModuleMap({ roles, features, data }: { roles: Array<{ key: string; name: string }>; features: ModuleFeature[]; data: Array<{ key: string; name: string }> }) {
+  const [focus, setFocus] = useState<string | null>(null);
+  const col = { w: 98, gap: 24 }; const boxH = 40; const rowGap = 10;
+  const xs = [4, 4 + col.w + col.gap, 4 + 2 * (col.w + col.gap)];
+  const width = xs[2]! + col.w + 4;
+  const rows = Math.max(roles.length, features.length, data.length);
+  const height = 24 + rows * (boxH + rowGap);
+  const place = (count: number, i: number) => 24 + ((rows - count) * (boxH + rowGap)) / 2 + i * (boxH + rowGap);
+  const at = new Map<string, { x: number; y: number }>();
+  roles.forEach((role, i) => at.set(`r:${role.key}`, { x: xs[0]!, y: place(roles.length, i) }));
+  features.forEach((feature, i) => at.set(`f:${feature.key}`, { x: xs[1]!, y: place(features.length, i) }));
+  data.forEach((item, i) => at.set(`d:${item.key}`, { x: xs[2]!, y: place(data.length, i) }));
+  const edges = [
+    ...features.flatMap((feature) => feature.roles.filter((role) => at.has(`r:${role}`)).map((role) => ({ a: `r:${role}`, b: `f:${feature.key}` }))),
+    ...features.flatMap((feature) => (feature.data ?? []).filter((key) => at.has(`d:${key}`)).map((key) => ({ a: `f:${feature.key}`, b: `d:${key}` }))),
+  ];
+  // What stays bright: the focused node, its direct edges, and through a feature the roles and data on both sides.
+  const lit = new Set<string>();
+  if (focus) {
+    lit.add(focus);
+    for (const edge of edges) if (edge.a === focus || edge.b === focus) { lit.add(edge.a); lit.add(edge.b); }
+    if (!focus.startsWith("f:")) for (const node of [...lit]) if (node.startsWith("f:")) for (const edge of edges) if (edge.a === node || edge.b === node) { lit.add(edge.a); lit.add(edge.b); }
+  }
+  const on = (node: string) => !focus || lit.has(node);
+  const usedData = new Set(features.flatMap((feature) => feature.data ?? []));
+  const node = (id: string, label: string, kind: "role" | "feature" | "data", danger: boolean) => {
+    const p = at.get(id)!;
+    const colors = danger ? { fill: "#fdecea", stroke: "#b3261e", text: "#7a1a14" } : kind === "role" ? kindColors.client : kind === "feature" ? kindColors.business : kindColors.system;
+    return (
+      <g key={id} onClick={() => setFocus(focus === id ? null : id)} style={{ cursor: "pointer", opacity: on(id) ? 1 : 0.25 }} role="button" tabIndex={0}
+        aria-label={t("Подсветить связи: {0}", [label])} aria-pressed={focus === id} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setFocus(focus === id ? null : id); } }}>
+        <rect x={p.x} y={p.y} width={col.w} height={boxH} rx={8} fill={colors.fill} stroke={colors.stroke} strokeWidth={focus === id ? 2.2 : 1.1} />
+        <foreignObject x={p.x + 3} y={p.y + 2} width={col.w - 6} height={boxH - 4}>
+          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontSize: 10.5, lineHeight: 1.15, color: colors.text, fontWeight: 700, overflow: "hidden", wordBreak: "break-word" }}>{label}</div>
+        </foreignObject>
+      </g>
+    );
+  };
+  return (
+    <Scroll label={t("Карта модулей: роли, функции и данные")}>
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block", minWidth: width }}>
+        {[t("Кто"), t("Что делает"), t("С какими данными")].map((title, i) => <text key={title} x={xs[i]! + col.w / 2} y={14} textAnchor="middle" fontSize={11} fontWeight={800} fill="#3a423d">{title}</text>)}
+        {edges.map((edge) => {
+          const a = at.get(edge.a)!; const b = at.get(edge.b)!;
+          const x1 = a.x + col.w; const y1 = a.y + boxH / 2; const x2 = b.x; const y2 = b.y + boxH / 2; const mid = (x1 + x2) / 2;
+          const bright = !focus || (lit.has(edge.a) && lit.has(edge.b));
+          return <path key={`${edge.a}-${edge.b}`} d={`M${x1},${y1} C${mid},${y1} ${mid},${y2} ${x2},${y2}`} fill="none" stroke={bright ? "#4b5550" : "#c9cfca"} strokeOpacity={bright ? 0.8 : 0.35} strokeWidth={bright && focus ? 1.6 : 1} />;
+        })}
+        {roles.map((role) => node(`r:${role.key}`, role.name || t("Без названия"), "role", false))}
+        {features.map((feature) => node(`f:${feature.key}`, feature.title || t("Без названия"), "feature", !(feature.data ?? []).length))}
+        {data.map((item) => node(`d:${item.key}`, item.name, "data", !usedData.has(item.key)))}
       </svg>
     </Scroll>
   );

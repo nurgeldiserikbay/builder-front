@@ -384,7 +384,8 @@ export default function StagePage() {
         </section>
       )}
       {stage.artifactType === "features" && stage.status !== "locked" && draft !== null && (
-        <FeaturesEditor value={draft as AppFeatures} onChange={edit} disabled={!stage.canEdit} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
+        <FeaturesEditor value={draft as AppFeatures} onChange={edit} disabled={!stage.canEdit} issues={dirty ? [] : detail.issues.map((issue) => issue.message)}
+          dataOptions={[{ key: "user", name: t("Пользователь") }, ...((detail.inputs.find((input) => input.key === "process")?.content as BusinessProcess | null)?.data ?? []).filter((entity) => entity.key !== "user").map((entity) => ({ key: entity.key, name: entity.name }))]} />
       )}
       {stage.artifactType === "screens" && stage.status !== "locked" && draft !== null && (
         <ScreensEditor value={draft as AppScreens} onChange={edit} features={(detail.inputs.find((input) => input.key === "features")?.content as AppFeatures | null) ?? null}

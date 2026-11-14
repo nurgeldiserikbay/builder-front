@@ -2665,5 +2665,11 @@
  "Схема переходов": "Screen flow",
  "Сверху — стартовый экран роли, ниже — экраны, куда можно перейти, по числу нажатий. «↩ ещё N» — переходы назад или вбок. Красным — экраны, куда нельзя попасть, и переходы на экраны другой роли или на несуществующий экран.": "On top is the role's start screen; below are the screens you can go to, by the number of taps. «↩ N more» are links back or sideways. Red marks screens that cannot be reached and links to another role's screen or to a missing screen.",
  "С чем работает сервер": "What the server works with",
- "Из чего состоит система: человек открывает сайт или приложение, оно обращается к серверу, а сервер работает с данными и остальными частями. Подробнее о каждой части — в списке «Из чего состоит» ниже.": "What the system is made of: a person opens the site or app, it talks to the server, and the server works with the data and the other parts. Each part is described in «What it consists of» below."
+ "Из чего состоит система: человек открывает сайт или приложение, оно обращается к серверу, а сервер работает с данными и остальными частями. Подробнее о каждой части — в списке «Из чего состоит» ниже.": "What the system is made of: a person opens the site or app, it talks to the server, and the server works with the data and the other parts. Each part is described in «What it consists of» below.",
+ "Подсветить связи: {0}": "Highlight connections: {0}",
+ "Карта модулей: роли, функции и данные": "Module map: roles, features and data",
+ "С какими данными": "With which data",
+ "С какими данными работает": "Data it works with",
+ "Карта модулей": "Module map",
+ "Кто → что делает → с какими данными. Нажмите на роль, функцию или данные, чтобы подсветить связи. Красным — функции без данных и данные, с которыми никто не работает.": "Who → does what → with which data. Tap a role, a feature or a record to highlight its connections. Red marks features without data and data nobody works with."
 }

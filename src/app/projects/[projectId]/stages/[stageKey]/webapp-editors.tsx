@@ -6,10 +6,12 @@ import { api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import { makeZip } from "@/lib/zip";
 import styles from "../../../journey.module.css";
-import { FeatureRoleMap, ScreenFlowDiagram } from "./diagrams";
+import { FeatureRoleMap, ModuleMap, ScreenFlowDiagram } from "./diagrams";
 
 export type AppRole = { key: string; name: string; description: string };
-export type AppFeature = { key: string; title: string; description: string; roles: string[]; priority: "must" | "should" | "later"; acceptance: string[] };
+export type AppFeature = { key: string; title: string; description: string; roles: string[]; priority: "must" | "should" | "later"; acceptance: string[]; data?: string[] };
+/** Records the features can work with: the accepted process data and user accounts. */
+export type DataOption = { key: string; name: string };
 export type AppFeatures = { roles: AppRole[]; features: AppFeature[]; sensitivity: "normal" | "personal" | "payments" | "health"; integrations: string[] };
 export type ScreenBlock = { kind: "list" | "table" | "form" | "details" | "text" | "actions" | "stats" | "search"; title: string; fields: string[] };
 export type AppScreen = { key: string; title: string; role: string; purpose: string; features: string[]; blocks: ScreenBlock[]; links: string[] };
@@ -31,7 +33,7 @@ function freeKey(prefix: string, used: string[]): string {
 const lines = (value: string) => value.split("\n").map((line) => line.trim()).filter(Boolean);
 const commas = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
 
-export function FeaturesEditor({ value, onChange, disabled, issues }: { value: AppFeatures; onChange: (next: AppFeatures) => void; disabled: boolean; issues: string[] }) {
+export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions = [] }: { value: AppFeatures; onChange: (next: AppFeatures) => void; disabled: boolean; issues: string[]; dataOptions?: DataOption[] }) {
   const setRole = (key: string, patch: Partial<AppRole>) => onChange({ ...value, roles: value.roles.map((role) => (role.key === key ? { ...role, ...patch } : role)) });
   const setFeature = (key: string, patch: Partial<AppFeature>) => onChange({ ...value, features: value.features.map((feature) => (feature.key === key ? { ...feature, ...patch } : feature)) });
   const removeRole = (key: string) => onChange({ ...value, roles: value.roles.filter((role) => role.key !== key), features: value.features.map((feature) => ({ ...feature, roles: feature.roles.filter((item) => item !== key) })) });
@@ -70,6 +72,20 @@ export function FeaturesEditor({ value, onChange, disabled, issues }: { value: A
                 ))}
               </div>
             </fieldset>
+            {dataOptions.length > 0 && (
+              <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+                <legend className={styles.small}>{t("С какими данными работает")}</legend>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  {dataOptions.map((option) => (
+                    <label key={option.key} style={{ display: "flex", gap: 6, alignItems: "center", minHeight: 36 }}>
+                      <input type="checkbox" disabled={disabled} checked={(feature.data ?? []).includes(option.key)} style={{ width: 20, height: 20 }}
+                        onChange={(event) => setFeature(feature.key, { data: event.target.checked ? [...(feature.data ?? []), option.key].slice(0, 8) : (feature.data ?? []).filter((item) => item !== option.key) })} />
+                      {option.name}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
             <label className={styles.small}>{t("Когда нужна")}
               <select className={styles.input} value={feature.priority} disabled={disabled} onChange={(event) => setFeature(feature.key, { priority: event.target.value as AppFeature["priority"] })}>
                 {priorities.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
@@ -82,7 +98,7 @@ export function FeaturesEditor({ value, onChange, disabled, issues }: { value: A
         ))}
         {!disabled && value.features.length < 30 && (
           <button type="button" className={styles.secondary} style={{ marginTop: 10 }}
-            onClick={() => onChange({ ...value, features: [...value.features, { key: freeKey("f", value.features.map((feature) => feature.key)), title: "", description: "", roles: value.roles.slice(0, 1).map((role) => role.key), priority: "must", acceptance: [] }] })}>{t("+ Добавить функцию")}</button>
+            onClick={() => onChange({ ...value, features: [...value.features, { key: freeKey("f", value.features.map((feature) => feature.key)), title: "", description: "", roles: value.roles.slice(0, 1).map((role) => role.key), priority: "must", acceptance: [], data: [] }] })}>{t("+ Добавить функцию")}</button>
         )}
       </section>
 
@@ -91,6 +107,13 @@ export function FeaturesEditor({ value, onChange, disabled, issues }: { value: A
           <p id="feature-map-title" className={styles.cardTitle}>{t("Карта функций по ролям")}</p>
           <p className={styles.small} style={{ marginTop: 0 }}>{t("Кто что делает в приложении. Роль без единой галочки отмечена «!» — ей нечего делать. Таблица широкая — листайте вбок.")}</p>
           <FeatureRoleMap roles={value.roles} features={value.features} />
+        </section>
+      )}
+      {value.features.some((feature) => (feature.data ?? []).length > 0) && dataOptions.length > 0 && (
+        <section className={styles.card} aria-labelledby="module-map-title">
+          <p id="module-map-title" className={styles.cardTitle}>{t("Карта модулей")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{t("Кто → что делает → с какими данными. Нажмите на роль, функцию или данные, чтобы подсветить связи. Красным — функции без данных и данные, с которыми никто не работает.")}</p>
+          <ModuleMap roles={value.roles} features={value.features} data={dataOptions} />
         </section>
       )}
 

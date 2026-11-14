@@ -3,6 +3,7 @@
 import ApprovalPanel from "./approval";
 import CommentsPanel from "./comments";
 import ReviewPanel from "./review";
+import type { ReviewFlags } from "./diagrams";
 import StageFilesPanel from "./files";
 import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
@@ -218,6 +219,12 @@ export default function StagePage() {
   const acceptBlocked = dirty || !stage.canAccept || detail.issues.length > 0 || failedRequired.length > 0;
   const impactText = stage.impact?.willNotify.length ? t("Этапы {0} получат уведомление об изменении.", [stage.impact.willNotify.map((item) => `«${item.title}»`).join(", ")]) : stage.impact?.opens.length ? t("Откроется: {0}.", [stage.impact.opens.map((item) => `«${item.title}»`).join(", ")]) : "";
   const reviewBlocked = detail.review?.uncoveredBlocking.length ?? 0;
+  // Review findings by the place they are about, for the diagrams; none while there are unsaved edits (they would be stale).
+  const reviewFlags: ReviewFlags = {};
+  if (!dirty && detail.review) {
+    for (const finding of detail.review.findings) if (finding.target && !finding.overridden) (reviewFlags[finding.target] ??= []).push({ id: finding.id, severity: finding.severity, where: finding.where, message: finding.message, fix: finding.fix, advice: false });
+    for (const finding of detail.review.ai?.findings ?? []) if (finding.target) (reviewFlags[finding.target] ??= []).push({ id: finding.id, severity: finding.severity, where: finding.where, message: finding.message, fix: finding.fix, advice: true });
+  }
   const acceptReason = stage.blockingComments ? t("Есть открытые блокирующие замечания — их нужно закрыть до приёмки.") : reviewBlocked ? t("Проверка качества нашла блокирующие замечания — исправьте их или объясните, почему этап можно принять.") : stage.waitingBranches?.length ? t("Ждём решения по изменениям (вверху страницы).") : stage.changesPending ? t("Сначала решите по изменению предыдущего этапа (вверху страницы).") : dirty ? t("Сначала сохраните изменения.")
     : !stage.inputsReady ? t("Сначала примите предыдущие этапы.")
       : detail.issues.length > 0 ? t("Заполните то, чего не хватает (список выше).")
@@ -419,7 +426,7 @@ export default function StagePage() {
       )}
       {stage.artifactType === "process" && stage.status !== "locked" && draft !== null && detail.options.process && (
         <ProcessEditor value={draft as BusinessProcess} onChange={edit} options={detail.options.process} disabled={!stage.canEdit}
-          issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
+          issues={dirty ? [] : detail.issues.map((issue) => issue.message)} flags={reviewFlags} />
       )}
 
       {/* Editors */}
@@ -452,7 +459,7 @@ export default function StagePage() {
         <TechPlanView plan={(detail.options.techplan.outdated || !detail.current ? detail.options.techplan.preview : detail.current.content as TechPlan) ?? null}
           outdated={detail.options.techplan.outdated} notes={((draft as { ownerNotes?: string | null } | null)?.ownerNotes) ?? ""} disabled={!stage.canEdit}
           onNotes={(value) => edit({ ownerNotes: value })} busy={busy === "plan"}
-          onRefresh={stage.canEdit ? () => run("plan", async () => { await saveDraft(); setMessage(t("Архитектура обновлена по принятым этапам. Проверьте и примите её.")); }) : null} />
+          onRefresh={stage.canEdit ? () => run("plan", async () => { await saveDraft(); setMessage(t("Архитектура обновлена по принятым этапам. Проверьте и примите её.")); }) : null}  flags={reviewFlags} />
       )}
 
       {/* Build stage */}

@@ -14,6 +14,9 @@ export type DataLink = { to: string; kind: "one" | "many"; label: string };
 export type DataEntity = { key: string; name: string; plain?: string; fields: Array<string | { name: string; type: string }>; links: DataLink[] };
 export type Sequence = { title: string; participants: string[]; messages: Array<{ from: number; to: number; text: string }> };
 
+/** Colours of a place the quality review has a finding about. */
+export const FLAG = { fill: "#fdecea", stroke: "#b3261e", text: "#7a1a14" };
+
 export const kindColors: Record<ActorKind, { fill: string; stroke: string; text: string }> = {
   client: { fill: "#e3f3ea", stroke: "#13804f", text: "#173b2a" },
   business: { fill: "#fdf1dd", stroke: "#a86a12", text: "#5c3a07" },
@@ -42,7 +45,7 @@ const arrowMarker = (id: string, color: string) => (
 );
 
 /** One lane per participant; steps go top to bottom in order, each in the lane of whoever does it. */
-export function SwimlaneDiagram({ actors, scenario, highlight }: { actors: ProcessActor[]; scenario: ProcessScenario; highlight?: Record<string, "built" | "manual" | "not_built"> }) {
+export function SwimlaneDiagram({ actors, scenario, highlight, flagged }: { actors: ProcessActor[]; scenario: ProcessScenario; highlight?: Record<string, "built" | "manual" | "not_built">; flagged?: Set<string> }) {
   const lane = 112; const head = 40; const row = 62; const box = { width: 100, height: 48 };
   const width = Math.max(1, actors.length) * lane;
   const height = head + Math.max(1, scenario.steps.length) * row + 10;
@@ -58,7 +61,7 @@ export function SwimlaneDiagram({ actors, scenario, highlight }: { actors: Proce
           return (
             <g key={actor.key}>
               <rect x={i * lane + 2} y={0} width={lane - 4} height={height} rx={10} fill={i % 2 ? "#fafbfa" : "#f3f5f3"} />
-              <Box x={i * lane + 6} y={4} width={lane - 12} height={30} fill={colors.fill} stroke={colors.stroke} color={colors.text} bold>{actor.name}</Box>
+              <Box x={i * lane + 6} y={4} width={lane - 12} height={30} fill={flagged?.has(actor.key) ? FLAG.fill : colors.fill} stroke={flagged?.has(actor.key) ? FLAG.stroke : colors.stroke} color={flagged?.has(actor.key) ? FLAG.text : colors.text} bold>{flagged?.has(actor.key) ? `! ${actor.name}` : actor.name}</Box>
             </g>
           );
         })}
@@ -87,7 +90,7 @@ export function SwimlaneDiagram({ actors, scenario, highlight }: { actors: Proce
 }
 
 /** Entities as cards with their fields; lines show how they are linked («many» ends with a fork). */
-export function DataDiagram({ entities }: { entities: DataEntity[] }) {
+export function DataDiagram({ entities, flagged }: { entities: DataEntity[]; flagged?: Set<string> }) {
   if (!entities.length) return null;
   // One column of cards (readable on a phone). Links run as arcs in the left gutter,
   // each in its own track, and are also listed in words inside the card.
@@ -125,9 +128,9 @@ export function DataDiagram({ entities }: { entities: DataEntity[] }) {
           const fieldsBottom = y + 34 + Math.max(1, entity.fields.length) * 16;
           return (
             <g key={entity.key}>
-              <rect x={x} y={y} width={cardWidth} height={heights[i]} rx={10} fill="#fff" stroke="#2d6da3" strokeWidth={1.3} />
-              <rect x={x} y={y} width={cardWidth} height={28} rx={10} fill="#e6f0fa" />
-              <text x={x + 10} y={y + 19} fontSize={12.5} fontWeight={800} fill="#173a5a">{entity.name}</text>
+              <rect x={x} y={y} width={cardWidth} height={heights[i]} rx={10} fill="#fff" stroke={flagged?.has(entity.key) ? FLAG.stroke : "#2d6da3"} strokeWidth={flagged?.has(entity.key) ? 2.2 : 1.3} />
+              <rect x={x} y={y} width={cardWidth} height={28} rx={10} fill={flagged?.has(entity.key) ? FLAG.fill : "#e6f0fa"} />
+              <text x={x + 10} y={y + 19} fontSize={12.5} fontWeight={800} fill={flagged?.has(entity.key) ? FLAG.text : "#173a5a"}>{flagged?.has(entity.key) ? `! ${entity.name}` : entity.name}</text>
               {entity.fields.map((item, k) => {
                 const label = typeof item === "string" ? item : `${item.name}: ${item.type}`;
                 return <text key={k} x={x + 10} y={y + 46 + k * 16} fontSize={11} fill="#3a423d">{label.length > 40 ? `${label.slice(0, 39)}…` : label}</text>;
@@ -445,4 +448,34 @@ export function ModuleMap({ roles, features, data }: { roles: Array<{ key: strin
       </svg>
     </Scroll>
   );
+}
+
+export type ReviewFlag = { id: string; severity: "blocking" | "important" | "minor"; where: string; message: string; fix: string; advice: boolean };
+export type ReviewFlags = Record<string, ReviewFlag[]>;
+
+/** The review findings about one place of the result, under its diagram. */
+export function FlagList({ flags, keys }: { flags: ReviewFlags | undefined; keys: string[] }) {
+  const items = keys.flatMap((key) => flags?.[key] ?? []);
+  if (!items.length) return null;
+  const label = { blocking: t("Блокирует переход"), important: t("Важно"), minor: t("Мелочь") };
+  return (
+    <ul style={{ listStyle: "none", padding: 0, margin: "8px 0 0", display: "grid", gap: 6 }} aria-label={t("Замечания проверки к этому месту")}>
+      {items.map((item) => (
+        <li key={item.id} style={{ borderLeft: `4px solid ${item.severity === "blocking" ? FLAG.stroke : item.severity === "important" ? "#a86a12" : "#8a8f8a"}`, paddingLeft: 8, fontSize: 14 }}>
+          <span style={{ fontWeight: 700 }}>{item.where} · {label[item.severity]}{item.advice ? ` · ${t("совет ИИ")}` : ""}.</span> {item.message} <span style={{ color: "#5b635e" }}>{item.fix}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Ask the stage page to show a place of the result: editors that know the place switch to it, then it is scrolled into view. */
+export function showReviewTarget(target: string) {
+  window.dispatchEvent(new CustomEvent("buildpath:review-target", { detail: target }));
+  window.setTimeout(() => document.getElementById(`review-target-${target}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
+}
+
+/** Places marked red on a diagram: those with a blocking or important finding (minor ones are only listed). */
+export function flaggedPlaces(flags: ReviewFlags | undefined): Set<string> {
+  return new Set(Object.entries(flags ?? {}).filter(([, items]) => items.some((item) => item.severity !== "minor")).map(([key]) => key));
 }

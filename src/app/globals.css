@@ -10,7 +10,8 @@
 @media(max-width:720px){:root{--gutter:18px;--text:16px}}
 
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+/* Full-bleed backgrounds use 100vw, which on desktop includes the scrollbar: clip, so the page never scrolls sideways. */
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip}
 body{margin:0;background:var(--canvas);color:var(--ink);font-family:"Onest Variable",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 button,input,select,textarea{font-family:inherit}
 a{color:inherit;text-decoration:none}
@@ -96,3 +97,4 @@ footer a:hover{color:var(--ink)}
 /* Home top bar: white band across the full width, like the app. */
 .topbar{position:relative;border-bottom:0}
 .topbar::before{content:"";position:absolute;top:0;bottom:0;left:calc(50% - 50vw);right:calc(50% - 50vw);background:var(--surface);border-bottom:1px solid var(--line);z-index:-1}
+@media(max-width:400px){.topbar{gap:10px}.top-cta{padding:9px 12px;font-size:14px}}

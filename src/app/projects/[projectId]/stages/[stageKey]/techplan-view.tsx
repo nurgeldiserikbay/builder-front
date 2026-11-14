@@ -2,7 +2,7 @@
 
 import { t } from "@/lib/i18n";
 import styles from "../../../journey.module.css";
-import { ArchitectureDiagram, DataDiagram, SequenceDiagram, type DataEntity, type Sequence } from "./diagrams";
+import { ArchitectureDiagram, DataDiagram, FlagList, flaggedPlaces, SequenceDiagram, type ReviewFlags, type DataEntity, type Sequence } from "./diagrams";
 
 type Item = { title: string; plain: string; technical: string };
 type Coverage = { scenario: string; actor: string; action: string; capability: string; status: "built" | "manual" | "not_built"; how: string };
@@ -41,7 +41,8 @@ function download(name: string, text: string, type: string) {
  * The plan is made by the platform from the accepted stages; the owner reads it, adds notes and approves it as the contract.
  * When the inputs change, «Обновить план» saves a new version computed on the server.
  */
-export function TechPlanView({ plan, outdated, notes, onNotes, disabled, onRefresh, busy }: {
+export function TechPlanView({ plan, outdated, notes, onNotes, disabled, onRefresh, busy, flags }: {
+  flags?: ReviewFlags;
   plan: TechPlan | null; outdated: boolean; notes: string; onNotes: (value: string) => void; disabled: boolean; onRefresh: (() => void) | null; busy: boolean;
 }) {
   if (!plan) return <div className={`${styles.notice} ${styles.info}`}>{t("Архитектура появится, когда будут приняты этапы, от которых она зависит (список вверху страницы).")}</div>;
@@ -62,7 +63,7 @@ export function TechPlanView({ plan, outdated, notes, onNotes, disabled, onRefre
         <p style={{ margin: 0 }}>{plan.summary}</p>
       </section>
       {coverage && coverage.length > 0 && (
-        <section className={styles.card} aria-labelledby="coverage-title">
+        <section id="review-target-coverage" className={styles.card} aria-labelledby="coverage-title">
           <p id="coverage-title" className={styles.cardTitle}>{t("Что из вашего процесса делает сайт")}</p>
           <p className={styles.small} style={{ marginTop: 0 }}>{t("Шаги из этапа «Бизнес-процесс»: {0} делает сайт, {1} — вручную, {2} сайт не делает.", [count("built"), count("manual"), count("not_built")])}</p>
           {count("not_built") > 0 && <p className={`${styles.notice} ${styles.warning}`}>{t("Шаги, которые сайт не делает, можно оставить ручными, записать в заметки для разработчика или выбрать свой стек в решении «Технологии».")}</p>}
@@ -86,11 +87,12 @@ export function TechPlanView({ plan, outdated, notes, onNotes, disabled, onRefre
       )}
       <Items title={t("Из чего состоит")} items={plan.components ?? []} />
       {(plan.dataModel?.length ?? 0) > 0 && (
-        <section className={styles.card} aria-labelledby="datamodel-title">
+        <section id="review-target-datamodel" className={styles.card} aria-labelledby="datamodel-title">
           <p id="datamodel-title" className={styles.cardTitle}>{t("Схема данных")}</p>
           <p className={styles.small} style={{ marginTop: 0 }}>{t("Что хранит система и как это связано. Связи — стрелки слева и строки «→» в карточке: сплошная линия — «много», пунктир — «один».")}</p>
-          <DataDiagram entities={plan.dataModel!} />
-          <ul className={styles.list}>{plan.dataModel!.map((entity) => <li key={entity.key}><strong>{entity.name}.</strong> {entity.plain}</li>)}</ul>
+          <DataDiagram entities={plan.dataModel!} flagged={flaggedPlaces(flags)} />
+          <FlagList flags={flags} keys={plan.dataModel!.map((entity) => entity.key)} />
+          <ul className={styles.list}>{plan.dataModel!.map((entity) => <li key={entity.key} id={`review-target-${entity.key}`}><strong>{entity.name}.</strong> {entity.plain}</li>)}</ul>
         </section>
       )}
       {(plan.sequences ?? []).map((sequence) => (

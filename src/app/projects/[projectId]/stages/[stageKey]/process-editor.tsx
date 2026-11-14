@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "@/lib/i18n";
 import styles from "../../../journey.module.css";
-import { DataDiagram, KindLegend, SwimlaneDiagram, type ActorKind, type DataEntity, type ProcessActor, type ProcessScenario } from "./diagrams";
+import { DataDiagram, FlagList, KindLegend, flaggedPlaces, SwimlaneDiagram, type ReviewFlags, type ActorKind, type DataEntity, type ProcessActor, type ProcessScenario } from "./diagrams";
 
 export type BusinessProcess = { actors: ProcessActor[]; scenarios: ProcessScenario[]; rules: string[]; data: Array<DataEntity & { fields: string[] }> };
 export type ProcessOptions = { capabilities: Record<string, string>; actorKinds: Record<ActorKind, string>; limits: { actors: number; scenarios: number; steps: number; rules: number; entities: number; fields: number; links: number } };
@@ -13,8 +13,21 @@ const newKey = (prefix: string) => `${prefix}${Date.now().toString(36).slice(-4)
 export const blankProcess: BusinessProcess = { actors: [{ key: "client", name: "", kind: "client" }], scenarios: [], rules: [], data: [] };
 
 /** Diagram first, then the parts it is made of. Every change redraws the diagram at once. */
-export function ProcessEditor({ value, onChange, options, disabled, issues }: { value: BusinessProcess; onChange: (next: BusinessProcess) => void; options: ProcessOptions; disabled: boolean; issues: string[] }) {
+export function ProcessEditor({ value, onChange, options, disabled, issues, flags }: { value: BusinessProcess; onChange: (next: BusinessProcess) => void; options: ProcessOptions; disabled: boolean; issues: string[]; flags?: ReviewFlags }) {
   const [scenarioIndex, setScenarioIndex] = useState(0);
+  const [openEntity, setOpenEntity] = useState<string | null>(null);
+  // «Show» in the quality review: switch to the scenario or open the record it is about.
+  useEffect(() => {
+    const show = (event: Event) => {
+      const target = (event as CustomEvent<string>).detail;
+      const index = value.scenarios.findIndex((item) => item.key === target);
+      if (index >= 0) setScenarioIndex(index);
+      if (value.data.some((entity) => entity.key === target)) setOpenEntity(target);
+    };
+    window.addEventListener("buildpath:review-target", show);
+    return () => window.removeEventListener("buildpath:review-target", show);
+  }, [value.scenarios, value.data]);
+  const flaggedKeys = flaggedPlaces(flags);
   const scenario = value.scenarios[Math.min(scenarioIndex, value.scenarios.length - 1)];
   const set = (patch: Partial<BusinessProcess>) => onChange({ ...value, ...patch });
   const setScenario = (index: number, patch: Partial<ProcessScenario>) => set({ scenarios: value.scenarios.map((item, i) => (i === index ? { ...item, ...patch } : item)) });
@@ -31,15 +44,18 @@ export function ProcessEditor({ value, onChange, options, disabled, issues }: { 
         {value.scenarios.length > 1 && (
           <div className={styles.row} style={{ flexWrap: "wrap", gap: 6 }} role="tablist">
             {value.scenarios.map((item, i) => (
-              <button key={item.key} role="tab" aria-selected={i === scenarioIndex} className={i === scenarioIndex ? styles.button : styles.ghost} style={{ minHeight: 36, padding: "4px 10px" }} onClick={() => setScenarioIndex(i)}>{item.title || t("Сценарий {0}", [i + 1])}</button>
+              <button key={item.key} id={`review-target-${item.key}`} role="tab" aria-selected={i === scenarioIndex} className={i === scenarioIndex ? styles.button : styles.ghost} style={{ minHeight: 36, padding: "4px 10px" }} onClick={() => setScenarioIndex(i)}>{flaggedKeys.has(item.key) ? "! " : ""}{item.title || t("Сценарий {0}", [i + 1])}</button>
             ))}
           </div>
         )}
         {scenario && scenario.steps.length > 0 ? (
           <>
             {scenario.goal && <p className={styles.small} style={{ margin: "6px 0 0" }}>{scenario.goal}</p>}
-            <SwimlaneDiagram actors={value.actors} scenario={scenario} />
+            <div id={value.scenarios.length > 1 ? undefined : `review-target-${scenario.key}`}>
+              <SwimlaneDiagram actors={value.actors} scenario={scenario} flagged={flaggedKeys} />
+            </div>
             <KindLegend />
+            <FlagList flags={flags} keys={[scenario.key, ...value.actors.filter((actor) => scenario.steps.some((step) => step.actor === actor.key)).map((actor) => actor.key)]} />
           </>
         ) : <p className={styles.muted}>{t("Добавьте сценарий и шаги ниже — схема появится здесь.")}</p>}
       </section>
@@ -48,7 +64,7 @@ export function ProcessEditor({ value, onChange, options, disabled, issues }: { 
         <p id="process-actors" className={styles.cardTitle}>{t("Участники")}</p>
         <p className={styles.small} style={{ marginTop: 0 }}>{t("Кто участвует в процессе: клиент, вы, сотрудники, сам сайт и внешние сервисы.")}</p>
         {value.actors.map((actor, i) => (
-          <div key={actor.key} className={styles.row} style={{ gap: 6, marginBottom: 6 }}>
+          <div key={actor.key} id={`review-target-${actor.key}`} className={styles.row} style={{ gap: 6, marginBottom: 6, ...(flaggedKeys.has(actor.key) ? { outline: "2px solid #b3261e", outlineOffset: 3, borderRadius: 8 } : {}) }}>
             <input className={styles.input} style={{ flex: 2 }} aria-label={t("Участник {0}", [i + 1])} value={actor.name} maxLength={40} disabled={disabled} placeholder={t("Например: Администратор")}
               onChange={(event) => set({ actors: value.actors.map((item, k) => (k === i ? { ...item, name: event.target.value } : item)) })} />
             <select className={styles.input} style={{ flex: 1.4 }} aria-label={t("Кто это")} value={actor.kind} disabled={disabled}
@@ -117,17 +133,19 @@ export function ProcessEditor({ value, onChange, options, disabled, issues }: { 
       <section className={styles.card} aria-labelledby="process-rules">
         <p id="process-rules" className={styles.cardTitle}>{t("Правила")}</p>
         <p className={styles.small} style={{ marginTop: 0 }}>{t("Правила, по которым вы работаете: отмена, предоплата, сроки ответа. По одному на строку.")}</p>
-        <textarea className={styles.textarea} aria-label={t("Правила")} disabled={disabled} value={value.rules.join("\n")} placeholder={t("Например: отмена не позже чем за 2 часа")}
+        <FlagList flags={flags} keys={["rules"]} />
+        <textarea id="review-target-rules" className={styles.textarea} aria-label={t("Правила")} disabled={disabled} value={value.rules.join("\n")} placeholder={t("Например: отмена не позже чем за 2 часа")}
           onChange={(event) => set({ rules: event.target.value.split("\n").slice(0, options.limits.rules) })} />
       </section>
 
       <section className={styles.card} aria-labelledby="process-data">
         <p id="process-data" className={styles.cardTitle}>{t("Схема данных")}</p>
         <p className={styles.small} style={{ marginTop: 0 }}>{t("Какую информацию вы храните и как она связана: например, у клиента много записей, у записи одна услуга. Сплошная линия — «много», пунктир — «один».")}</p>
-        <DataDiagram entities={value.data} />
+        <DataDiagram entities={value.data} flagged={flaggedKeys} />
+        <FlagList flags={flags} keys={value.data.map((entity) => entity.key)} />
         {value.data.map((entity, i) => (
-          <details key={entity.key} style={{ borderTop: "1px solid var(--line)", padding: "8px 0" }}>
-            <summary style={{ fontWeight: 700 }}>{entity.name || t("Без названия")}</summary>
+          <details key={entity.key} id={`review-target-${entity.key}`} open={openEntity === entity.key || undefined} style={{ borderTop: "1px solid var(--line)", padding: "8px 0" }}>
+            <summary style={{ fontWeight: 700, color: flaggedKeys.has(entity.key) ? "#b3261e" : undefined }}>{flaggedKeys.has(entity.key) ? "! " : ""}{entity.name || t("Без названия")}</summary>
             <label className={styles.label} htmlFor={`en-name-${entity.key}`}>{t("Название")}</label>
             <input id={`en-name-${entity.key}`} className={styles.input} value={entity.name} maxLength={40} disabled={disabled} placeholder={t("Например: Заказ")}
               onChange={(event) => set({ data: value.data.map((x, k) => (k === i ? { ...x, name: event.target.value } : x)) })} />

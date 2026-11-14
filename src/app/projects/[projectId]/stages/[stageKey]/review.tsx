@@ -8,6 +8,7 @@ import { t, dateLocale } from "@/lib/i18n";
 import { api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import styles from "../../../journey.module.css";
+import { showReviewTarget } from "./diagrams";
 
 export type ReviewFinding = {
   id: string; code: string; severity: "blocking" | "important" | "minor"; category: "logic" | "security" | "clarity";
@@ -31,6 +32,12 @@ export default function ReviewPanel({ projectId, stageKey, versionId, review, ca
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  // Places of the result that are on this page (diagrams, lists), so «show» appears only where it can work.
+  const [shown, setShown] = useState<string[]>([]);
+  useEffect(() => {
+    const targets = [...review.findings, ...(review.ai?.findings ?? [])].map((finding) => finding.target).filter((target): target is string => Boolean(target));
+    setShown(targets.filter((target) => document.getElementById(`review-target-${target}`)));
+  }, [review]);
   // A new version is a new review: forget what was ticked for the old one.
   useEffect(() => { setChosen([]); setReason(""); setError(""); }, [versionId]);
 
@@ -61,7 +68,7 @@ export default function ReviewPanel({ projectId, stageKey, versionId, review, ca
     field?.focus();
   };
 
-  type Item = { id: string; severity: ReviewFinding["severity"]; category: ReviewFinding["category"]; where: string; message: string; fix: string; overridden?: boolean };
+  type Item = { id: string; severity: ReviewFinding["severity"]; category: ReviewFinding["category"]; target?: string | null; where: string; message: string; fix: string; overridden?: boolean };
   const renderItem = (finding: Item, advice: boolean) => (
             <li key={finding.id} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "10px 12px" }}>
               <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: pickable && !finding.overridden ? "pointer" : "default" }}>
@@ -78,6 +85,9 @@ export default function ReviewPanel({ projectId, stageKey, versionId, review, ca
                   </span>
                   <span style={{ display: "block", marginTop: 6 }}>{finding.message}</span>
                   <span className={styles.small} style={{ display: "block", margin: "4px 0 0" }}><b>{t("Что сделать.")}</b> {finding.fix}</span>
+                  {finding.target && shown.includes(finding.target) && (
+                    <button type="button" className={styles.ghost} style={{ minHeight: 36, padding: "2px 0", marginTop: 4 }} onClick={(event) => { event.preventDefault(); showReviewTarget(finding.target!); }}>{t("Показать на схеме")}</button>
+                  )}
                 </span>
               </label>
             </li>

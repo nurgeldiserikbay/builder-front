@@ -2683,5 +2683,8 @@
  "ИИ проверяет…": "The AI is reviewing…",
  "Попросить ИИ проверить ещё раз": "Ask the AI to review again",
  "Попросить ИИ проверить": "Ask the AI to review",
- "На этом этапе своя проверка — ИИ-проверка здесь не нужна.": "This stage has its own checks — an AI review is not used here."
+ "На этом этапе своя проверка — ИИ-проверка здесь не нужна.": "This stage has its own checks — an AI review is not used here.",
+ "Замечания проверки к этому месту": "Review findings about this place",
+ "совет ИИ": "AI advice",
+ "Показать на схеме": "Show on the diagram"
 }

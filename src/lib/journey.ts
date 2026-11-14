@@ -307,6 +307,8 @@ const messages: Record<string, string> = {
   FINDINGS_NOT_FOUND: t("Этих замечаний больше нет — возможно, их уже исправили. Обновите страницу."),
   INVALID_FINDING_IDS: t("Выберите замечания из списка проверки."),
   NOTHING_TO_FIX: t("Сначала сделайте черновик этапа."),
+  NOTHING_TO_REVIEW: t("Сначала сделайте черновик этапа."),
+  AI_REVIEW_NOT_USED_FOR_STAGE: t("На этом этапе своя проверка — ИИ-проверка здесь не нужна."),
   NOT_YOUR_TURN: t("Сейчас очередь другого проверяющего."),
   STAGE_KEYS_INVALID: t("Выберите этапы этого проекта."),
   STAGE_KEYS_ONLY_FOR_CONTRIBUTORS: t("Этапы назначаются только исполнителям."),

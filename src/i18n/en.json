@@ -2671,5 +2671,17 @@
  "С какими данными": "With which data",
  "С какими данными работает": "Data it works with",
  "Карта модулей": "Module map",
- "Кто → что делает → с какими данными. Нажмите на роль, функцию или данные, чтобы подсветить связи. Красным — функции без данных и данные, с которыми никто не работает.": "Who → does what → with which data. Tap a role, a feature or a record to highlight its connections. Red marks features without data and data nobody works with."
+ "Кто → что делает → с какими данными. Нажмите на роль, функцию или данные, чтобы подсветить связи. Красным — функции без данных и данные, с которыми никто не работает.": "Who → does what → with which data. Tap a role, a feature or a record to highlight its connections. Red marks features without data and data nobody works with.",
+ "Проверка": "Review",
+ "ИИ проверил версию и дал советы — версия не менялась": "The AI reviewed the version and gave advice — the version did not change",
+ "Совет ИИ": "AI advice",
+ "ИИ посмотрел версию и дал советов: {0}.": "The AI reviewed the version and gave {0} pieces of advice.",
+ "ИИ посмотрел версию и не нашёл, что улучшить.": "The AI reviewed the version and found nothing to improve.",
+ "Советы ИИ": "AI advice",
+ "ИИ посмотрел эту версию {0}. Советы не блокируют переход и не меняют оценку: ИИ может ошибаться, решайте сами.": "The AI reviewed this version on {0}. Advice does not block moving on or change the score: the AI can be wrong, you decide.",
+ "ИИ ещё не смотрел эту версию. Он ищет то, что правила не ловят: противоречия с прошлыми этапами, пропущенные случаи, двусмысленные формулировки. Это один запрос к ИИ.": "The AI has not reviewed this version yet. It looks for what the rules miss: contradictions with earlier stages, missing cases, wording that can be read two ways. It is one AI request.",
+ "ИИ проверяет…": "The AI is reviewing…",
+ "Попросить ИИ проверить ещё раз": "Ask the AI to review again",
+ "Попросить ИИ проверить": "Ask the AI to review",
+ "На этом этапе своя проверка — ИИ-проверка здесь не нужна.": "This stage has its own checks — an AI review is not used here."
 }

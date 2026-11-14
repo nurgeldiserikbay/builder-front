@@ -14,7 +14,7 @@ type Item = {
   id: string; createdAt: string; stage: { key: string; title: string }; author: Person; text: string | null; savedAs: string | null;
   targetKey: string | null; rulesApplied: number; kind: "ai" | "template"; model: string | null; source: "app" | "telegram";
   tokens: { input: number | null; output: number | null } | null; cost?: number | null; durationMs: number; result: { versionNumber: number } | null;
-  outcome: "accepted" | "current" | "replaced" | "failed"; errorCode: string | null;
+  outcome: "accepted" | "current" | "replaced" | "failed" | "review"; errorCode: string | null;
 };
 type Total = { requests: number; failed: number; tokens: number };
 type History = {
@@ -28,6 +28,7 @@ const outcomes: Record<Item["outcome"], { label: string; tone: string; hint: str
   current: { label: t("Текущий черновик"), tone: "active", hint: t("Версия сейчас на этапе, ещё не принята") },
   replaced: { label: t("Заменён"), tone: "closed", hint: t("Потом сделали другую версию") },
   failed: { label: t("Ошибка"), tone: "attention", hint: t("Результат не получился") },
+  review: { label: t("Проверка"), tone: "active", hint: t("ИИ проверил версию и дал советы — версия не менялась") },
 };
 const errors: Record<string, string> = {
   AI_OUTPUT_REJECTED: t("ИИ вернул ответ не по форме этапа, мы его не сохранили"),

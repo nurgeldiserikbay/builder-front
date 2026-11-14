@@ -2554,5 +2554,22 @@
  "По правилам проекта сборку пока нельзя принять и опубликовать:": "By the project's rules the build cannot be accepted and published yet:",
  "На компьютере (главная страница)": "On a laptop (home page)",
  "На размере компьютера страницу измерить не удалось.": "The page could not be measured at a laptop size.",
- "Экран 1350 × 940 и быстрая проводная сеть. Это подсказка: пороги проекта проверяются по телефону.": "A 1350 × 940 screen and a fast wired connection. This is advice: the project's thresholds are checked on the phone."
+ "Экран 1350 × 940 и быстрая проводная сеть. Это подсказка: пороги проекта проверяются по телефону.": "A 1350 × 940 screen and a fast wired connection. This is advice: the project's thresholds are checked on the phone.",
+ "есть в этапе": "in a stage",
+ "частично": "partly",
+ "ТЗ и результат этапов": "Brief and stage results",
+ "Сравним строки требований из документа с тем, что принято на этапах проекта.": "We compare the requirement lines of the document with what is accepted on the project's stages.",
+ "Сверяем…": "Comparing…",
+ "Сверить с принятыми этапами": "Compare with accepted stages",
+ "Требований: {0} — есть в этапах {1}, частично {2}, не найдено {3}.": "Requirements: {0} — in stages {1}, partly {2}, not found {3}.",
+ "В документе не нашлось строк с требованиями: нет разделов о функциях, страницах или содержании и фраз «нужно», «должен».": "No requirement lines found in the document: no sections about functions, pages or content and no phrases like “must” or “should”.",
+ "Сравнили с этапами: {0}.": "Compared with stages: {0}.",
+ "Принятых этапов пока нет — сравнивать не с чем.": "No accepted stages yet — nothing to compare with.",
+ "Ещё не приняты: {0}.": "Not accepted yet: {0}.",
+ "Не найдено в этапах": "Not found in stages",
+ "Частично": "Partly",
+ "Есть в этапах ({0})": "In stages ({0})",
+ "Сверить ещё раз": "Compare again",
+ "Этот разбор сделан до того, как появилась сверка с этапами. Разберите документ ещё раз — новый отчёт можно будет сверить.": "This analysis was made before the comparison with stages existed. Analyse the document again — the new report can be compared.",
+ "Сверять с этапами можно только разбор документа (ТЗ).": "Only a document (brief) analysis can be compared with stages."
 }

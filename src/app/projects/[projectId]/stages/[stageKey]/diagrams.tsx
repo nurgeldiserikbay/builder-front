@@ -18,7 +18,7 @@ export type Sequence = { title: string; participants: string[]; messages: Array<
 export const FLAG = { fill: "#fdecea", stroke: "#b3261e", text: "#7a1a14" };
 
 export const kindColors: Record<ActorKind, { fill: string; stroke: string; text: string }> = {
-  client: { fill: "#e3f3ea", stroke: "#13804f", text: "#173b2a" },
+  client: { fill: "#e8ecff", stroke: "#2445d4", text: "#1a32a6" },
   business: { fill: "#fdf1dd", stroke: "#a86a12", text: "#5c3a07" },
   staff: { fill: "#ece9fb", stroke: "#5b4bb7", text: "#2f2470" },
   system: { fill: "#e6f0fa", stroke: "#2d6da3", text: "#173a5a" },
@@ -51,7 +51,7 @@ export function SwimlaneDiagram({ actors, scenario, highlight, flagged }: { acto
   const height = head + Math.max(1, scenario.steps.length) * row + 10;
   const index = new Map(actors.map((actor, i) => [actor.key, i]));
   const center = (step: ProcessStep, i: number) => ({ x: (index.get(step.actor) ?? 0) * lane + lane / 2, y: head + i * row + 8 + box.height / 2 });
-  const mark = { built: "#13804f", manual: "#8a8f8a", not_built: "#b3261e" };
+  const mark = { built: "#128a5e", manual: "#8a8f8a", not_built: "#b3261e" };
   return (
     <Scroll label={t("Схема сценария «{0}» по ролям", [scenario.title])}>
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block", minWidth: width }}>
@@ -138,7 +138,7 @@ export function DataDiagram({ entities, flagged }: { entities: DataEntity[]; fla
               {outgoing.length ? <line x1={x + 10} y1={fieldsBottom + 2} x2={x + cardWidth - 10} y2={fieldsBottom + 2} stroke="#e1e6e2" /> : null}
               {outgoing.map((link, k) => {
                 const text = `→ ${names[link.to]} · ${link.kind === "many" ? t("много") : t("один")}${link.label ? ` (${link.label})` : ""}`;
-                return <text key={k} x={x + 10} y={fieldsBottom + 18 + k * 16} fontSize={11} fill="#13804f">{text.length > 40 ? `${text.slice(0, 39)}…` : text}</text>;
+                return <text key={k} x={x + 10} y={fieldsBottom + 18 + k * 16} fontSize={11} fill="#2445d4">{text.length > 40 ? `${text.slice(0, 39)}…` : text}</text>;
               })}
             </g>
           );
@@ -172,11 +172,11 @@ export function SequenceDiagram({ sequence }: { sequence: Sequence }) {
   return (
     <Scroll label={t("Сценарий «{0}» по шагам", [sequence.title])}>
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block", minWidth: width }}>
-        <defs>{arrowMarker("seq-arrow", "#13804f")}</defs>
+        <defs>{arrowMarker("seq-arrow", "#2445d4")}</defs>
         {sequence.participants.map((name, i) => (
           <g key={name}>
             <line x1={x(i)} y1={head} x2={x(i)} y2={height - 4} stroke="#c9cfca" strokeDasharray="3 3" />
-            <Box x={i * column + 4} y={4} width={column - 8} height={32} fill="#e3f3ea" stroke="#13804f" color="#173b2a" bold>{name}</Box>
+            <Box x={i * column + 4} y={4} width={column - 8} height={32} fill="#e8ecff" stroke="#2445d4" color="#1a32a6" bold>{name}</Box>
           </g>
         ))}
         {layout.map(({ from, to, self, left, labelWidth, text, labelHeight }, i) => {
@@ -184,8 +184,8 @@ export function SequenceDiagram({ sequence }: { sequence: Sequence }) {
           return (
             <g key={i}>
               {self
-                ? <path d={`M${from},${y - 6} h22 v12 h-20`} fill="none" stroke="#13804f" strokeWidth={1.3} markerEnd="url(#seq-arrow)" />
-                : <line x1={from} y1={y} x2={to + (to > from ? -3 : 3)} y2={y} stroke="#13804f" strokeWidth={1.3} markerEnd="url(#seq-arrow)" />}
+                ? <path d={`M${from},${y - 6} h22 v12 h-20`} fill="none" stroke="#2445d4" strokeWidth={1.3} markerEnd="url(#seq-arrow)" />
+                : <line x1={from} y1={y} x2={to + (to > from ? -3 : 3)} y2={y} stroke="#2445d4" strokeWidth={1.3} markerEnd="url(#seq-arrow)" />}
               <foreignObject x={self ? from + 4 : left + 2} y={y - labelHeight - 4} width={labelWidth} height={labelHeight}>
                 <div style={{ fontSize: 10.5, lineHeight: "13px", color: "#1c241f", textAlign: self ? "left" : "center", display: "flex", alignItems: "flex-end", justifyContent: self ? "flex-start" : "center", height: "100%" }}><span>{text}</span></div>
               </foreignObject>
@@ -276,8 +276,8 @@ export function ScreenFlowDiagram({ screens, roles }: { screens: FlowScreen[]; r
                   const notes = [back ? t("↩ ещё {0}", [back]) : "", foreign ? t("→ чужая роль") : "", broken ? t("→ нет экрана") : ""].filter(Boolean).join(" · ");
                   return (
                     <g key={screen.key}>
-                      <rect x={at.x} y={at.y} width={box.width} height={box.height} rx={8} fill={danger ? "#fdecea" : level.get(screen.key) === 0 ? "#e3f3ea" : "#fff"}
-                        stroke={danger ? "#b3261e" : "#13804f"} strokeWidth={1.2} strokeDasharray={unreachable ? "4 3" : undefined} />
+                      <rect x={at.x} y={at.y} width={box.width} height={box.height} rx={8} fill={danger ? "#fdecea" : level.get(screen.key) === 0 ? "#e8ecff" : "#fff"}
+                        stroke={danger ? "#b3261e" : "#2445d4"} strokeWidth={1.2} strokeDasharray={unreachable ? "4 3" : undefined} />
                       <foreignObject x={at.x + 4} y={at.y + 2} width={box.width - 8} height={box.height - 4}>
                         <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", lineHeight: 1.2, overflow: "hidden" }}>
                           <span style={{ fontSize: 11.5, fontWeight: 700, color: "#1c241f", wordBreak: "break-word" }}>{screen.title}</span>
@@ -301,7 +301,7 @@ type MapFeature = { key: string; title: string; roles: string[]; priority: "must
 /** Who does what: features down, roles across, the priority of each feature. A role without a tick anywhere does nothing. */
 export function FeatureRoleMap({ roles, features }: { roles: Array<{ key: string; name: string }>; features: MapFeature[] }) {
   if (!roles.length || !features.length) return null;
-  const priority = { must: { text: t("обязательно"), color: "#13804f" }, should: { text: t("желательно"), color: "#2d6da3" }, later: { text: t("позже"), color: "#8a8f8a" } };
+  const priority = { must: { text: t("обязательно"), color: "#128a5e" }, should: { text: t("желательно"), color: "#2d6da3" }, later: { text: t("позже"), color: "#8a8f8a" } };
   const cell: React.CSSProperties = { padding: "6px 8px", borderBottom: "1px solid #e1e6e2", fontSize: 13, verticalAlign: "top" };
   return (
     <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", margin: "8px 0" }}>
@@ -322,7 +322,7 @@ export function FeatureRoleMap({ roles, features }: { roles: Array<{ key: string
                 <span style={{ display: "block", fontWeight: 600 }}>{feature.title}</span>
                 <span style={{ fontSize: 11.5, color: priority[feature.priority].color }}>{priority[feature.priority].text}</span>
               </td>
-              {roles.map((role) => <td key={role.key} style={{ ...cell, textAlign: "center", color: "#13804f", fontWeight: 800 }} aria-label={feature.roles.includes(role.key) ? t("да") : t("нет")}>{feature.roles.includes(role.key) ? "✓" : ""}</td>)}
+              {roles.map((role) => <td key={role.key} style={{ ...cell, textAlign: "center", color: "#2445d4", fontWeight: 800 }} aria-label={feature.roles.includes(role.key) ? t("да") : t("нет")}>{feature.roles.includes(role.key) ? "✓" : ""}</td>)}
             </tr>
           ))}
         </tbody>

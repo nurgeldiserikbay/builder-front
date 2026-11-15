@@ -4,7 +4,7 @@ import { t, getLocale } from "@/lib/i18n";
 import LanguageSwitch from "../language-switch";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError, api } from "@/lib/api";
+import { API_BASE_URL, ApiError, api } from "@/lib/api";
 import styles from "./login.module.css";
 
 /** Only same-site relative paths are allowed as a post-login destination. */
@@ -25,7 +25,21 @@ const loginMessages: Record<string, string> = {
   EMAIL_DELIVERY_NOT_CONFIGURED: t("Отправка писем пока не настроена. Напишите в поддержку."),
   INVALID_EMAIL: t("Проверьте адрес почты."),
   INVALID_PASSWORD: t("Пароль должен быть от 12 до 128 символов."),
+  GOOGLE_NOT_CONFIGURED: t("Вход через Google пока не включён. Войдите по почте и паролю."),
+  GOOGLE_CANCELLED: t("Вход через Google отменён."),
+  GOOGLE_STATE_INVALID: t("Ссылка входа через Google устарела или открыта в другом браузере. Нажмите «Продолжить с Google» ещё раз."),
+  GOOGLE_EMAIL_NOT_VERIFIED: t("Google не подтвердил адрес почты этого аккаунта. Подтвердите его в Google или войдите по почте и паролю."),
+  GOOGLE_ACCOUNT_MISMATCH: t("К аккаунту с этой почтой уже привязан другой аккаунт Google. Войдите через него или по паролю."),
+  GOOGLE_UNAVAILABLE: t("Google сейчас не отвечает. Попробуйте через минуту или войдите по паролю."),
+  GOOGLE_TOKEN_INVALID: t("Не удалось проверить ответ Google. Попробуйте ещё раз."),
+  GOOGLE_TOKEN_EXPIRED: t("Ответ Google устарел. Попробуйте ещё раз."),
+  GOOGLE_CODE_REJECTED: t("Google не принял вход. Попробуйте ещё раз."),
+  GOOGLE_RETRY: t("Не получилось с первого раза. Нажмите «Продолжить с Google» ещё раз."),
+  GOOGLE_FAILED: t("Не получилось войти через Google. Попробуйте ещё раз или войдите по паролю."),
 };
+
+/** Google refuses sign-in inside in-app browsers such as Telegram's; there the button is not offered. */
+const inTelegram = () => typeof window !== "undefined" && Boolean((window as unknown as { Telegram?: { WebApp?: { initData?: string } } }).Telegram?.WebApp?.initData);
 
 export default function LoginPage() {
   const router = useRouter();
@@ -38,12 +52,18 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [accepted, setAccepted] = useState(false);
   const [consentText, setConsentText] = useState("");
+  const [google, setGoogle] = useState(false);
 
   const next = typeof window === "undefined" ? "/projects" : safeNext(new URLSearchParams(window.location.search).get("next"));
   useEffect(() => {
     api<User>("/me").then(() => router.replace(next)).catch(() => undefined);
     api<{ statement: string }>("/legal/consent").then((info) => setConsentText(info.statement)).catch(() => undefined);
+    api<{ google: boolean }>("/auth/providers").then((info) => setGoogle(info.google && !inTelegram())).catch(() => undefined);
+    // Coming back from Google with a problem: say what happened.
+    const error = new URLSearchParams(window.location.search).get("error");
+    if (error && /^[A-Z_]{3,60}$/.test(error)) setMessage(loginMessages[error] ?? loginMessages.GOOGLE_FAILED!);
   }, [router, next]);
+  const googleHref = `${API_BASE_URL}/auth/google/start?next=${encodeURIComponent(next)}&locale=${getLocale()}`;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -106,6 +126,11 @@ export default function LoginPage() {
       <LanguageSwitch style={{ marginBottom: 16 }} />
       <h1>{titles[mode]}</h1>
       <p className={styles.sub}>{subtitles[mode]}</p>
+      {google && mode !== "forgot" && <>
+        <a className={styles.google} href={googleHref}>{t("Продолжить с Google")}</a>
+        {mode === "register" && <p className={styles.fine}>{t("Аккаунт создастся сразу, почта уже подтверждена Google. Перед началом работы мы попросим принять оферту и политику конфиденциальности.")}</p>}
+        <div className={styles.divider}>{t("или по почте")}</div>
+      </>}
       <form onSubmit={submit}>
         {mode === "register" && <label>{t("Имя")}<input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} maxLength={120} /></label>}
         <label>Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} maxLength={254} /></label>

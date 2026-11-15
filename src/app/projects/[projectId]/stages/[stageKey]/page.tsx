@@ -540,7 +540,7 @@ export default function StagePage() {
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
             {detail.outputs.items.map((item) => (
               <li key={item.key} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                <span aria-hidden style={{ fontWeight: 800, color: item.met ? "#13804f" : item.level === "required" ? "#b3261e" : "#a86a12", minWidth: 18 }}>{item.met ? "✓" : item.level === "required" ? "✗" : "○"}</span>
+                <span aria-hidden style={{ fontWeight: 800, color: item.met ? "#128a5e" : item.level === "required" ? "#b3261e" : "#a86a12", minWidth: 18 }}>{item.met ? "✓" : item.level === "required" ? "✗" : "○"}</span>
                 <span>
                   {item.text}
                   <span className={styles.small} style={{ display: "block", margin: 0 }}>{item.met ? t("готово") : item.level === "required" ? t("обязательно — пока не готово") : t("желательно")}</span>

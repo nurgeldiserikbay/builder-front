@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import '@fontsource-variable/onest';
+import '@fontsource-variable/unbounded';
 import './globals.css';
 import TelegramBridge from './telegram-bridge';
 import ConsentGate from './consent-gate';

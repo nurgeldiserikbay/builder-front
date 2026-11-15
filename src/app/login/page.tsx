@@ -121,7 +121,17 @@ export default function LoginPage() {
   };
 
   return <main className={styles.shell}>
-    <a href="/" className={styles.brand}><span>B</span> BuildPath</a>
+    <aside className={styles.route} aria-hidden="true">
+      <a href="/" className={styles.brand}><span>B</span> BuildPath</a>
+      <ol className={styles.stations}>
+        <li className={styles.done}><b>{t("Идея и цель")}</b><small>{t("Что сайт должен делать")}</small></li>
+        <li className={styles.done}><b>{t("Тексты и внешний вид")}</b><small>{t("ИИ предлагает, вы выбираете")}</small></li>
+        <li className={styles.here}><b>{t("Проверка")}</b><small>{t("Скорость, безопасность, телефоны")}</small></li>
+        <li><b>{t("Публикация")}</b><small>{t("Свой адрес и заявки клиентов")}</small></li>
+      </ol>
+      <p className={styles.routeNote}>{t("Можно остановиться на любом этапе и вернуться позже — с телефона или из Telegram.")}</p>
+    </aside>
+    <a href="/" className={`${styles.brand} ${styles.brandMobile}`}><span>B</span> BuildPath</a>
     <section className={styles.card}>
       <LanguageSwitch style={{ marginBottom: 16 }} />
       <h1>{titles[mode]}</h1>

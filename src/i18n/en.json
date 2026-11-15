@@ -2695,5 +2695,6 @@
  "готово": "ready",
  "обязательно — пока не готово": "required — not ready yet",
  "Сервис ИИ просит подождать: исчерпан его лимит запросов. Ничего не изменилось — попробуйте через минуту.": "The AI service asks to wait: its request limit is used up. Nothing changed — try again in a minute.",
- "Сервер просыпается — повторите через несколько секунд.": "The server is waking up — try again in a few seconds."
+ "Сервер просыпается — повторите через несколько секунд.": "The server is waking up — try again in a few seconds.",
+ "Модель ИИ сейчас перегружена у провайдера. Ничего не изменилось — попробуйте через пару минут.": "The AI model is overloaded at the provider right now. Nothing changed — try again in a couple of minutes."
 }

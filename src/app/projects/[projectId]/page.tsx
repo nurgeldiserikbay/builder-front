@@ -30,6 +30,8 @@ export default function JourneyPage() {
   const [journey, setJourney] = useState<Journey | null>(null);
   const [error, setError] = useState("");
   const [result, setResult] = useState<ResultPackage | null>(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<"map" | "list">("map");
   type Tab = "stages" | "team" | "money" | "publish" | "decisions" | "result";
@@ -70,17 +72,22 @@ export default function JourneyPage() {
     try { setResult(await api<ResultPackage>(`/projects/${projectId}/result`)); } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
   }
 
-  async function setStatus(action: "complete" | "resume" | "archive" | "unarchive") {
+  async function setStatus(action: "complete" | "resume" | "archive" | "unarchive" | "pause" | "cancel", reason?: string) {
     if (action === "archive" && !window.confirm(t("Отправить проект в архив? Он перестанет занимать место в тарифе. Специалисты потеряют доступ. Вернуть проект можно в любой момент."))) return;
     setBusy(true);
     setError("");
-    try { setJourney(await api<Journey>(`/projects/${projectId}/${action}`, { method: "POST" })); } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
+    try {
+      setJourney(await api<Journey>(`/projects/${projectId}/${action}`, { method: "POST", body: action === "cancel" ? JSON.stringify({ reason: reason?.trim() || undefined }) : undefined }));
+      setCancelOpen(false);
+    } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
   }
 
   const completed = journey?.project.status === "completed";
   const live = journey?.project.status === "live";
   const specialist = journey?.viewer.kind === "specialist";
   const archived = journey?.project.status === "archived";
+  const paused = journey?.project.status === "paused";
+  const cancelled = journey?.project.status === "cancelled";
 
   return (
     <div className={styles.shell}>
@@ -116,7 +123,17 @@ export default function JourneyPage() {
             )}
 
             {tab === "stages" && <>
-            {archived ? (
+            {cancelled ? (
+              <div className={`${styles.notice} ${styles.info}`}>
+                {t("Проект отменён: его можно смотреть и скачивать, но не менять. Он не занимает место в тарифе, специалисты больше не имеют доступа.")}
+                {journey.project.role === "owner" && <div style={{ marginTop: 10 }}><button className={styles.secondary} disabled={busy} onClick={() => setStatus("archive")}>{t("Убрать в архив")}</button></div>}
+              </div>
+            ) : paused ? (
+              <div className={`${styles.notice} ${styles.info}`}>
+                {t("Проект на паузе: этапы не меняются, пока вы не продолжите. Специалисты сохраняют доступ.")}
+                <div style={{ marginTop: 10 }}><button className={styles.secondary} disabled={busy} onClick={() => setStatus("resume")}>{t("Продолжить проект")}</button></div>
+              </div>
+            ) : archived ? (
               <div className={`${styles.notice} ${styles.info}`}>
                 {t("Проект в архиве: его можно смотреть и скачивать, но не менять. Он не занимает место в тарифе.")}
                 {journey.project.role === "owner" && <div style={{ marginTop: 10 }}><button className={styles.secondary} disabled={busy} onClick={() => setStatus("unarchive")}>{t("Вернуть из архива")}</button></div>}
@@ -142,7 +159,7 @@ export default function JourneyPage() {
                 <button type="button" aria-pressed={view === "map"} onClick={() => setView("map")}>{t("Карта")}</button>
                 <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>{t("Список")}</button>
               </div>
-              {!specialist && ["owner", "manager"].includes(journey.project.role) && journey.project.changeResponseDays && (
+              {!specialist && ["active", "live"].includes(journey.project.status) && ["owner", "manager"].includes(journey.project.role) && journey.project.changeResponseDays && (
                 <ResponseDays projectId={projectId} value={journey.project.changeResponseDays} />
               )}
               <div className={styles.spacer} />
@@ -250,13 +267,39 @@ export default function JourneyPage() {
                   <p className={styles.small} style={{ marginTop: 10 }}>{t("Файл site.html можно загрузить на любой хостинг статических сайтов. Форма заявок работает только на сайте, опубликованном через BuildPath.")}</p>
                 </>
               )}
-              {!archived && !live && journey.project.role === "owner" && (
-                <button className={styles.ghost} style={{ marginTop: 12, marginLeft: 8 }} disabled={busy} onClick={() => setStatus("archive")}>{t("Отправить в архив")}</button>
-              )}
-              {!completed && !live && !archived && journey.project.role === "owner" && (
-                <button className={styles.ghost} style={{ marginTop: 12 }} disabled={busy} onClick={() => setStatus("complete")}>{t("Завершить проект на этом этапе")}</button>
-              )}
             </section>
+            {!specialist && ["draft", "active", "paused", "completed"].includes(journey.project.status) && (
+              <section className={styles.card} aria-labelledby="lifecycle-title">
+                <p id="lifecycle-title" className={styles.cardTitle}>{t("Состояние проекта")}</p>
+                <p className={styles.small} style={{ marginTop: 0 }}>{t("Пауза останавливает работу, пока вы не вернётесь. Завершить — забрать результат и остановиться. Отменить — бросить проект: он перестанет занимать место в тарифе.")}</p>
+                <div className={styles.row} style={{ gap: 8, flexWrap: "wrap" }}>
+              {!archived && !live && !cancelled && journey.project.role === "owner" && (
+                <button className={styles.ghost} disabled={busy} onClick={() => setStatus("archive")}>{t("Отправить в архив")}</button>
+              )}
+              {!completed && !live && !archived && !cancelled && journey.project.role === "owner" && (
+                <button className={styles.ghost} disabled={busy} onClick={() => setStatus("complete")}>{t("Завершить проект на этом этапе")}</button>
+              )}
+              {journey.project.status === "active" && ["owner", "manager"].includes(journey.project.role) && (
+                <button className={styles.ghost} disabled={busy} onClick={() => setStatus("pause")}>{t("Поставить на паузу")}</button>
+              )}
+              {["draft", "active", "paused"].includes(journey.project.status) && journey.project.role === "owner" && !cancelOpen && (
+                <button className={styles.ghost} style={{ color: "var(--danger)" }} disabled={busy} onClick={() => setCancelOpen(true)}>{t("Отменить проект…")}</button>
+              )}
+              {cancelOpen && (
+                <form className={styles.card} style={{ width: "100%", margin: "6px 0 0", borderColor: "#f1c2bb", boxShadow: "none" }} onSubmit={(event) => { event.preventDefault(); void setStatus("cancel", cancelReason); }}>
+                  <p className={styles.cardTitle}>{t("Отменить проект?")}</p>
+                  <p style={{ marginTop: 0 }}>{t("Проект останется доступен для просмотра и скачивания, но менять его будет нельзя. Он перестанет занимать место в тарифе, специалисты сразу потеряют доступ. Уже начисленные им оплаты сохранятся. Потом проект можно только убрать в архив.")}</p>
+                  <label className={styles.label} htmlFor="cancel-reason">{t("Почему отменяете (необязательно)")}</label>
+                  <textarea id="cancel-reason" className={styles.textarea} rows={2} maxLength={300} value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} />
+                  <div className={styles.row} style={{ gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+                    <button className={styles.danger} disabled={busy}>{busy ? t("Отменяем…") : t("Отменить проект")}</button>
+                    <button type="button" className={styles.ghost} onClick={() => setCancelOpen(false)}>{t("Не отменять")}</button>
+                  </div>
+                </form>
+              )}
+                </div>
+              </section>
+            )}
               </div>
             )}
             </div>

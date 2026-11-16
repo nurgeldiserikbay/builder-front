@@ -1,6 +1,7 @@
 "use client";
 
 import ApprovalPanel from "./approval";
+import StageRoute from "./stage-route";
 import CommentsPanel from "./comments";
 import ReviewPanel from "./review";
 import type { ReviewFlags } from "./diagrams";
@@ -236,6 +237,7 @@ export default function StagePage() {
     <Shell projectId={projectId} title={stage.title}>
       <div className={styles.split}>
       <div className={styles.work}>
+      <StageRoute projectId={projectId} stageKey={stageKey} />
       <div className={styles.workHead}>
         <h1 className={styles.h1}>{stage.title}</h1>
         <span className={`${styles.chip} ${styles[tone]}`} title={stage.statusExplanation}>{stage.statusLabel}</span>

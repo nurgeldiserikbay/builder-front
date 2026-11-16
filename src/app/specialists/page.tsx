@@ -59,10 +59,10 @@ export default function SpecialistsPage() {
           <button className={styles.secondary} style={{ flexShrink: 0 }}>{t("Найти")}</button>
         </form>
         {data && (
-          <div className={styles.chips} role="group" aria-label={t("Этап")} style={{ margin: "0 0 18px" }}>
-            {!target && <button className={styles.choice} style={{ width: "auto" }} aria-pressed={!stage} onClick={() => setStage(null)}>{t("Все этапы")}</button>}
+          <div className={styles.filterRow} role="group" aria-label={t("Этап")}>
+            {!target && <button className={styles.filterChip} aria-pressed={!stage} onClick={() => setStage(null)}>{t("Все этапы")}</button>}
             {data.stages.filter((item) => !target || item.key === target.stageKey).map((item) => (
-              <button key={item.key} className={styles.choice} style={{ width: "auto" }} aria-pressed={stage === item.key} onClick={() => !target && setStage(item.key)}>{t(item.title)}</button>
+              <button key={item.key} className={styles.filterChip} aria-pressed={stage === item.key} onClick={() => !target && setStage(item.key)}>{t(item.title)}</button>
             ))}
           </div>
         )}
@@ -77,9 +77,12 @@ export default function SpecialistsPage() {
         )}
         {data && query.trim() && data.specialists.length > 0 && <p className={styles.small} role="status">{t("Найдено: {0}", [data.specialists.length])}</p>}
         {data?.specialists.map((card) => (
-          <a key={card.id} href={`/specialists/${card.id}${keep}`} className={styles.card} style={{ display: "block", color: "inherit", textDecoration: "none" }}>
-            <div className={styles.row} style={{ justifyContent: "space-between" }}>
-              <strong style={{ fontSize: 19 }}>{card.displayName}</strong>
+          <a key={card.id} href={`/specialists/${card.id}${keep}`} className={`${styles.card} ${styles.personCard}`}>
+            <div className={styles.row} style={{ justifyContent: "space-between", flexWrap: "nowrap", alignItems: "center" }}>
+              <span className={styles.row} style={{ flexWrap: "nowrap", gap: 12 }}>
+                <span className={styles.avatar} aria-hidden="true">{card.displayName.trim().charAt(0).toUpperCase()}</span>
+                <strong style={{ fontSize: 19 }}>{card.displayName}</strong>
+              </span>
               <span className={styles.small}><Rating rating={card.rating} reviews={card.reviews} /></span>
             </div>
             <p style={{ margin: "6px 0 8px" }}>{card.headline}</p>

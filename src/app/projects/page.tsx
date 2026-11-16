@@ -106,10 +106,10 @@ export default function ProjectsPage() {
             </div>
             <div className={styles.projectGrid}>
               {projects.filter((project) => project.status !== "archived").map((project) => (
-                <a key={project.id} className={styles.projectCard} href={project.projectType ? `/projects/${project.id}` : `/projects/${project.id}/analysis`}>
+                <a key={project.id} className={styles.projectCard} data-status={project.status} href={project.projectType ? `/projects/${project.id}` : `/projects/${project.id}/analysis`}>
                   <span className={styles.small}>{project.projectType ? types.find((item) => item.key === project.projectType)?.title ?? t("Проект") : t("Только анализ")}</span>
                   <strong>{project.name}</strong>
-                  <span className={`${styles.chip} ${styles[project.status === "live" || project.status === "completed" ? "done" : project.status === "active" ? "active" : "closed"]}`} style={{ alignSelf: "flex-start" }}>{projectStatus[project.status] ?? project.status}</span>
+                  <span className={`${styles.chip} ${styles[project.status === "live" || project.status === "completed" ? "done" : project.status === "active" ? "active" : "closed"]}`} style={{ alignSelf: "flex-start", marginTop: "auto" }}>{projectStatus[project.status] ?? project.status}</span>
                 </a>
               ))}
             </div>

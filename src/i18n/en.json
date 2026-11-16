@@ -2720,5 +2720,15 @@
  "ИИ предлагает, вы выбираете": "AI suggests, you choose",
  "Скорость, безопасность, телефоны": "Speed, security, phones",
  "Свой адрес и заявки клиентов": "Your own address and customer requests",
- "Можно остановиться на любом этапе и вернуться позже — с телефона или из Telegram.": "You can stop at any stage and come back later — from your phone or from Telegram."
+ "Можно остановиться на любом этапе и вернуться позже — с телефона или из Telegram.": "You can stop at any stage and come back later — from your phone or from Telegram.",
+ "Почта не совпадает с почтой аккаунта. Введите её так, как она указана выше.": "The email does not match the account's email. Type it exactly as shown above.",
+ "Для удаления нужен свежий вход. Войдите через Google ещё раз — и сразу повторите удаление.": "Deleting needs a fresh sign-in. Sign in with Google again, then repeat the deletion right away.",
+ "Сколько проектов и запросов к ИИ доступно": "How many projects and AI requests you have",
+ "Чтобы владельцы находили вас в каталоге": "So owners can find you in the catalog",
+ "Разногласия по работе специалистов и оплате": "Disagreements about specialists' work and payment",
+ "Условия работы платформы": "Terms of using the platform",
+ "Какие данные мы храним и зачем": "What data we keep and why",
+ "Введите почту аккаунта: {0}": "Type the account email: {0}",
+ "Вы входите через Google, пароля у аккаунта нет. Если вход был больше 15 минут назад, попросим войти ещё раз.": "You sign in with Google, so the account has no password. If you signed in more than 15 minutes ago, we will ask you to sign in again.",
+ "Войти через Google ещё раз": "Sign in with Google again"
 }

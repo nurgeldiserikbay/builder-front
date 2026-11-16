@@ -2895,5 +2895,22 @@
  "Отправьте сайт": "Send the site",
  "Нажмите «Отправить на Netlify» и подтвердите: уйдёт только принятая версия страницы сайта, без данных проекта.": "Press «Send to Netlify» and confirm: only the accepted version of the site page goes, no project data.",
  "После изменений отправьте снова — адрес останется тем же.": "After changes send again — the address stays the same.",
- "BuildPath откроет адрес сайта на Netlify и сравнит с последней принятой версией.": "BuildPath opens the site address on Netlify and compares it with the latest accepted version."
+ "BuildPath откроет адрес сайта на Netlify и сравнит с последней принятой версией.": "BuildPath opens the site address on Netlify and compares it with the latest accepted version.",
+ "Стартовый код": "Starter code",
+ "Платформа сделает из пакета заготовку API на Node.js: ресурсы из схемы данных, права по ролям и тесты. Без ИИ и без зависимостей. Тесты запускаются в отдельной одноразовой машине без интернета — не на серверах BuildPath.": "The platform turns the package into a Node.js API starter: resources from the data schema, rights by role and tests. No AI and no dependencies. The tests run in a separate throwaway machine without internet — not on BuildPath servers.",
+ "Изолированная среда для запуска кода пока не подключена: код можно собрать и скачать, но он не будет запущен.": "No isolated environment for running code is connected yet: you can build and download the code, but it will not be run.",
+ "Сначала соберите пакет.": "Build the package first.",
+ "Пакет собран заново после этой проверки — проверьте ещё раз.": "The package was rebuilt after this check — check again.",
+ "не уложилось во время": "ran out of time",
+ "пропущено после ошибки": "skipped after an error",
+ "Отчёт": "Report",
+ "Что пошло не так": "What went wrong",
+ "Файлов: {0}. Перед запуском разработчик заменяет вход и хранилище — что именно, написано в README.md.": "Files: {0}. Before going live the developer replaces sign-in and storage — README.md says what exactly.",
+ "⬇ Скачать код (.zip)": "⬇ Download code (.zip)",
+ "Собрать и проверить заново": "Build and check again",
+ "Собрать и проверить код": "Build and check the code",
+ "Собрать код": "Build the code",
+ "Этот пакет уже проверяли 5 раз. Соберите пакет заново, чтобы проверить снова.": "This package has been checked 5 times. Rebuild the package to check again.",
+ "Проверка кода уже идёт.": "The code check is already running.",
+ "Код ещё не собран.": "The code has not been built yet."
 }

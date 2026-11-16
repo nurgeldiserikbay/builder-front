@@ -5,10 +5,11 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatTenge } from "@/lib/money";
 import { isPlanMessage, explainError, type Suggestion } from "@/lib/journey";
+import AccessFields, { accessLines, type Access, type AccessOptions } from "./access-fields";
 import styles from "../../../journey.module.css";
 
 type Assignment = {
-  id: string; email: string; name: string | null; profileId: string | null; role: "lead" | "consultant"; status: string; aiBudget: number | null; aiUsed: number; inviteExpired: boolean; readUntil: string | null; termsText: string;
+  id: string; email: string; name: string | null; profileId: string | null; role: "lead" | "consultant"; status: string; aiBudget: number | null; aiUsed: number; inviteExpired: boolean; readUntil: string | null; termsText: string; access: Access;
   review: { rating: number; text: string | null; reply: string | null; hidden: boolean; moderationNote: string | null } | null; canReview: boolean;
 };
 type Roles = { lead: { title: string; explanation: string; can: string[] }; consultant: { title: string; explanation: string; can: string[] }; cannot: string[]; afterAcceptance: string };
@@ -19,6 +20,9 @@ const statusText: Record<string, string> = { invited: t("приглашение 
 export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId: string; stageKey: string; editable: boolean }) {
   const [list, setList] = useState<Assignment[]>([]);
   const [roles, setRoles] = useState<Roles | null>(null);
+  const [options, setOptions] = useState<AccessOptions | null>(null);
+  const [access, setAccess] = useState<Access>({ extraReadStages: [], hiddenParts: [], allowDownload: false, readDays: 7 });
+  const [editing, setEditing] = useState<{ id: string; access: Access } | null>(null);
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<"lead" | "consultant">("lead");
   const [email, setEmail] = useState("");
@@ -41,8 +45,8 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
 
   const load = useCallback(async () => {
     try {
-      const data = await api<{ assignments: Assignment[]; roles: Roles }>(`/projects/${projectId}/stages/${stageKey}/assignments`);
-      setList(data.assignments); setRoles(data.roles);
+      const data = await api<{ assignments: Assignment[]; roles: Roles; accessOptions: AccessOptions; defaultAccess: Access }>(`/projects/${projectId}/stages/${stageKey}/assignments`);
+      setList(data.assignments); setRoles(data.roles); setOptions(data.accessOptions);
     } catch (caught) { setError(explainError(caught)); }
   }, [projectId, stageKey]);
   useEffect(() => { void load(); }, [load]);
@@ -65,7 +69,7 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
     setBusy(true); setError("");
     try {
       const result = await api<{ inviteUrl: string; emailSent: boolean }>(`/projects/${projectId}/stages/${stageKey}/assignments`, {
-        method: "POST", body: JSON.stringify({ ...(invitee ? { profileId: invitee.id } : { email: email.trim() }), role, aiBudget: role === "lead" && budget.trim() ? Number(budget) : null, ...termsBody() }),
+        method: "POST", body: JSON.stringify({ ...(invitee ? { profileId: invitee.id } : { email: email.trim() }), role, aiBudget: role === "lead" && budget.trim() ? Number(budget) : null, ...termsBody(), access }),
       });
       setLink({ url: result.inviteUrl, emailSent: result.emailSent }); setEmail(""); setInvitee(null); setOpen(false);
       window.history.replaceState(null, "", window.location.pathname);
@@ -80,6 +84,16 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
   }
   const termsValid = pay === "none" || (pay === "fixed" ? Number(amount) >= 1000 : Number(rate) >= 500 && Number(limit) >= 1 && Number(limit) <= 1000 && (!weekly || (Number(weekly) >= 1 && Number(weekly) <= 80)));
   const digits = (set: (value: string) => void, max: number) => (event: { target: { value: string } }) => set(event.target.value.replace(/\D/g, "").slice(0, max));
+
+  async function saveAccess() {
+    if (!editing) return;
+    setBusy(true); setError("");
+    try {
+      await api(`/projects/${projectId}/assignments/${editing.id}/access`, { method: "PUT", body: JSON.stringify(editing.access) });
+      setEditing(null);
+      await load();
+    } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
+  }
 
   async function revoke(item: Assignment) {
     if (!window.confirm(t("Отозвать доступ у {0}? Сделанные версии останутся в истории.", [item.name ?? item.email]))) return;
@@ -111,6 +125,21 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
               </div>
               <div className={styles.small}>{item.inviteExpired ? t("срок приглашения истёк") : statusText[item.status]}{item.role === "lead" ? t(" · ИИ: {0}{1}", [item.aiUsed, item.aiBudget === null ? "" : t(" из {0}", [item.aiBudget])]) : ""}</div>
               <div className={styles.small}>{item.termsText}</div>
+              {options && editing?.id !== item.id && item.status !== "revoked" && (() => {
+                const lines = accessLines(item.access, options);
+                return <div className={styles.small}>{[...lines.can.map((line) => `✓ ${line}`), ...lines.cannot.map((line) => `✕ ${line}`)].join(" · ")}{" · "}{lines.after}{" "}
+                  <button type="button" className={styles.inlineLinkButton} onClick={() => setEditing({ id: item.id, access: item.access })}>{t("Настроить доступ")}</button></div>;
+              })()}
+              {options && editing?.id === item.id && (
+                <div style={{ marginTop: 10 }}>
+                  <AccessFields value={editing.access} options={options} onChange={(next) => setEditing({ id: item.id, access: next })} disabled={busy} />
+                  <div className={styles.row} style={{ gap: 8 }}>
+                    <button type="button" className={styles.button} disabled={busy} onClick={() => void saveAccess()}>{t("Сохранить доступ")}</button>
+                    <button type="button" className={styles.ghost} onClick={() => setEditing(null)}>{t("Отмена")}</button>
+                  </div>
+                  <p className={styles.small}>{t("Изменения действуют сразу.")}</p>
+                </div>
+              )}
               {item.review && reviewing !== item.id && (
                 <p className={styles.small} style={{ margin: "6px 0 0" }}>
                   {t("Ваш отзыв:")}{" "}<span style={{ color: "#c98a00" }}>{"★".repeat(item.review.rating)}</span>{item.review.text ? ` — ${item.review.text}` : ""}
@@ -218,13 +247,19 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
                 <input className={styles.input} inputMode="numeric" value={revisions} onChange={digits(setRevisions, 2)} /></label>
             </div>
           )}
-          <div className={`${styles.notice} ${styles.info}`}>
-            <strong>{t("Специалист сможет:")}</strong>
-            <ul className={styles.list}>{roles[role].can.map((item) => <li key={item}>{item}</li>)}</ul>
-            <strong>{t("Не сможет:")}</strong>
-            <ul className={styles.list}>{roles.cannot.map((item) => <li key={item}>{item}</li>)}</ul>
-            <p style={{ margin: "8px 0 0" }}>{roles.afterAcceptance}</p>
-          </div>
+          {options && <AccessFields value={access} options={options} onChange={setAccess} disabled={busy} />}
+          {(() => {
+            const lines = options ? accessLines(access, options) : { can: [], cannot: [], after: roles.afterAcceptance };
+            return (
+              <div className={`${styles.notice} ${styles.info}`}>
+                <strong>{t("Специалист сможет:")}</strong>
+                <ul className={styles.list}>{[...roles[role].can, ...lines.can].map((item) => <li key={item}>{item}</li>)}</ul>
+                <strong>{t("Не сможет:")}</strong>
+                <ul className={styles.list}>{[...roles.cannot.map((item) => (access.extraReadStages.length && item === t("Видеть другие этапы проекта") ? t("Видеть остальные этапы проекта") : item)), ...lines.cannot].map((item) => <li key={item}>{item}</li>)}</ul>
+                <p style={{ margin: "8px 0 0" }}>{lines.after}</p>
+              </div>
+            );
+          })()}
           <div className={styles.row}>
             <button className={styles.ghost} onClick={() => setOpen(false)}>{t("Отмена")}</button>
             <div className={styles.spacer} />

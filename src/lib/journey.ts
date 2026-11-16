@@ -33,6 +33,8 @@ export type Journey = {
   nextAction: { stageKey: string | null; title: string; text: string };
   stages: JourneyStage[];
   ai: { configured: boolean; provider: string | null; remainingToday: number; month: { left: number; limit: number; planTitle: string } | null };
+  /** Change proposals waiting for a decision (owners and managers), or the specialist's own open ones. */
+  openProposals?: number;
 };
 
 export type FieldDefinition = {
@@ -189,6 +191,14 @@ const messages: Record<string, string> = {
   INVITE_EMAIL_MISMATCH: t("Приглашение отправлено на другой адрес. Войдите в аккаунт с той почтой, на которую пришло приглашение."),
   ASSIGNMENT_NOT_FOUND: t("Приглашение уже отозвано."),
   PREVIEW_NOT_AVAILABLE: t("Предпросмотр недоступен для этого этапа."),
+  PROPOSAL_TEXT_INVALID: t("Опишите, что изменить и почему, — от 10 до 1000 символов."),
+  PROPOSAL_TARGET_INVALID: t("Предложить изменение можно только для этапов, на которых построен ваш этап."),
+  PROPOSAL_TARGET_NOT_ACCEPTED: t("Этот этап ещё не принят — менять пока нечего."),
+  PROPOSAL_ONLY_FOR_SPECIALISTS: t("Предложения изменений отправляют приглашённые специалисты. Вы можете изменить этап сами."),
+  PROPOSAL_LIMIT: t("У вас уже 10 предложений ждут решения. Дождитесь ответа владельца или отзовите лишние."),
+  PROPOSAL_ALREADY_DECIDED: t("По этому предложению уже приняли решение."),
+  PROPOSAL_NOT_FOUND: t("Предложение не найдено — возможно, его уже отозвали."),
+  PROPOSALS_FORBIDDEN: t("Предложения изменений видят владелец и менеджеры проекта."),
   UNPUBLISH_FIRST: t("Сначала снимите сайт с публикации."),
   CANCEL_REASON_TOO_LONG: t("Причина слишком длинная — до 300 символов."),
   UNPUBLISH_BEFORE_ARCHIVE: t("Сначала снимите сайт с публикации — опубликованный проект нельзя отправить в архив."),

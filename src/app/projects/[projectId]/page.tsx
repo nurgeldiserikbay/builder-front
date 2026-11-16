@@ -15,6 +15,7 @@ import BudgetCard from "./budget-card";
 import WalletCard from "./wallet-card";
 import AppHeader from "../../app-header";
 import TeamCard from "./team-card";
+import ProposalsPanel from "./proposals";
 
 type ResultPackage = { generatedAt: string; complete: boolean; openItems: string[]; siteReady: boolean; files: Array<{ name: string; mimeType: string; content: string }> };
 
@@ -123,6 +124,7 @@ export default function JourneyPage() {
             )}
 
             {tab === "stages" && <>
+            {(journey.openProposals ?? 0) > 0 && (managing || specialist) && <ProposalsPanel projectId={projectId} aiReady={journey.ai.configured} onDecided={() => void load()} />}
             {cancelled ? (
               <div className={`${styles.notice} ${styles.info}`}>
                 {t("Проект отменён: его можно смотреть и скачивать, но не менять. Он не занимает место в тарифе, специалисты больше не имеют доступа.")}

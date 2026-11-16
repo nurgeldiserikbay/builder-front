@@ -2,6 +2,7 @@
 
 import ApprovalPanel from "./approval";
 import StageRoute from "./stage-route";
+import ProposalsPanel, { ProposeChange } from "../../proposals";
 import CommentsPanel from "./comments";
 import ReviewPanel from "./review";
 import type { ReviewFlags } from "./diagrams";
@@ -77,6 +78,7 @@ export default function StagePage() {
   }, [projectId]);
   useEffect(() => { loadBudget(); }, [loadBudget]);
 
+  const [proposalsVersion, setProposalsVersion] = useState(0);
   const load = useCallback(async () => {
     try {
       const next = await api<StageDetail>(`/projects/${projectId}/stages/${stageKey}`);
@@ -652,12 +654,15 @@ export default function StagePage() {
             {detail.inputs.map((input) => (
               <li key={input.key}>
                 <strong>{input.title}</strong>{input.satisfied ? t(" (версия {0}): {1}", [input.versionNumber, summarize(input.key, input.content)]) : t(" — ещё не принят")}
+                {specialist && assignment?.status === "active" && input.satisfied && <>{" · "}<ProposeChange projectId={projectId} stageKey={stageKey} target={{ key: input.key, title: input.title }} onSent={() => setProposalsVersion((value) => value + 1)} /></>}
                 {!input.satisfied && <> · <a className={styles.back} href={`/projects/${projectId}/stages/${input.key}`}>{t("открыть")}</a></>}
               </li>
             ))}
           </ul>
         </details>
       )}
+      {(specialist || ["owner", "manager"].includes(detail.viewer.role)) && <ProposalsPanel key={proposalsVersion} projectId={projectId} aiReady={detail.ai.configured} onDecided={() => void load()}
+        filter={specialist ? { fromStageKey: stageKey } : { targetStageKey: stageKey }} />}
       {stage.canInvite && stage.status !== "locked" && (
         <SpecialistsPanel projectId={projectId} stageKey={stageKey} editable={!accepted} />
       )}

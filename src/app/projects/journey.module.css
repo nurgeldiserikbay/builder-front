@@ -387,3 +387,4 @@ button.chip:disabled{opacity:.5;cursor:not-allowed}
 .inlineLinkButton{border:0;background:none;padding:0;color:var(--brand);font:inherit;font-weight:600;cursor:pointer}
 .inlineLinkButton:hover{text-decoration:underline}
 .inlineLinkButton:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.proposal{border-left:4px solid var(--here);padding:4px 0 4px 14px;margin:0 0 18px}

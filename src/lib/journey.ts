@@ -93,6 +93,9 @@ export type StageDetail = {
     impact?: { opens: Array<{ key: string; title: string }>; willNotify: Array<{ key: string; title: string; status: string }> };
   };
   inputs: Array<{ key: string; title: string; satisfied: boolean; versionNumber: number | null; content: unknown }>;
+  /** For a specialist: accepted results the owner opened beyond the inputs, and their access settings. */
+  extraReads?: Array<{ key: string; title: string; versionNumber: number; content: unknown }>;
+  access?: { hiddenParts: string[]; allowDownload: boolean; readDays: number } | null;
   current: { id: string; versionNumber: number; origin: string; note: string | null; createdAt: string; content: unknown } | null;
   issues: Array<{ key: string; message: string }>;
   review?: StageReview | null;
@@ -455,7 +458,7 @@ export function download(name: string, mimeType: string, content: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export type StageFile = { id: string; name: string; kind: string; mime: string; sizeBytes: number; sha256: string; note: string; createdAt: string; author: string; mine: boolean; canDelete: boolean; canAnalyze: boolean };
+export type StageFile = { id: string; name: string; kind: string; mime: string; sizeBytes: number; sha256: string; note: string; createdAt: string; author: string; mine: boolean; canDelete: boolean; canAnalyze: boolean; canDownload?: boolean };
 export type StageFiles = { files: StageFile[]; canUpload: boolean; limits: { fileBytes: number; perStage: number; note: number }; accepted: string[]; createdId?: string };
 
 /** Saves a file the API serves only with the session cookie (stage files, analysis reports). */

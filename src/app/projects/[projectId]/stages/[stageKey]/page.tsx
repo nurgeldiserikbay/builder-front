@@ -633,6 +633,18 @@ export default function StagePage() {
         <p style={{ margin: "0 0 8px" }}>{stage.purpose}</p>
         <p className={styles.small} style={{ margin: 0 }}><strong>{t("Результат:")}</strong> {stage.outcome}</p>
       </section>
+      {detail.extraReads && detail.extraReads.length > 0 && (
+        <details className={`${styles.card} ${styles.details}`}>
+          <summary>{t("Дополнительно открыто владельцем ({0})", [detail.extraReads.length])}</summary>
+          <ul className={styles.list}>
+            {detail.extraReads.map((item) => <li key={item.key}><strong>{t(item.title)}</strong>{t(" (версия {0}): {1}", [item.versionNumber, summarize(item.key, item.content)])}</li>)}
+          </ul>
+          <p className={styles.small} style={{ margin: 0 }}>{t("Только принятая версия, для чтения. ИИ этапа тоже видит эти материалы.")}</p>
+        </details>
+      )}
+      {detail.access && detail.access.hiddenParts.length > 0 && (
+        <p className={`${styles.notice} ${styles.info}`}>{t("Владелец скрыл часть данных — вместо них вы и ИИ видите «скрыто владельцем».")}</p>
+      )}
       {detail.inputs.length > 0 && stage.status !== "locked" && (
         <details className={`${styles.card} ${styles.details}`}>
           <summary>{t("Что берём из прошлых этапов")}</summary>

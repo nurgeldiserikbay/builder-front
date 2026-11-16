@@ -2,6 +2,7 @@
 
 import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
+import { HostingConnect, HostingDeploy, type Hosting } from "./hosting-connect";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
@@ -11,7 +12,7 @@ import { DomainConnect } from "./domain-connect";
 import styles from "../../../journey.module.css";
 import AppHeader from "../../../../app-header";
 
-type Step = { key: string; title: string; text: string[]; kind: "manual" | "connect" | "download" | "publish" | "push" | "package" | "verify" | "domain"; link?: { label: string; url: string } };
+type Step = { key: string; title: string; text: string[]; kind: "manual" | "connect" | "download" | "publish" | "push" | "package" | "verify" | "domain" | "hosting_connect" | "hosting_deploy"; link?: { label: string; url: string } };
 type Option = { key: string; requires?: { card: string; option: string; explanation: string }; title: string; summary: string; pros: string[]; limits: string[]; cost: string; upkeep: string; leaving: string; steps: Step[] };
 type Repository = { provider: string; connectedVia?: string; repoPath: string; webUrl: string; defaultBranch: string; isPrivate: boolean; tokenHint: string; verifiedAt: string; lastPushAt: string | null; lastCommitUrl: string | null; lastError: string | null };
 type CardState = {
@@ -20,7 +21,7 @@ type CardState = {
   choice: { optionKey: string; reason: string | null; stepsDone: string[]; chosenAt: string; verification: Verification | null } | null;
   repository: Repository | null; canDecide: boolean; connectAvailable: boolean;
   available?: Record<string, boolean>;
-  context?: { siteAccepted?: boolean; domainsAvailable?: boolean; publication: { status: string; slug: string; upToDate: boolean; domain?: string | null; domainStatus?: string | null } | null; repository?: { provider: string; repoPath: string; pushedAt: string | null } | null } | null;
+  context?: { siteAccepted?: boolean; domainsAvailable?: boolean; publication: { status: string; slug: string; upToDate: boolean; domain?: string | null; domainStatus?: string | null } | null; repository?: { provider: string; repoPath: string; pushedAt: string | null } | null; hosting?: Hosting | null } | null;
 };
 type Verification = { url: string | null; status: "matches" | "outdated" | "different" | "unreachable" | "not_allowed" | "not_published"; checkedAt: string; httpStatus: number | null };
 const verificationText: Record<Verification["status"], string> = {
@@ -34,6 +35,16 @@ const verificationText: Record<Verification["status"], string> = {
 type Preview = { branch: string; files: Array<{ path: string; bytes: number }>; siteIncluded: boolean; complete: boolean };
 
 const errors: Record<string, string> = {
+  HOSTING_TOKEN_INVALID: t("Ключ хостинга не подошёл: проверьте, что скопировали его целиком и он не отозван."),
+  HOSTING_SITE_NOT_FOUND: t("Сайт с таким ID не найден в этом аккаунте. Проверьте ID или оставьте поле пустым — создадим новый."),
+  HOSTING_SITE_NAME_TAKEN: t("Хостинг не принял имя сайта. Попробуйте ещё раз."),
+  HOSTING_RATE_LIMITED: t("Хостинг просит подождать. Повторите через минуту."),
+  HOSTING_UNAVAILABLE: t("Хостинг сейчас не отвечает. Попробуйте позже."),
+  HOSTING_FAILED: t("Хостинг вернул ошибку. Попробуйте ещё раз позже."),
+  HOSTING_NOT_CHOSEN: t("Сначала выберите этот вариант в решении."),
+  HOSTING_NOT_CONNECTED: t("Хостинг не подключён."),
+  HOSTING_RECONNECT_REQUIRED: t("Ключ хостинга нужно ввести заново."),
+  HOSTING_PROVIDER_UNKNOWN: t("Этот хостинг пока не поддерживается."),
   REPO_TOKEN_INVALID: t("Ключ не подошёл: проверьте, что скопировали его целиком и срок не истёк."),
   REPO_ACCESS_DENIED: t("Ключу не хватает прав. Проверьте, что выбран нужный репозиторий и разрешена запись."),
   REPO_NOT_FOUND: t("Репозиторий не найден. Проверьте адрес и что ключ выдан именно для него."),
@@ -162,9 +173,14 @@ export default function ChoicePage() {
                         return api<CardState>(`/projects/${projectId}/choices/${cardKey}`);
                       })}>{busy === "package" ? t("Готовим…") : t("Скачать пакет (zip)")}</button>
                     )}
+                    {step.kind === "hosting_connect" && <HostingConnect provider={chosen.key} title={chosen.title} hosting={state.context?.hosting ?? null} canDecide={state.canDecide} busy={busy}
+                      onConnect={(input) => void run("hosting", () => api<CardState>(`/projects/${projectId}/deployment/hosting`, { method: "POST", body: JSON.stringify({ provider: chosen.key, ...input, confirm: true }) }))}
+                      onDisconnect={() => { if (window.confirm(t("Отключить {0}? Ключ будет удалён из BuildPath, сайт в вашем аккаунте останется.", [chosen.title]))) void run("hosting", () => api<CardState>(`/projects/${projectId}/deployment/hosting`, { method: "DELETE" })); }} />}
+                    {step.kind === "hosting_deploy" && <HostingDeploy title={chosen.title} hosting={state.context?.hosting ?? null} siteAccepted={Boolean(state.context?.siteAccepted)} canDecide={state.canDecide} busy={busy}
+                      onDeploy={() => void run("deploy", () => api<CardState>(`/projects/${projectId}/deployment/hosting/deploy`, { method: "POST", body: JSON.stringify({ confirm: true }) }))} />}
                     {step.kind === "verify" && state.canDecide && (
-                      <form onSubmit={(event) => { event.preventDefault(); void run("verify", () => api<CardState>(`/projects/${projectId}/deployment/verify`, { method: "POST", body: JSON.stringify({ url: chosen.key === "buildpath" ? null : siteUrl }) })); }}>
-                        {chosen.key !== "buildpath" && <input className={styles.input} inputMode="url" required maxLength={500} placeholder={chosen.key === "github_pages" ? t("https://имя.github.io/my-site/") : t("https://ваш-домен.kz")} value={siteUrl} onChange={(event) => setSiteUrl(event.target.value)} />}
+                      <form onSubmit={(event) => { event.preventDefault(); void run("verify", () => api<CardState>(`/projects/${projectId}/deployment/verify`, { method: "POST", body: JSON.stringify({ url: chosen.key === "buildpath" || (!siteUrl && state.context?.hosting) ? null : siteUrl }) })); }}>
+                        {chosen.key !== "buildpath" && <input className={styles.input} inputMode="url" required={!state.context?.hosting} maxLength={500} placeholder={chosen.key === "github_pages" ? t("https://имя.github.io/my-site/") : t("https://ваш-домен.kz")} value={siteUrl} onChange={(event) => setSiteUrl(event.target.value)} />}
                         <button className={styles.button} style={{ marginTop: 6 }} disabled={Boolean(busy)}>{busy === "verify" ? t("Проверяем…") : t("Проверить")}</button>
                         {choice?.verification && <p className={`${styles.notice} ${choice.verification.status === "matches" ? styles.success : styles.warn}`} style={{ marginTop: 8 }}>
                           {verificationText[choice.verification.status]}{choice.verification.httpStatus && choice.verification.status === "unreachable" ? t(" (ответ сервера: {0})", [choice.verification.httpStatus]) : ""}

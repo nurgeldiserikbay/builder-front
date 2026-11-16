@@ -1,15 +1,15 @@
 "use client";
 
-import { t, dateLocale } from "@/lib/i18n";
+import { t, dateLocale, getLocale } from "@/lib/i18n";
 import LanguageSwitch from "../language-switch";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError, api } from "@/lib/api";
+import { API_BASE_URL, ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import styles from "../projects/journey.module.css";
 import AppHeader from "../app-header";
 
-type Me = { id: string; email: string; name: string | null };
+type Me = { id: string; email: string; name: string | null; hasPassword?: boolean };
 type Preview = { projects: number; liveSites: Array<{ slug: string; projectName: string }>; specialistStages: number; telegramLinked: boolean; retentionDays: number; purgeAfter: string };
 type Deleted = { deletionRequestedAt: string; purgeAfter: string; retentionDays: number };
 
@@ -23,6 +23,8 @@ export default function AccountPage() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [reauth, setReauth] = useState(false);
   const [understood, setUnderstood] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -48,8 +50,10 @@ export default function AccountPage() {
     setBusy(true);
     setError("");
     try {
-      setDeleted(await api<Deleted>("/me/deletion", { method: "POST", body: JSON.stringify({ password, confirm: understood }) }));
+      const proof = me?.hasPassword === false ? { confirmEmail } : { password };
+      setDeleted(await api<Deleted>("/me/deletion", { method: "POST", body: JSON.stringify({ ...proof, confirm: understood }) }));
     } catch (caught) {
+      setReauth(caught instanceof ApiError && caught.message === "REAUTH_REQUIRED");
       setError(explainError(caught));
     } finally {
       setBusy(false);
@@ -78,20 +82,25 @@ export default function AccountPage() {
         {!me && !error && <p className={styles.muted}>{t("Загружаем…")}</p>}
         {me && (
           <>
-            <p className={styles.kicker}>{t("Ваш аккаунт")}</p>
-            <h1 className={styles.h1}>{me.name || me.email}</h1>
+            <div className={styles.profileHead}>
+              <span className={styles.avatar} aria-hidden="true">{(me.name || me.email).trim().charAt(0).toUpperCase()}</span>
+              <div>
+                <p className={styles.kicker}>{t("Ваш аккаунт")}</p>
+                <h1 className={styles.h1} style={{ margin: 0 }}>{me.name || me.email}</h1>
+              </div>
+            </div>
             <LanguageSwitch style={{ margin: "0 0 14px" }} />
             {me.name && <p className={styles.small} style={{ marginTop: 0 }}>{me.email}</p>}
 
             <section className={styles.card}>
               <p className={styles.cardTitle}>{t("Тариф и документы")}</p>
-              <ul className={styles.list}>
-                <li><a href="/account/plan">{t("Тариф и лимиты")}</a></li>
-                <li><a href="/account/specialist">{t("Карточка специалиста")}</a>{" "}{t("— чтобы владельцы находили вас в каталоге")}</li>
-                <li><a href="/account/disputes">{t("Споры")}</a>{" "}{t("— разногласия по работе специалистов и оплате")}</li>
-                <li><a href="/legal/terms">{t("Оферта")}</a></li>
-                <li><a href="/legal/privacy">{t("Политика конфиденциальности")}</a>{" "}{t("— какие данные мы храним и зачем")}</li>
-              </ul>
+              <nav className={styles.settingsList}>
+                <a href="/account/plan"><b>{t("Тариф и лимиты")}</b><small>{t("Сколько проектов и запросов к ИИ доступно")}</small></a>
+                <a href="/account/specialist"><b>{t("Карточка специалиста")}</b><small>{t("Чтобы владельцы находили вас в каталоге")}</small></a>
+                <a href="/account/disputes"><b>{t("Споры")}</b><small>{t("Разногласия по работе специалистов и оплате")}</small></a>
+                <a href="/legal/terms"><b>{t("Оферта")}</b><small>{t("Условия работы платформы")}</small></a>
+                <a href="/legal/privacy"><b>{t("Политика конфиденциальности")}</b><small>{t("Какие данные мы храним и зачем")}</small></a>
+              </nav>
             </section>
 
             <section className={styles.card} aria-labelledby="delete-title">
@@ -109,15 +118,22 @@ export default function AccountPage() {
                   {preview.telegramLinked && <li>{t("Telegram отключится, уведомления о заявках перестанут приходить.")}</li>}
                 </ul>
                 <p>{t("Проекты (")}{preview.projects}{t(") и остальные данные мы храним ещё")}{" "}{days(preview.retentionDays)}{" "}{t("— до")}{" "}{date(preview.purgeAfter)}{t(". Пока срок не прошёл, аккаунт можно восстановить через поддержку. Потом всё удаляется навсегда.")}</p>
-                <label className={styles.label} htmlFor="delete-password">{t("Пароль от аккаунта")}</label>
-                <input id="delete-password" className={styles.input} type="password" autoComplete="current-password" required maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} />
+                {me.hasPassword === false ? <>
+                  <label className={styles.label} htmlFor="delete-email">{t("Введите почту аккаунта: {0}", [me.email])}</label>
+                  <input id="delete-email" className={styles.input} type="email" autoComplete="off" required maxLength={320} value={confirmEmail} onChange={(event) => setConfirmEmail(event.target.value)} />
+                  <p className={styles.small}>{t("Вы входите через Google, пароля у аккаунта нет. Если вход был больше 15 минут назад, попросим войти ещё раз.")}</p>
+                </> : <>
+                  <label className={styles.label} htmlFor="delete-password">{t("Пароль от аккаунта")}</label>
+                  <input id="delete-password" className={styles.input} type="password" autoComplete="current-password" required maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} />
+                </>}
                 <label style={{ display: "flex", gap: 10, alignItems: "flex-start", margin: "14px 0" }}>
                   <input type="checkbox" checked={understood} onChange={(event) => setUnderstood(event.target.checked)} style={{ width: 20, height: 20, flex: "none" }} />
                   <span>{t("Я понимаю, что сайты перестанут работать сразу, а данные будут удалены после")}{" "}{date(preview.purgeAfter)}.</span>
                 </label>
                 {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
+                {reauth && <a className={styles.secondary} style={{ marginBottom: 12 }} href={`${API_BASE_URL}/auth/google/start?next=${encodeURIComponent("/account")}&locale=${getLocale()}`}>{t("Войти через Google ещё раз")}</a>}
                 <div className={styles.row} style={{ gap: 10, flexWrap: "wrap" }}>
-                  <button className={styles.danger} disabled={busy || !understood || !password}>{busy ? t("Удаляем…") : t("Удалить аккаунт")}</button>
+                  <button className={styles.danger} disabled={busy || !understood || (me.hasPassword === false ? !confirmEmail : !password)}>{busy ? t("Удаляем…") : t("Удалить аккаунт")}</button>
                   <button type="button" className={styles.ghost} onClick={() => { setOpen(false); setPassword(""); setUnderstood(false); }}>{t("Отмена")}</button>
                 </div>
               </form>}

@@ -388,3 +388,4 @@ button.chip:disabled{opacity:.5;cursor:not-allowed}
 .inlineLinkButton:hover{text-decoration:underline}
 .inlineLinkButton:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .proposal{border-left:4px solid var(--here);padding:4px 0 4px 14px;margin:0 0 18px}
+.errorText{color:var(--danger);font-weight:600}

@@ -97,6 +97,7 @@ export default function AccountPage() {
               <nav className={styles.settingsList}>
                 <a href="/account/plan"><b>{t("Тариф и лимиты")}</b><small>{t("Сколько проектов и запросов к ИИ доступно")}</small></a>
                 <a href="/account/specialist"><b>{t("Карточка специалиста")}</b><small>{t("Чтобы владельцы находили вас в каталоге")}</small></a>
+                <a href="/account/playbooks"><b>{t("Мои плейбуки")}</b><small>{t("Ваши приёмы работы с ИИ для разных этапов")}</small></a>
                 <a href="/account/disputes"><b>{t("Споры")}</b><small>{t("Разногласия по работе специалистов и оплате")}</small></a>
                 <a href="/legal/terms"><b>{t("Оферта")}</b><small>{t("Условия работы платформы")}</small></a>
                 <a href="/legal/privacy"><b>{t("Политика конфиденциальности")}</b><small>{t("Какие данные мы храним и зачем")}</small></a>

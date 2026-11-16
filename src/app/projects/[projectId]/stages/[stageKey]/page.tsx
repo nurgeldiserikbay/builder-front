@@ -3,6 +3,7 @@
 import ApprovalPanel from "./approval";
 import StageRoute from "./stage-route";
 import ProposalsPanel, { ProposeChange } from "../../proposals";
+import PlaybookCard from "./playbook-card";
 import CommentsPanel from "./comments";
 import ReviewPanel from "./review";
 import type { ReviewFlags } from "./diagrams";
@@ -663,6 +664,7 @@ export default function StagePage() {
       )}
       {(specialist || ["owner", "manager"].includes(detail.viewer.role)) && <ProposalsPanel key={proposalsVersion} projectId={projectId} aiReady={detail.ai.configured} onDecided={() => void load()}
         filter={specialist ? { fromStageKey: stageKey } : { targetStageKey: stageKey }} />}
+      {detail.ai.level !== "none" && <PlaybookCard projectId={projectId} stageKey={stageKey} />}
       {stage.canInvite && stage.status !== "locked" && (
         <SpecialistsPanel projectId={projectId} stageKey={stageKey} editable={!accepted} />
       )}

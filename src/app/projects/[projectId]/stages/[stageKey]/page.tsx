@@ -21,6 +21,7 @@ import ChangesPanel from "./changes";
 import QualityReportView from "./quality-report";
 import QualityProfilePicker from "./quality-profile-picker";
 import BrowserCheckPanel from "./browser-check";
+import StarterCodePanel from "./starter-code";
 import { TimesheetPanel } from "./timesheet";
 import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
@@ -409,6 +410,7 @@ export default function StagePage() {
         <HandoffView projectId={projectId} content={(detail.current?.content as Parameters<typeof HandoffView>[0]["content"]) ?? null} canBuild={stage.canEdit} inputsReady={stage.inputsReady}
           onBuilt={async () => { await load(); setMessage(t("Пакет собран. Посмотрите проверки и скачайте архив.")); }} />
       )}
+      {stage.artifactType === "handoff" && stage.status !== "locked" && <StarterCodePanel projectId={projectId} packageBuilt={Boolean(detail.current)} key={detail.current?.versionNumber ?? 0} />}
 
       {/* Starting point for an empty sitemap */}
       {stage.artifactType === "sitemap" && !detail.current && draft === null && stage.canEdit && (

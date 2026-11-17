@@ -12,16 +12,22 @@ export type AppRole = { key: string; name: string; description: string };
 export type AppFeature = { key: string; title: string; description: string; roles: string[]; priority: "must" | "should" | "later"; acceptance: string[]; data?: string[] };
 /** Records the features can work with: the accepted process data and user accounts. */
 export type DataOption = { key: string; name: string };
-export type AppFeatures = { roles: AppRole[]; features: AppFeature[]; sensitivity: "normal" | "personal" | "payments" | "health"; integrations: string[] };
+/** The ТЗ of any project; summary, requirements, limits and questions are missing in results made before the ТЗ stage. */
+export type AppFeatures = {
+  roles: AppRole[]; features: AppFeature[]; sensitivity: "normal" | "personal" | "payments" | "health"; integrations: string[];
+  summary?: string; requirements?: string[]; limits?: string[]; questions?: string[];
+};
+export type SpecOptions = { kind: "site" | "app"; firstVersionSoftLimit: number; markdown: string | null };
 export type ScreenBlock = { kind: "list" | "table" | "form" | "details" | "text" | "actions" | "stats" | "search"; title: string; fields: string[] };
 export type AppScreen = { key: string; title: string; role: string; purpose: string; features: string[]; blocks: ScreenBlock[]; links: string[] };
 export type AppScreens = { screens: AppScreen[] };
 
 const priorities: Array<[AppFeature["priority"], string]> = [["must", t("Обязательно в первой версии")], ["should", t("Желательно")], ["later", t("Позже")]];
+const priorityShort: Record<AppFeature["priority"], string> = { must: t("Первая версия"), should: t("Желательно"), later: t("Позже") };
 const sensitivities: Array<[AppFeatures["sensitivity"], string]> = [["normal", t("Обычные данные")], ["personal", t("Персональные данные клиентов")], ["payments", t("Платежи и деньги")], ["health", t("Здоровье или другие особо чувствительные данные")]];
 const blockKinds: Array<[ScreenBlock["kind"], string]> = [["list", t("Список")], ["table", t("Таблица")], ["form", t("Форма")], ["details", t("Карточка с данными")], ["text", t("Текст")], ["actions", t("Кнопки действий")], ["stats", t("Показатели")], ["search", t("Поиск и фильтры")]];
 
-export const blankFeatures = (): AppFeatures => ({ roles: [{ key: "user", name: t("Пользователь"), description: "" }], features: [], sensitivity: "personal", integrations: [] });
+export const blankFeatures = (): AppFeatures => ({ roles: [{ key: "user", name: t("Пользователь"), description: "" }], features: [], sensitivity: "personal", integrations: [], summary: "", requirements: [], limits: [], questions: [] });
 export const blankScreens = (): AppScreens => ({ screens: [] });
 
 /** A free latin key: the server keeps keys stable, so links between roles, functions and screens survive renames. */
@@ -33,16 +39,48 @@ function freeKey(prefix: string, used: string[]): string {
 const lines = (value: string) => value.split("\n").map((line) => line.trim()).filter(Boolean);
 const commas = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
 
-export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions = [] }: { value: AppFeatures; onChange: (next: AppFeatures) => void; disabled: boolean; issues: string[]; dataOptions?: DataOption[] }) {
+export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions = [], spec }: { value: AppFeatures; onChange: (next: AppFeatures) => void; disabled: boolean; issues: string[]; dataOptions?: DataOption[]; spec?: SpecOptions }) {
+  const site = spec?.kind === "site";
+  const product = site ? t("на сайте") : t("в приложении");
+  const count = (priority: AppFeature["priority"]) => value.features.filter((feature) => feature.priority === priority).length;
+  const limit = spec?.firstVersionSoftLimit ?? 12;
+  const download = () => {
+    if (!spec?.markdown) return;
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([spec.markdown], { type: "text/markdown;charset=utf-8" }));
+    link.download = "spec.md";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
   const setRole = (key: string, patch: Partial<AppRole>) => onChange({ ...value, roles: value.roles.map((role) => (role.key === key ? { ...role, ...patch } : role)) });
   const setFeature = (key: string, patch: Partial<AppFeature>) => onChange({ ...value, features: value.features.map((feature) => (feature.key === key ? { ...feature, ...patch } : feature)) });
   const removeRole = (key: string) => onChange({ ...value, roles: value.roles.filter((role) => role.key !== key), features: value.features.map((feature) => ({ ...feature, roles: feature.roles.filter((item) => item !== key) })) });
   return (
     <div style={{ display: "grid", gap: 14 }}>
       {issues.length > 0 && <div className={`${styles.notice} ${styles.warn}`}><strong>{t("Чего не хватает")}</strong><ul className={styles.list}>{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div>}
+      <section className={styles.card} aria-labelledby="summary-title">
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <p id="summary-title" className={styles.cardTitle} style={{ margin: 0 }}>{t("Кратко о продукте")}</p>
+          <div className={styles.spacer} />
+          {spec?.markdown && <button type="button" className={styles.ghost} onClick={download}>{t("Скачать ТЗ")}</button>}
+        </div>
+        <textarea className={styles.textarea} aria-labelledby="summary-title" value={value.summary ?? ""} maxLength={600} disabled={disabled} style={{ marginTop: 8 }}
+          placeholder={t("Например: сайт онлайн-записи барбершопа для мужчин в центре Алматы — записаться без звонка за минуту.")}
+          onChange={(event) => onChange({ ...value, summary: event.target.value })} />
+      </section>
+
+      <section className={styles.card} aria-labelledby="scope-title">
+        <p id="scope-title" className={styles.cardTitle}>{t("Первая версия")}</p>
+        <p className={styles.small} style={{ marginTop: 0 }}>{t("В первую версию — только то, без чего продукт не работает. С ней вы быстрее начнёте принимать клиентов, а остальное добавите следующими версиями.")}</p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {priorities.map(([key]) => <span key={key} className={`${styles.chip} ${styles[key === "must" ? "active" : key === "should" ? "done" : "closed"]}`} style={{ marginTop: 0 }}>{priorityShort[key]}: {count(key)}</span>)}
+        </div>
+        {count("must") > limit && <p className={`${styles.notice} ${styles.warn}`} style={{ margin: "10px 0 0" }} role="status">{t("В первой версии функций: {0}. Она выйдет дольше и дороже. Обычно запускаются с {1} главными — подумайте, что можно перенести в «Желательно» или «Позже». Решаете вы.", [count("must"), limit])}</p>}
+      </section>
+
       <section className={styles.card} aria-labelledby="roles-title">
         <p id="roles-title" className={styles.cardTitle}>{t("Роли")}</p>
-        <p className={styles.small} style={{ marginTop: 0 }}>{t("Кто входит в приложение: клиенты, сотрудники, вы как администратор.")}</p>
+        <p className={styles.small} style={{ marginTop: 0 }}>{site ? t("Кто пользуется сайтом: посетители-клиенты и те, кто принимает заявки, записи или заказы — вы, сотрудники.") : t("Кто входит в приложение: клиенты, сотрудники, вы как администратор.")}</p>
         {value.roles.map((role) => (
           <div key={role.key} style={{ display: "grid", gap: 6, borderTop: "1px solid var(--line)", paddingTop: 10, marginTop: 10 }}>
             <label className={styles.small}>{t("Название роли")}<input className={styles.input} value={role.name} maxLength={40} disabled={disabled} onChange={(event) => setRole(role.key, { name: event.target.value })} /></label>
@@ -55,7 +93,7 @@ export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions 
 
       <section className={styles.card} aria-labelledby="features-title">
         <p id="features-title" className={styles.cardTitle}>{t("Функции")}</p>
-        <p className={styles.small} style={{ marginTop: 0 }}>{t("Что можно сделать в приложении. Критерии приёмки — по одному в строке: по ним проверят, что функция готова.")}</p>
+        <p className={styles.small} style={{ marginTop: 0 }}>{t("Что можно сделать {0}. «Готово, когда» — по одному условию в строке: по ним проверят, что функция сделана.", [product])}</p>
         {value.features.map((feature) => (
           <article key={feature.key} style={{ display: "grid", gap: 6, borderTop: "1px solid var(--line)", paddingTop: 10, marginTop: 10 }}>
             <label className={styles.small}>{t("Название")}<input className={styles.input} value={feature.title} maxLength={80} disabled={disabled} onChange={(event) => setFeature(feature.key, { title: event.target.value })} /></label>
@@ -91,7 +129,7 @@ export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions 
                 {priorities.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
               </select>
             </label>
-            <label className={styles.small}>{t("Критерии приёмки")}<textarea className={styles.input} value={feature.acceptance.join("\n")} disabled={disabled} placeholder={t("Например: клиент видит статус заявки сразу после отправки")}
+            <label className={styles.small}>{t("Готово, когда")}<textarea className={styles.input} value={feature.acceptance.join("\n")} disabled={disabled} placeholder={t("Например: клиент видит статус заявки сразу после отправки")}
               onChange={(event) => setFeature(feature.key, { acceptance: event.target.value.split("\n").slice(0, 6) })} onBlur={(event) => setFeature(feature.key, { acceptance: lines(event.target.value) })} /></label>
             {!disabled && <button type="button" className={styles.ghost} onClick={() => onChange({ ...value, features: value.features.filter((item) => item.key !== feature.key) })}>{t("Убрать функцию")}</button>}
           </article>
@@ -105,7 +143,7 @@ export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions 
       {value.roles.length > 0 && value.features.length > 0 && (
         <section className={styles.card} aria-labelledby="feature-map-title">
           <p id="feature-map-title" className={styles.cardTitle}>{t("Карта функций по ролям")}</p>
-          <p className={styles.small} style={{ marginTop: 0 }}>{t("Кто что делает в приложении. Роль без единой галочки отмечена «!» — ей нечего делать. Таблица широкая — листайте вбок.")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{t("Кто что делает {0}. Роль без единой галочки отмечена «!» — ей нечего делать. Таблица широкая — листайте вбок.", [product])}</p>
           <FeatureRoleMap roles={value.roles} features={value.features} />
         </section>
       )}
@@ -119,7 +157,7 @@ export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions 
 
       <section className={styles.card} aria-labelledby="data-title">
         <p id="data-title" className={styles.cardTitle}>{t("Данные и интеграции")}</p>
-        <label className={styles.small}>{t("Какие данные хранит приложение")}
+        <label className={styles.small}>{site ? t("Какие данные собирает сайт") : t("Какие данные хранит приложение")}
           <select className={styles.input} value={value.sensitivity} disabled={disabled} onChange={(event) => onChange({ ...value, sensitivity: event.target.value as AppFeatures["sensitivity"] })}>
             {sensitivities.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
@@ -127,6 +165,22 @@ export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions 
         <p className={styles.small}>{t("От этого зависят требования к защите в пакете: платежи и медицинские данные требуют отдельной проверки.")}</p>
         <label className={styles.small}>{t("С какими сервисами связать (через запятую)")}<input className={styles.input} value={value.integrations.join(", ")} disabled={disabled} placeholder={t("Например: Kaspi, 1С, Google Календарь")}
           onChange={(event) => onChange({ ...value, integrations: commas(event.target.value).slice(0, 8) })} /></label>
+      </section>
+
+      <section className={styles.card} aria-labelledby="notes-title">
+        <p id="notes-title" className={styles.cardTitle}>{t("Требования, ограничения и вопросы")}</p>
+        <p className={styles.small} style={{ marginTop: 0 }}>{t("По одному пункту в строке, до 10 в каждом поле.")}</p>
+        {([
+          ["requirements", t("Общие требования"), t("Например: удобно с телефона; страница открывается быстрее чем за 3 секунды")],
+          ["limits", t("Ограничения и допущения"), t("Например: онлайн-оплаты в первой версии нет")],
+          ["questions", t("Открытые вопросы"), t("Например: брать ли предоплату за запись?")],
+        ] as const).map(([key, label, placeholder]) => (
+          <label key={key} className={styles.small} style={{ display: "block", marginTop: 8 }}>{label}
+            <textarea className={styles.input} value={(value[key] ?? []).join("\n")} disabled={disabled} placeholder={placeholder}
+              onChange={(event) => onChange({ ...value, [key]: event.target.value.split("\n").slice(0, 10) })} onBlur={(event) => onChange({ ...value, [key]: lines(event.target.value).slice(0, 10) })} />
+          </label>
+        ))}
+        <p className={styles.small} style={{ margin: "6px 0 0" }}>{t("Открытые вопросы видны в проверке качества, пока вы их не решите.")}</p>
       </section>
     </div>
   );

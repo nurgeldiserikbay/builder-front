@@ -138,7 +138,7 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
       {!live && state.acceptedBuild && !state.canManage && <p className={styles.small}>{t("Опубликовать сайт может владелец или менеджер проекта.")}</p>}
 
       {showChannels && (
-        <div style={{ borderTop: "1px solid var(--line)", marginTop: 16, paddingTop: 14 }}>
+        <div id="lead-channels" style={{ borderTop: "1px solid var(--line)", marginTop: 16, paddingTop: 14 }}>
           <p className={styles.cardTitle}>{t("Куда присылать заявки с сайта")}</p>
           {!state.acceptedBuild?.hasForm && <p className={styles.small} style={{ marginTop: 0 }}>{t("На сайте сейчас нет формы заявки. Её можно включить на этапе «Цель сайта»: главное действие — «Оставить заявку на сайте».")}</p>}
           <div className={styles.item}>
@@ -185,7 +185,15 @@ export default function PublishCard({ projectId, onChange }: { projectId: string
   );
 }
 
-type History = { canRollback: boolean; versions: Array<{ versionId: string; versionNumber: number; builtAt: string; lastPublishedAt: string | null; live: boolean; accepted: boolean }> };
+type History = {
+  canRollback: boolean;
+  versions: Array<{
+    versionId: string; versionNumber: number; builtAt: string; lastPublishedAt: string | null; live: boolean; accepted: boolean;
+    /** The order in which the build first went live; null for builds published before product versions were recorded. */
+    productVersion: number | null;
+    changes: Array<{ key: string; title: string; from: number | null; to: number | null }> | null;
+  }>;
+};
 
 /** Versions that have been on the live site, and putting one of them back — e.g. when the last change did not work out. */
 function SiteHistory({ projectId, onRolledBack }: { projectId: string; onRolledBack: (next: Publication) => void }) {
@@ -193,11 +201,12 @@ function SiteHistory({ projectId, onRolledBack }: { projectId: string; onRolledB
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   useEffect(() => { api<History>(`/projects/${projectId}/publication/history`).then(setHistory).catch(() => undefined); }, [projectId]);
-  if (!history || history.versions.length < 2) return null;
+  if (!history || !history.versions.length) return null;
+  const name = (version: History["versions"][number]) => (version.productVersion ? t("Версия продукта {0}", [version.productVersion]) : t("Сборка {0}", [version.versionNumber]));
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(dateLocale(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
 
-  async function rollback(versionId: string, number: number) {
-    if (!window.confirm(t("Вернуть на сайт версию {0}? Этапы и принятая сборка не изменятся — новую версию можно будет вернуть кнопкой «Обновить сайт».", [number]))) return;
+  async function rollback(versionId: string, label: string) {
+    if (!window.confirm(t("Вернуть на сайт «{0}»? Этапы и принятая сборка не изменятся — новую версию можно будет вернуть кнопкой «Обновить сайт».", [label]))) return;
     setBusy(versionId); setError("");
     try { onRolledBack(await api<Publication>(`/projects/${projectId}/publication/rollback`, { method: "POST", body: JSON.stringify({ versionId, confirm: true }) })); }
     catch (caught) { setError(explainError(caught)); } finally { setBusy(""); }
@@ -205,20 +214,25 @@ function SiteHistory({ projectId, onRolledBack }: { projectId: string; onRolledB
 
   return (
     <details className={styles.details} style={{ margin: "0 0 12px" }}>
-      <summary>{t("Прошлые версии сайта")}</summary>
+      <summary>{t("Версии продукта")}</summary>
       {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
       <ul className={styles.versions}>
         {history.versions.map((version) => (
           <li key={version.versionId}>
             <div className={styles.row} style={{ justifyContent: "space-between" }}>
               <span>
-                <strong>{t("Версия {0}", [version.versionNumber])}</strong>
+                <strong>{name(version)}</strong>
                 <span className={styles.small}>{" · "}{t("опубликована {0}", [when(version.lastPublishedAt)])}</span>
                 {version.live && <span className={`${styles.chip} ${styles.done}`} style={{ marginLeft: 8 }}>{t("сейчас на сайте")}</span>}
                 {version.accepted && !version.live && <span className={`${styles.chip} ${styles.closed}`} style={{ marginLeft: 8 }}>{t("принятая")}</span>}
               </span>
-              {history.canRollback && !version.live && <button className={styles.ghost} disabled={Boolean(busy)} onClick={() => void rollback(version.versionId, version.versionNumber)}>{busy === version.versionId ? t("Возвращаем…") : t("Вернуть эту версию")}</button>}
+              {history.canRollback && !version.live && <button className={styles.ghost} disabled={Boolean(busy)} onClick={() => void rollback(version.versionId, name(version))}>{busy === version.versionId ? t("Возвращаем…") : t("Вернуть эту версию")}</button>}
             </div>
+            {version.changes && (
+              <p className={styles.small} style={{ margin: "4px 0 0" }}>
+                {version.changes.length ? <>{t("Что изменилось:")}{" "}{version.changes.map((change) => (change.from && change.to ? t("{0} (версия {1} → {2})", [change.title, change.from, change.to]) : change.to ? t("{0} (новый этап)", [change.title]) : t("{0} (убран)", [change.title]))).join(", ")}</> : t("Этапы не менялись — сайт пересобран.")}
+              </p>
+            )}
           </li>
         ))}
       </ul>

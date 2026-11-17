@@ -51,6 +51,9 @@
 .danger:hover{background:#fdf0f0}
 .button:disabled,.secondary:disabled,.ghost:disabled,.danger:disabled{opacity:.5;cursor:not-allowed}
 .block{width:100%}
+/* An inline action that reads like a link: secondary paths next to the main button. */
+.linkButton{all:unset;cursor:pointer;color:var(--brand);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.linkButton:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:4px}
 .button:focus-visible,.secondary:focus-visible,.ghost:focus-visible,.danger:focus-visible,.input:focus-visible,.textarea:focus-visible,.select:focus-visible,.choice:focus-visible,.typeCard:focus-visible,.navLink:focus-visible,.back:focus-visible,.mapNode:focus-visible,.stageItem:focus-visible,.projectCard:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 
 /* Notices */

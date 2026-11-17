@@ -86,6 +86,9 @@ export default function StagePage() {
     try {
       const next = await api<StageDetail>(`/projects/${projectId}/stages/${stageKey}`);
       setDetail(next);
+      // The story from the project's start fills «своими словами», so the owner does not retell it.
+      const intro = next.options.brief?.intro;
+      if (intro) setInstruction((current) => current || intro.slice(0, 1000));
       const type = next.stage.artifactType;
       setDraft(next.current?.content ?? (type === "brief" ? {} : type === "offer" ? { services: [], hours: null } : type === "design" ? defaultDesign : type === "schedule" ? next.options.schedule?.template ?? null : type === "techplan" ? { ownerNotes: null } : null));
       // A first style choice or the prefilled schedule is a ready-to-save draft: offer «Сохранить» right away.
@@ -325,6 +328,7 @@ export default function StagePage() {
       {stage.artifactType === "brief" && stage.canEdit && ai.level !== "none" && (
         <section className={styles.card} aria-label={t("Описать бизнес своими словами")}>
           <p className={styles.cardTitle}>{t("Расскажите о бизнесе своими словами")}</p>
+          {detail.options.brief?.intro && <p className={styles.small} style={{ marginTop: 0 }}>{ai.configured ? t("Ниже ваш рассказ с начала проекта — дополните его, если хотите, и нажмите кнопку.") : t("Ваш рассказ с начала проекта:")}{!ai.configured && <><br />{detail.options.brief.intro}</>}</p>}
           <p className={styles.small} style={{ marginTop: 0 }}>{ai.configured ? `${ai.whatItDoes}${requestPrice !== null ? t(" Один запрос к ИИ стоит около {0}.", [formatTenge(requestPrice)]) : ""}` : t("ИИ пока не подключён — заполните поля ниже вручную. Это займёт пару минут.")}</p>
           {ai.configured && (
             <>

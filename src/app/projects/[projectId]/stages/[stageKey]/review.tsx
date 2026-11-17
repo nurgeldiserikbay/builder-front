@@ -13,6 +13,8 @@ import { showReviewTarget } from "./diagrams";
 export type ReviewFinding = {
   id: string; code: string; severity: "blocking" | "important" | "minor"; category: "logic" | "security" | "clarity";
   target: string | null; where: string; message: string; fix: string; overridden: boolean;
+  /** A decision about the business: the owner answers it, the AI does not. */
+  ownerDecides?: boolean;
 };
 export type StageReview = {
   rulesVersion: string; score: number; blocking: number; findings: ReviewFinding[]; uncoveredBlocking: string[];
@@ -68,11 +70,11 @@ export default function ReviewPanel({ projectId, stageKey, versionId, review, ca
     field?.focus();
   };
 
-  type Item = { id: string; severity: ReviewFinding["severity"]; category: ReviewFinding["category"]; target?: string | null; where: string; message: string; fix: string; overridden?: boolean };
+  type Item = { id: string; severity: ReviewFinding["severity"]; category: ReviewFinding["category"]; target?: string | null; where: string; message: string; fix: string; overridden?: boolean; ownerDecides?: boolean };
   const renderItem = (finding: Item, advice: boolean) => (
             <li key={finding.id} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "10px 12px" }}>
-              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: pickable && !finding.overridden ? "pointer" : "default" }}>
-                {pickable && !finding.overridden && (
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: pickable && !finding.overridden && !finding.ownerDecides ? "pointer" : "default" }}>
+                {pickable && !finding.overridden && !finding.ownerDecides && (
                   <input type="checkbox" checked={chosen.includes(finding.id)} onChange={() => toggle(finding.id)} style={{ width: 22, height: 22, marginTop: 2, flex: "none" }}
                     aria-label={t("Выбрать замечание «{0}»", [finding.message])} />
                 )}
@@ -86,7 +88,7 @@ export default function ReviewPanel({ projectId, stageKey, versionId, review, ca
                   <span style={{ display: "block", marginTop: 6 }}>{finding.message}</span>
                   <span className={styles.small} style={{ display: "block", margin: "4px 0 0" }}><b>{t("Что сделать.")}</b> {finding.fix}</span>
                   {finding.target && shown.includes(finding.target) && (
-                    <button type="button" className={styles.ghost} style={{ minHeight: 36, padding: "2px 0", marginTop: 4 }} onClick={(event) => { event.preventDefault(); showReviewTarget(finding.target!); }}>{t("Показать на схеме")}</button>
+                    <button type="button" className={styles.ghost} style={{ minHeight: 36, padding: "2px 0", marginTop: 4 }} onClick={(event) => { event.preventDefault(); showReviewTarget(finding.target!); }}>{finding.ownerDecides ? t("Ответить на вопрос") : t("Показать на схеме")}</button>
                   )}
                 </span>
               </label>

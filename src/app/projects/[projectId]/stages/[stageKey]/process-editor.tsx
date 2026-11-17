@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import { t } from "@/lib/i18n";
 import styles from "../../../journey.module.css";
 import { DataDiagram, FlagList, KindLegend, flaggedPlaces, SwimlaneDiagram, type ReviewFlags, type ActorKind, type DataEntity, type ProcessActor, type ProcessScenario } from "./diagrams";
+import { SituationsCard, answerRules, ruleOfAnswer, type Situation, type SituationAnswer } from "./situations";
 
-export type BusinessProcess = { actors: ProcessActor[]; scenarios: ProcessScenario[]; rules: string[]; data: Array<DataEntity & { fields: string[] }> };
-export type ProcessOptions = { capabilities: Record<string, string>; actorKinds: Record<ActorKind, string>; limits: { actors: number; scenarios: number; steps: number; rules: number; entities: number; fields: number; links: number } };
+export type BusinessProcess = { actors: ProcessActor[]; scenarios: ProcessScenario[]; rules: string[]; data: Array<DataEntity & { fields: string[] }>; situations?: SituationAnswer[] };
+export type ProcessOptions = {
+  capabilities: Record<string, string>; actorKinds: Record<ActorKind, string>; limits: { actors: number; scenarios: number; steps: number; rules: number; entities: number; fields: number; links: number };
+  situations?: { version: string; items: Situation[] };
+};
 
 let counter = 0;
 const newKey = (prefix: string) => `${prefix}${Date.now().toString(36).slice(-4)}${(counter += 1)}`;
@@ -34,9 +38,21 @@ export function ProcessEditor({ value, onChange, options, disabled, issues, flag
   const move = <T,>(list: T[], from: number, to: number) => { const next = [...list]; const [item] = next.splice(from, 1); next.splice(to, 0, item!); return next; };
   const capabilityKeys = Object.keys(options.capabilities);
 
+  // Own rules are edited as text; rules from answers change with the answer.
+  const fromAnswers = answerRules(value.situations);
+  const ownRules = value.rules.filter((rule) => !fromAnswers.has(rule));
+  const situationItems = options.situations?.items ?? [];
+  const answerRuleList = (value.situations ?? []).flatMap((answer) => {
+    const situation = situationItems.find((item) => item.key === answer.key);
+    const rule = situation ? ruleOfAnswer(situation, answer) : null;
+    return rule ? [rule] : [];
+  });
+
   return (
     <>
       {issues.length > 0 && <div className={`${styles.notice} ${styles.warning}`}><ul className={styles.list} style={{ margin: 0 }}>{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div>}
+
+      <SituationsCard items={situationItems} answers={value.situations ?? []} disabled={disabled} onChange={(situations) => set({ situations })} />
 
       <section className={styles.card} aria-labelledby="process-diagram">
         <p id="process-diagram" className={styles.cardTitle}>{t("Схема процесса по ролям")}</p>
@@ -134,8 +150,15 @@ export function ProcessEditor({ value, onChange, options, disabled, issues, flag
         <p id="process-rules" className={styles.cardTitle}>{t("Правила")}</p>
         <p className={styles.small} style={{ marginTop: 0 }}>{t("Правила, по которым вы работаете: отмена, предоплата, сроки ответа. По одному на строку.")}</p>
         <FlagList flags={flags} keys={["rules"]} />
-        <textarea id="review-target-rules" className={styles.textarea} aria-label={t("Правила")} disabled={disabled} value={value.rules.join("\n")} placeholder={t("Например: отмена не позже чем за 2 часа")}
-          onChange={(event) => set({ rules: event.target.value.split("\n").slice(0, options.limits.rules) })} />
+        <textarea id="review-target-rules" className={styles.textarea} aria-label={t("Правила")} disabled={disabled} value={ownRules.join("\n")} placeholder={t("Например: отмена не позже чем за 2 часа")}
+          onChange={(event) => set({ rules: [...event.target.value.split("\n").slice(0, options.limits.rules), ...value.rules.filter((rule) => fromAnswers.has(rule))] })} />
+        {answerRuleList.length > 0 && (
+          <>
+            <p className={styles.label} style={{ margin: "10px 0 4px" }}>{t("Из ваших ответов на «Вы это учли?»")}</p>
+            <ul className={styles.list} style={{ margin: 0 }}>{answerRuleList.map((rule) => <li key={rule} className={styles.small}>{rule}</li>)}</ul>
+            <p className={styles.small} style={{ margin: "4px 0 0" }}>{t("Чтобы поменять такое правило, поменяйте ответ на вопрос.")}</p>
+          </>
+        )}
       </section>
 
       <section className={styles.card} aria-labelledby="process-data">

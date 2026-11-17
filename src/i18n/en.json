@@ -3035,5 +3035,12 @@
  "Настроить уведомления →": "Set up notifications →",
  "Отправить себе тестовую заявку": "Send yourself a test request",
  "Последняя тестовая отправлена {0}. Пришла ли она — видно в строке «Заявки доходят до вас».": "The last test was sent on {0}. Whether it arrived is shown in «Requests reach you».",
- "Придёт в Telegram и на почту — туда же, куда настоящие заявки.": "It comes to Telegram and email — where real requests will arrive."
+ "Придёт в Telegram и на почту — туда же, куда настоящие заявки.": "It comes to Telegram and email — where real requests will arrive.",
+ "Уже решено за вас": "Already decided for you",
+ "Мы выбрали то, что подходит большинству, — можно ничего не менять. Если разбираетесь или нужен свой вариант, нажмите «Изменить».": "We chose what suits most people — you can leave it as is. If you know your way around or need something else, press «Change».",
+ "Все решения приняты вами. Любое можно поменять.": "You made all the decisions. Any of them can be changed.",
+ "ваш выбор": "your choice",
+ "по умолчанию": "by default",
+ "Почему так:": "Why:",
+ "Другие варианты ({0})": "Other options ({0})"
 }

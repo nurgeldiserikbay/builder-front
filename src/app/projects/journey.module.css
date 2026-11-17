@@ -256,6 +256,7 @@ button.chip:disabled{opacity:.5;cursor:not-allowed}
 .tab:focus-visible{outline:3px solid var(--focus);outline-offset:-3px}
 .tabBody{padding:24px 32px 40px}
 .tabBody .nextCard{margin-bottom:20px}
+.phases{margin:0 0 16px}
 .toolbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:0 0 16px}
 .toolbar .viewToggle{margin:0}
 .panels{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));align-items:start}
@@ -302,7 +303,7 @@ button.chip:disabled{opacity:.5;cursor:not-allowed}
   .progressInline{flex:1 1 100%}
   .tabs{padding:0 6px}
   .tabBody{padding:12px 0 24px}
-  .tabBody > .toolbar,.tabBody > p,.tabBody > .map,.tabBody > .stageList,.tabBody > section > .h2{margin-left:16px;margin-right:16px}
+  .tabBody > .toolbar,.tabBody > p,.tabBody > .map,.tabBody > .stageList,.tabBody > section > .h2,.tabBody > .phases{margin-left:16px;margin-right:16px}
   .tabBody .card,.panels > section,.tile,.nextCard{border-radius:0;border-left:0;border-right:0}
   .panels,.tiles{gap:10px}
   .nextCard{padding:18px 16px 18px 52px;border-radius:0}

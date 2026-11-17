@@ -11,6 +11,7 @@ import QuickEditCard from "./quick-edit-card";
 import InsightsCard from "./insights-card";
 import MonitoringCard from "./monitoring-card";
 import ProjectMap from "./project-map";
+import PhaseStrip from "./phases";
 import BudgetCard from "./budget-card";
 import WalletCard from "./wallet-card";
 import AppHeader from "../../app-header";
@@ -156,6 +157,12 @@ export default function JourneyPage() {
               </section>
             )}
 
+            <PhaseStrip phases={journey.phases?.items ?? []} onOpen={(phase) => {
+              // A stage phase opens its first unfinished stage; launch and after-launch live on the publication tab.
+              if (phase.kind === "publish") { openTab("publish"); return; }
+              const first = journey.stages.find((stage) => phase.stageKeys.includes(stage.key) && !["approved", "imported", "skipped"].includes(stage.status)) ?? journey.stages.find((stage) => phase.stageKeys.includes(stage.key));
+              if (first) window.location.href = `/projects/${projectId}/stages/${first.key}`;
+            }} />
             <div className={styles.toolbar}>
               <div className={styles.viewToggle} role="group" aria-label={t("Вид")}>
                 <button type="button" aria-pressed={view === "map"} onClick={() => setView("map")}>{t("Карта")}</button>
@@ -171,11 +178,14 @@ export default function JourneyPage() {
             {view === "map" && <ProjectMap projectId={projectId} stages={journey.stages} aiOn={journey.ai.configured} />}
             {view === "list" && <ol className={styles.stageList}>
               {journey.stages.map((stage, index) => {
+                const phase = journey.phases?.items.find((item) => item.stageKeys.includes(stage.key));
+                const firstOfPhase = phase && phase.stageKeys[0] === stage.key;
                 const tone = statusTone[stage.status];
                 const locked = stage.status === "locked";
                 const waiting = stage.inputs.filter((input) => !input.satisfied).map((input) => input.title);
                 return (
                   <li key={stage.key}>
+                    {firstOfPhase && <p className={styles.kicker} style={{ margin: index === 0 ? "0 0 6px" : "14px 0 6px" }}>{phase.title}</p>}
                     <a className={`${styles.stageItem} ${styles[tone]}`} href={`/projects/${projectId}/stages/${stage.key}`} aria-disabled={locked}>
                       <span className={styles.stageNum} aria-hidden="true">{tone === "done" ? "✓" : index + 1}</span>
                       <span className={styles.stageBody}>

@@ -251,6 +251,27 @@ export default function StagePage() {
         <span className={`${styles.chip} ${styles[tone]}`} title={stage.statusExplanation}>{stage.statusLabel}</span>
       </div>
       {stage.statusExplanation && <p className={styles.small} style={{ margin: "0 0 16px" }}>{stage.statusExplanation}</p>}
+      {/* The stage in plain words: open while the stage is new, folded once there is a result. */}
+      <details className={`${styles.card} ${styles.details}`} open={!detail.current} style={{ marginBottom: 16 }}>
+        <summary>{t("Что это за этап и зачем он вам")}</summary>
+        <p style={{ margin: "10px 0 8px" }}>{stage.purpose}</p>
+        {stage.guide && <p style={{ margin: "0 0 8px" }}>{stage.guide.why}</p>}
+        <p className={styles.small} style={{ margin: "0 0 6px" }}><strong>{t("Результат:")}</strong> {stage.outcome}</p>
+        {stage.guide && <>
+          <p className={styles.small} style={{ margin: "0 0 6px" }}><strong>{t("Что дальше:")}</strong> {stage.guide.next}</p>
+          <p className={styles.small} style={{ margin: "0 0 6px" }}><strong>{t("Пример:")}</strong> {stage.guide.example}</p>
+          {stage.guide.terms.length > 0 && (
+            <dl style={{ margin: "10px 0 0" }}>
+              {stage.guide.terms.map((item) => (
+                <div key={item.term} style={{ marginBottom: 6 }}>
+                  <dt style={{ fontWeight: 600, display: "inline" }}>{item.term}</dt>
+                  <dd className={styles.small} style={{ display: "inline", margin: 0 }}>{" — "}{item.meaning}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </>}
+      </details>
       {stage.artifactType === "site" && detail.options.technology === "developer" && (
         <p className={`${styles.notice} ${styles.info}`}>{t("Выбран свой стек у разработчика: сайт он делает и размещает сам, проверки и публикация BuildPath к нему не применяются. Сборка с ИИ ниже сделает сайт на технологиях BuildPath — это удобно как образец для разработчика.")}{" "}<a href={`/projects/${projectId}/choices/technologies`}>{t("Изменить решение →")}</a></p>
       )}
@@ -639,11 +660,6 @@ export default function StagePage() {
       )}
       {stage.status !== "locked" && <StageFilesPanel projectId={projectId} stageKey={stageKey} />}
       {!specialist && stage.status !== "locked" && <ApprovalPanel key={JSON.stringify(stage.approval.policy)} projectId={projectId} stageKey={stageKey} approval={stage.approval} onChange={() => void load()} />}
-      <section className={styles.card} aria-label={t("Зачем этот этап")}>
-        <p className={styles.cardTitle}>{t("Зачем этот этап")}</p>
-        <p style={{ margin: "0 0 8px" }}>{stage.purpose}</p>
-        <p className={styles.small} style={{ margin: 0 }}><strong>{t("Результат:")}</strong> {stage.outcome}</p>
-      </section>
       {detail.extraReads && detail.extraReads.length > 0 && (
         <details className={`${styles.card} ${styles.details}`}>
           <summary>{t("Дополнительно открыто владельцем ({0})", [detail.extraReads.length])}</summary>

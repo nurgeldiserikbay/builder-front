@@ -3042,5 +3042,18 @@
  "ваш выбор": "your choice",
  "по умолчанию": "by default",
  "Почему так:": "Why:",
- "Другие варианты ({0})": "Other options ({0})"
+ "Другие варианты ({0})": "Other options ({0})",
+ "GitHub не разрешил добавить файл автоматической выкладки: ключу нужно право «Workflows: Read and write». Если вы входили через GitHub — выйдите и войдите снова. Или отправьте без автоматической выкладки.": "GitHub did not allow adding the auto-deploy file: the key needs the «Workflows: Read and write» permission. If you signed in with GitHub, sign out and sign in again. Or send without auto-deploy.",
+ "https://bitbucket.org/команда/my-site": "https://bitbucket.org/team/my-site",
+ "https://codeberg.org/имя/my-site": "https://codeberg.org/name/my-site",
+ "https://имя.onrender.com": "https://name.onrender.com",
+ "https://имя.vercel.app": "https://name.vercel.app",
+ "Автоматическая выкладка пока работает только для принятых сайтов без онлайн-записи и магазина.": "Auto-deploy works only for accepted sites without online booking or a store for now.",
+ "В репозитории уже есть ваш файл сборки (.gitlab-ci.yml или bitbucket-pipelines.yml) — BuildPath не будет его заменять. Добавьте шаг выкладки вручную по примеру в инструкции или отправьте без автоматической выкладки.": "The repository already has your own pipeline file (.gitlab-ci.yml or bitbucket-pipelines.yml) — BuildPath will not replace it. Add the deploy step by hand following the instructions, or send without auto-deploy.",
+ "Выкладывать на мой сервер автоматически": "Deploy to my server automatically",
+ "Добавим файл, который после каждой отправки копирует страницы сайта на ваш сервер. Для специалистов и тех, у кого свой сервер.": "We add a file that copies the site pages to your server after every push. For specialists and people with their own server.",
+ "Добавьте в настройках репозитория секреты {0}; папку на сервере можно задать секретом {1}. Ключ и адрес сервера остаются только в репозитории — BuildPath их не видит. Подробно — в решении «Где будет работать сайт», вариант «Свой сервер».": "Add the secrets {0} in the repository settings; the folder on the server can be set with the {1} secret. The key and server address stay only in the repository — BuildPath never sees them. Details are in the «Where the site will run» decision, «Own server» option.",
+ "Сервер Gitea слишком старый: нужна версия 1.20 или новее (или Forgejo).": "The Gitea server is too old: version 1.20 or newer (or Forgejo) is needed.",
+ "Это не адрес Bitbucket. Для другого сервиса выберите его вариант в этом решении.": "This is not a Bitbucket address. For another service, choose its option in this decision.",
+ "Это не адрес GitHub. Для другого сервиса выберите его вариант в этом решении.": "This is not a GitHub address. For another service, choose its option in this decision."
 }

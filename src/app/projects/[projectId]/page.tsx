@@ -12,6 +12,7 @@ import InsightsCard from "./insights-card";
 import MonitoringCard from "./monitoring-card";
 import ProjectMap from "./project-map";
 import PhaseStrip from "./phases";
+import ReadinessCard from "./readiness-card";
 import BudgetCard from "./budget-card";
 import WalletCard from "./wallet-card";
 import AppHeader from "../../app-header";
@@ -219,6 +220,7 @@ export default function JourneyPage() {
 
             {tab === "publish" && !specialist && managing && (
               <div className={styles.panels}>
+                {journey.project.projectType !== "web_app" && <ReadinessCard projectId={projectId} canManage={managing} />}
                 <QuickEditCard projectId={projectId} onPublished={() => void load()} />
                 <PublishCard projectId={projectId} onChange={() => void load()} />
                 <MonitoringCard projectId={projectId} />

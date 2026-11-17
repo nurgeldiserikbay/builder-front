@@ -8,6 +8,7 @@ import CommentsPanel from "./comments";
 import ReviewPanel from "./review";
 import type { ReviewFlags } from "./diagrams";
 import StageFilesPanel from "./files";
+import InterviewPanel from "./interview";
 import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -358,21 +359,10 @@ export default function StagePage() {
         <p className={`${styles.notice} ${styles.info}`}>{t("Можно готовить этап заранее, но принять его получится после того, как будут приняты предыдущие этапы.")}</p>
       )}
 
-      {/* Stage with AI-first start for the brief */}
-      {stage.artifactType === "brief" && stage.canEdit && ai.level !== "none" && (
-        <section className={styles.card} aria-label={t("Описать бизнес своими словами")}>
-          <p className={styles.cardTitle}>{t("Расскажите о бизнесе своими словами")}</p>
-          {detail.options.brief?.intro && <p className={styles.small} style={{ marginTop: 0 }}>{ai.configured ? t("Ниже ваш рассказ с начала проекта — дополните его, если хотите, и нажмите кнопку.") : t("Ваш рассказ с начала проекта:")}{!ai.configured && <><br />{detail.options.brief.intro}</>}</p>}
-          <p className={styles.small} style={{ marginTop: 0 }}>{ai.configured ? `${ai.whatItDoes}${requestPrice !== null ? t(" Один запрос к ИИ стоит около {0}.", [formatTenge(requestPrice)]) : ""}` : t("ИИ пока не подключён — заполните поля ниже вручную. Это займёт пару минут.")}</p>
-          {ai.configured && (
-            <>
-              <textarea className={styles.textarea} value={instruction} maxLength={1000} placeholder={ai.describeHint ?? ""} aria-label={t("Описание бизнеса")} onChange={(event) => setInstruction(event.target.value)} />
-              <button className={`${styles.button} ${styles.block}`} style={{ marginTop: 10 }} disabled={Boolean(busy) || instruction.trim().length < 2}
-                onClick={() => run("ai", async () => { await askAi({ instruction: instruction.trim() }); setInstruction(""); })}>{busy === "ai" ? t("ИИ заполняет…") : t("✨ Заполнить поля с ИИ")}</button>
-              <p className={styles.small}>{t("Поля, которые вы уже заполнили сами, ИИ не тронет.")}</p>
-            </>
-          )}
-        </section>
+      {/* «Разговор»: the form stages can be filled by talking instead of typing into fields */}
+      {(stage.artifactType === "brief" || stage.artifactType === "offer") && stage.canEdit && stage.fields && (
+        <InterviewPanel projectId={projectId} stageKey={stageKey} fields={stage.fields} story={detail.options.brief?.intro ?? null} requestPrice={requestPrice}
+          onApplied={async () => { setDirty(false); await load(); loadBudget(); }} />
       )}
 
       {/* Starting point for an empty content stage */}

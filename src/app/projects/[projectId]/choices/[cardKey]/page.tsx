@@ -13,7 +13,7 @@ import styles from "../../../journey.module.css";
 import AppHeader from "../../../../app-header";
 
 type Step = { key: string; title: string; text: string[]; kind: "manual" | "connect" | "download" | "publish" | "push" | "package" | "verify" | "domain" | "hosting_connect" | "hosting_deploy"; link?: { label: string; url: string } };
-type Option = { key: string; requires?: { card: string; option: string; explanation: string }; title: string; summary: string; pros: string[]; limits: string[]; cost: string; upkeep: string; leaving: string; steps: Step[] };
+type Option = { key: string; requires?: { card: string; option: string | string[]; explanation: string }; title: string; summary: string; pros: string[]; limits: string[]; cost: string; upkeep: string; leaving: string; steps: Step[] };
 type Repository = { provider: string; connectedVia?: string; repoPath: string; webUrl: string; defaultBranch: string; isPrivate: boolean; tokenHint: string; verifiedAt: string; lastPushAt: string | null; lastCommitUrl: string | null; lastError: string | null };
 type CardState = {
   card: { key: string; title: string; question: string; why: string; checkedAt: string; options: Option[] };
@@ -32,7 +32,7 @@ const verificationText: Record<Verification["status"], string> = {
   not_allowed: t("Этот адрес проверить нельзя: нужен обычный адрес сайта в интернете, начинающийся с https://."),
   not_published: t("Сайт ещё не опубликован на BuildPath."),
 };
-type Preview = { branch: string; files: Array<{ path: string; bytes: number }>; siteIncluded: boolean; complete: boolean };
+type Preview = { branch: string; files: Array<{ path: string; bytes: number }>; siteIncluded: boolean; complete: boolean; ci?: { available: boolean; included: boolean; secrets: string[]; optional: string[] } };
 
 const errors: Record<string, string> = {
   HOSTING_TOKEN_INVALID: t("Ключ хостинга не подошёл: проверьте, что скопировали его целиком и он не отозван."),
@@ -50,7 +50,12 @@ const errors: Record<string, string> = {
   REPO_NOT_FOUND: t("Репозиторий не найден. Проверьте адрес и что ключ выдан именно для него."),
   REPO_WRITE_NOT_ALLOWED: t("Ключ видит репозиторий, но не может в него записывать. Дайте ключу право записи (Contents: Read and write или роль Developer)."),
   REPO_URL_INVALID: t("Не похоже на адрес репозитория. Скопируйте адрес из браузера, например https://github.com/имя/my-site."),
-  REPO_URL_NOT_GITHUB: t("Это не адрес GitHub. Для GitLab выберите вариант «GitLab»."),
+  REPO_URL_NOT_GITHUB: t("Это не адрес GitHub. Для другого сервиса выберите его вариант в этом решении."),
+  REPO_URL_NOT_BITBUCKET: t("Это не адрес Bitbucket. Для другого сервиса выберите его вариант в этом решении."),
+  REPO_WORKFLOW_PERMISSION: t("GitHub не разрешил добавить файл автоматической выкладки: ключу нужно право «Workflows: Read and write». Если вы входили через GitHub — выйдите и войдите снова. Или отправьте без автоматической выкладки."),
+  REPO_CI_FILE_EXISTS: t("В репозитории уже есть ваш файл сборки (.gitlab-ci.yml или bitbucket-pipelines.yml) — BuildPath не будет его заменять. Добавьте шаг выкладки вручную по примеру в инструкции или отправьте без автоматической выкладки."),
+  REPO_SERVER_TOO_OLD: t("Сервер Gitea слишком старый: нужна версия 1.20 или новее (или Forgejo)."),
+  CI_NOT_AVAILABLE: t("Автоматическая выкладка пока работает только для принятых сайтов без онлайн-записи и магазина."),
   REPO_HOST_NOT_ALLOWED: t("Этот сервер недоступен из интернета, подключить его нельзя."),
   REPO_PROVIDER_UNAVAILABLE: t("Сервис не ответил. Попробуйте ещё раз через минуту."),
   REPO_PROVIDER_FAILED: t("Сервис вернул ошибку. Попробуйте ещё раз позже."),
@@ -61,6 +66,10 @@ const errors: Record<string, string> = {
   SITE_NOT_ACCEPTED: t("Сначала примите этап «Сборка и проверка»: проверять и выкладывать можно только принятую версию сайта."),
   SITE_URL_REQUIRED: t("Вставьте адрес сайта."),
 };
+const repoPlaceholder: Record<string, string> = {
+  github: t("https://github.com/имя/my-site"), gitlab: t("https://gitlab.com/имя/my-site"), gitea: t("https://codeberg.org/имя/my-site"), bitbucket: t("https://bitbucket.org/команда/my-site"),
+};
+const sitePlaceholder: Record<string, string> = { github_pages: t("https://имя.github.io/my-site/"), render: t("https://имя.onrender.com"), vercel: t("https://имя.vercel.app") };
 const message = (caught: unknown) => (caught instanceof ApiError && errors[caught.message]) || explainError(caught);
 const date = (value: string) => new Date(value).toLocaleString(dateLocale(), { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
@@ -98,7 +107,7 @@ export default function ChoicePage() {
 
                         <form onSubmit={(event) => { event.preventDefault(); void run("connect", async () => { const next = await api<CardState>(`/projects/${projectId}/repository`, { method: "POST", body: JSON.stringify({ provider: chosen.key, repoUrl, token }) }); setToken(""); setDone(t("Готово: BuildPath может записывать в репозиторий. Ничего не отправлено — отправка только по вашей кнопке.")); return next; }); }}>
                           <label className={styles.label} htmlFor="repo-url">{t("Адрес репозитория")}</label>
-                          <input id="repo-url" className={styles.input} inputMode="url" required maxLength={500} placeholder={chosen.key === "github" ? t("https://github.com/имя/my-site") : t("https://gitlab.com/имя/my-site")} value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} />
+                          <input id="repo-url" className={styles.input} inputMode="url" required maxLength={500} placeholder={repoPlaceholder[chosen.key] ?? t("https://gitlab.com/имя/my-site")} value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} />
                           <label className={styles.label} htmlFor="repo-token">{t("Ключ доступа")}</label>
                           <input id="repo-token" className={styles.input} type="password" autoComplete="off" required maxLength={400} value={token} onChange={(event) => setToken(event.target.value)} />
                           <button className={styles.button} style={{ marginTop: 8 }} disabled={Boolean(busy)}>{busy === "connect" ? t("Проверяем…") : t("Проверить и подключить")}</button>
@@ -180,7 +189,7 @@ export default function ChoicePage() {
                       onDeploy={() => void run("deploy", () => api<CardState>(`/projects/${projectId}/deployment/hosting/deploy`, { method: "POST", body: JSON.stringify({ confirm: true }) }))} />}
                     {step.kind === "verify" && state.canDecide && (
                       <form onSubmit={(event) => { event.preventDefault(); void run("verify", () => api<CardState>(`/projects/${projectId}/deployment/verify`, { method: "POST", body: JSON.stringify({ url: chosen.key === "buildpath" || (!siteUrl && state.context?.hosting) ? null : siteUrl }) })); }}>
-                        {chosen.key !== "buildpath" && <input className={styles.input} inputMode="url" required={!state.context?.hosting} maxLength={500} placeholder={chosen.key === "github_pages" ? t("https://имя.github.io/my-site/") : t("https://ваш-домен.kz")} value={siteUrl} onChange={(event) => setSiteUrl(event.target.value)} />}
+                        {chosen.key !== "buildpath" && <input className={styles.input} inputMode="url" required={!state.context?.hosting} maxLength={500} placeholder={sitePlaceholder[chosen.key] ?? t("https://ваш-домен.kz")} value={siteUrl} onChange={(event) => setSiteUrl(event.target.value)} />}
                         <button className={styles.button} style={{ marginTop: 6 }} disabled={Boolean(busy)}>{busy === "verify" ? t("Проверяем…") : t("Проверить")}</button>
                         {choice?.verification && <p className={`${styles.notice} ${choice.verification.status === "matches" ? styles.success : styles.warn}`} style={{ marginTop: 8 }}>
                           {verificationText[choice.verification.status]}{choice.verification.httpStatus && choice.verification.status === "unreachable" ? t(" (ответ сервера: {0})", [choice.verification.httpStatus]) : ""}
@@ -224,9 +233,19 @@ export default function ChoicePage() {
                   <p style={{ margin: "0 0 6px" }}>{t("В ветку")}{" "}<strong>{preview.branch}</strong>{" "}{t("одним изменением уйдут только принятые результаты:")}</p>
                   <ul className={styles.list} style={{ margin: "0 0 6px" }}>{preview.files.map((file) => <li key={file.path}>{file.path} ({Math.max(1, Math.round(file.bytes / 1024))}{" "}{t("КБ)")}</li>)}</ul>
                   {!preview.siteIncluded && <p style={{ margin: "0 0 6px" }}>{t("Сайт ещё не собран и не принят — уйдёт только описание проекта.")}</p>}
+                  {preview.ci?.available && (
+                    <div style={{ margin: "0 0 8px" }}>
+                      <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                        <input type="checkbox" checked={preview.ci.included} disabled={Boolean(busy)} style={{ width: 20, height: 20, flex: "none" }}
+                          onChange={(event) => run("preview", async () => { setPreview(await api<Preview>(`/projects/${projectId}/repository/push${event.target.checked ? "?ci=1" : ""}`)); })} />
+                        <span>{t("Выкладывать на мой сервер автоматически")}<br /><span className={styles.small}>{t("Добавим файл, который после каждой отправки копирует страницы сайта на ваш сервер. Для специалистов и тех, у кого свой сервер.")}</span></span>
+                      </label>
+                      {preview.ci.included && <p className={styles.small} style={{ margin: "6px 0 0" }}>{t("Добавьте в настройках репозитория секреты {0}; папку на сервере можно задать секретом {1}. Ключ и адрес сервера остаются только в репозитории — BuildPath их не видит. Подробно — в решении «Где будет работать сайт», вариант «Свой сервер».", [preview.ci.secrets.join(", "), preview.ci.optional.join(", ")])}</p>}
+                    </div>
+                  )}
                   <p style={{ margin: "0 0 8px" }}>{t("Эти файлы в репозитории будут заменены. Остальные файлы не тронем.")}</p>
                   <div className={styles.row} style={{ gap: 8, flexWrap: "wrap" }}>
-                    <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("push", async () => { const next = await api<CardState>(`/projects/${projectId}/repository/push`, { method: "POST", body: JSON.stringify({ confirm: true }) }); setPreview(null); setDone(t("Отправлено в репозиторий.")); return next; })}>{busy === "push" ? t("Отправляем…") : t("Подтверждаю, отправить")}</button>
+                    <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("push", async () => { const next = await api<CardState>(`/projects/${projectId}/repository/push`, { method: "POST", body: JSON.stringify({ confirm: true, ci: Boolean(preview.ci?.included) }) }); setPreview(null); setDone(t("Отправлено в репозиторий.")); return next; })}>{busy === "push" ? t("Отправляем…") : t("Подтверждаю, отправить")}</button>
                     <button className={styles.ghost} onClick={() => setPreview(null)}>{t("Отмена")}</button>
                   </div>
                 </div>

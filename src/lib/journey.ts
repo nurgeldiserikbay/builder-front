@@ -14,12 +14,18 @@ export type CatalogType = {
 };
 
 export type JourneyStage = {
-  key: string; title: string; purpose: string; outcome: string; aiLevel: string; contract?: boolean; status: StageStatus; statusLabel: string; statusExplanation: string;
+  key: string; title: string; purpose: string; outcome: string; phase?: PhaseKey; aiLevel: string; contract?: boolean; status: StageStatus; statusLabel: string; statusExplanation: string;
   inputs: Array<{ key: string; title: string; satisfied: boolean }>; currentVersionNumber: number | null; acceptedVersionNumber: number | null;
   people?: { lead: { kind: "owner" | "specialist" | "invited" | "you"; name: string | null }; consultants: number };
   needsYou?: string | null;
   changes?: { incoming: Array<{ id: string; sourceKey: string; status: "open" | "discussing" }>; outgoing: Array<{ id: string; targetKey: string; status: "open" | "discussing" }> };
 };
+
+export type PhaseKey = "idea" | "spec" | "experience" | "tech" | "content" | "build" | "launch" | "after";
+/** A phase of the common path from an idea to a working product; launch and after-launch follow the publication. */
+export type Phase = { key: PhaseKey; title: string; short: string; status: "done" | "current" | "upcoming"; stageKeys: string[]; done: number; total: number; kind: "stages" | "publish" };
+/** A stage in plain words: why it matters, what comes next, an example and the terms it uses. */
+export type StageGuide = { why: string; next: string; example: string; terms: Array<{ term: string; meaning: string }> };
 
 export type ViewerInfo = {
   kind: "member" | "specialist"; role: string;
@@ -30,6 +36,7 @@ export type Journey = {
   viewer: ViewerInfo;
   project: { id: string; name: string; status: string; role: string; projectType: string; typeTitle: string; resultExplanation: string; startStageKey: string | null; changeResponseDays?: number; technology?: string | null };
   progress: { accepted: number; total: number; percent: number };
+  phases?: { version: string; items: Phase[] };
   nextAction: { stageKey: string | null; title: string; text: string };
   stages: JourneyStage[];
   ai: { configured: boolean; provider: string | null; remainingToday: number; month: { left: number; limit: number; planTitle: string } | null };
@@ -87,7 +94,7 @@ export type StageDetail = {
   suggestions: Suggestion[];
   stage: {
     canSubmit: boolean; canRequestChanges: boolean; canInvite: boolean; canSuggest: boolean; reviewNote: string | null; approval: Approval; blockingComments?: number;
-    key: string; title: string; purpose: string; outcome: string; artifactType: ArtifactType; status: StageStatus; statusLabel: string; statusExplanation: string;
+    key: string; title: string; purpose: string; outcome: string; phase?: PhaseKey; guide?: StageGuide; artifactType: ArtifactType; status: StageStatus; statusLabel: string; statusExplanation: string;
     acceptance: string[]; acceptExplanation: string; importHint: string | null; fields: FieldDefinition[] | null; lockedKeys: string[]; acceptedVersionId: string | null;
     canEdit: boolean; canAccept: boolean; canReopen: boolean; canImport: boolean; inputsReady: boolean; changesPending?: boolean; canOverrideReview?: boolean;
     contract?: { explanation: string } | null;

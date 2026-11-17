@@ -8,11 +8,12 @@ import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import { makeZip } from "@/lib/zip";
 import { GithubConnect } from "./github-connect";
+import { SshConnectForm, SshKeyStep } from "./ssh-connect";
 import { DomainConnect } from "./domain-connect";
 import styles from "../../../journey.module.css";
 import AppHeader from "../../../../app-header";
 
-type Step = { key: string; title: string; text: string[]; kind: "manual" | "connect" | "download" | "publish" | "push" | "package" | "verify" | "domain" | "hosting_connect" | "hosting_deploy"; link?: { label: string; url: string } };
+type Step = { key: string; title: string; text: string[]; kind: "manual" | "ssh_key" | "connect" | "download" | "publish" | "push" | "package" | "verify" | "domain" | "hosting_connect" | "hosting_deploy"; link?: { label: string; url: string } };
 type Option = { key: string; requires?: { card: string; option: string | string[]; explanation: string }; title: string; summary: string; pros: string[]; limits: string[]; cost: string; upkeep: string; leaving: string; steps: Step[] };
 type Repository = { provider: string; connectedVia?: string; repoPath: string; webUrl: string; defaultBranch: string; isPrivate: boolean; tokenHint: string; verifiedAt: string; lastPushAt: string | null; lastCommitUrl: string | null; lastError: string | null };
 type CardState = {
@@ -32,7 +33,7 @@ const verificationText: Record<Verification["status"], string> = {
   not_allowed: t("Этот адрес проверить нельзя: нужен обычный адрес сайта в интернете, начинающийся с https://."),
   not_published: t("Сайт ещё не опубликован на BuildPath."),
 };
-type Preview = { branch: string; files: Array<{ path: string; bytes: number }>; siteIncluded: boolean; complete: boolean; ci?: { available: boolean; included: boolean; secrets: string[]; optional: string[] } };
+type Preview = { branch: string; files: Array<{ path: string; bytes: number }>; siteIncluded: boolean; complete: boolean; ci?: { available: boolean; included: boolean; kind?: "static" | "booking"; secrets: string[]; optional: string[] } };
 
 const errors: Record<string, string> = {
   HOSTING_TOKEN_INVALID: t("Ключ хостинга не подошёл: проверьте, что скопировали его целиком и он не отозван."),
@@ -55,7 +56,18 @@ const errors: Record<string, string> = {
   REPO_WORKFLOW_PERMISSION: t("GitHub не разрешил добавить файл автоматической выкладки: ключу нужно право «Workflows: Read and write». Если вы входили через GitHub — выйдите и войдите снова. Или отправьте без автоматической выкладки."),
   REPO_CI_FILE_EXISTS: t("В репозитории уже есть ваш файл сборки (.gitlab-ci.yml или bitbucket-pipelines.yml) — BuildPath не будет его заменять. Добавьте шаг выкладки вручную по примеру в инструкции или отправьте без автоматической выкладки."),
   REPO_SERVER_TOO_OLD: t("Сервер Gitea слишком старый: нужна версия 1.20 или новее (или Forgejo)."),
-  CI_NOT_AVAILABLE: t("Автоматическая выкладка пока работает только для принятых сайтов без онлайн-записи и магазина."),
+  CI_NOT_AVAILABLE: t("Автоматическая выкладка работает для принятых сайтов, кроме магазина, и для репозиториев на GitHub, GitLab, Gitea или Bitbucket."),
+  REPO_SSH_URL_INVALID: t("Не похоже на адрес git по SSH. Пример: git@git.example.kz:team/site.git или ssh://git@git.example.kz:2222/team/site.git."),
+  REPO_SSH_HOST_UNREACHABLE: t("Сервер не ответил по SSH. Проверьте адрес и порт и что сервер доступен из интернета."),
+  REPO_SSH_HOST_KEY_MISMATCH: t("Ключ сервера изменился после проверки. Нажмите «Проверить сервер» ещё раз и сравните отпечаток."),
+  REPO_SSH_HOST_KEY_CHANGED: t("Ключ сервера не совпадает с подтверждённым. Если сервер меняли — подключите репозиторий заново; если нет — не отправляйте ничего и проверьте сервер."),
+  REPO_SSH_HOST_KEY_NOT_CONFIRMED: t("Отметьте ключ сервера, отпечаток которого совпал."),
+  REPO_SSH_KEY_REJECTED: t("Сервер не принял ключ BuildPath. Проверьте, что открытый ключ добавлен в этот репозиторий (или пользователю) целиком."),
+  REPO_SSH_PUSH_REJECTED: t("Сервер отклонил отправку: в ветке есть изменения, которых нет в BuildPath, или ветка защищена. Отправьте в другую ветку или разберитесь с изменениями на сервере."),
+  REPO_BRANCH_INVALID: t("Название ветки может содержать латиницу, цифры, точки, дефисы и /."),
+  SSH_KEY_REQUIRED: t("Сначала создайте ключ на шаге выше и добавьте его на сервер."),
+  SSH_GIT_NOT_AVAILABLE: t("На этом сервере BuildPath нет git и SSH — подключить сервер по SSH пока нельзя."),
+  EXPORT_NOT_BUILT: t("Программа записи для сервера ещё не собрана на этом сервере BuildPath. Напишите в поддержку."),
   REPO_HOST_NOT_ALLOWED: t("Этот сервер недоступен из интернета, подключить его нельзя."),
   REPO_PROVIDER_UNAVAILABLE: t("Сервис не ответил. Попробуйте ещё раз через минуту."),
   REPO_PROVIDER_FAILED: t("Сервис вернул ошибку. Попробуйте ещё раз позже."),
@@ -182,6 +194,7 @@ export default function ChoicePage() {
                         return api<CardState>(`/projects/${projectId}/choices/${cardKey}`);
                       })}>{busy === "package" ? t("Готовим…") : t("Скачать пакет (zip)")}</button>
                     )}
+                    {step.kind === "ssh_key" && <SshKeyStep projectId={projectId} canDecide={state.canDecide} busy={busy} run={(label, action) => void run(label, async () => { await action(); })} />}
                     {step.kind === "hosting_connect" && <HostingConnect provider={chosen.key} title={chosen.title} hosting={state.context?.hosting ?? null} canDecide={state.canDecide} busy={busy}
                       onConnect={(input) => void run("hosting", () => api<CardState>(`/projects/${projectId}/deployment/hosting`, { method: "POST", body: JSON.stringify({ provider: chosen.key, ...input, confirm: true }) }))}
                       onDisconnect={() => { if (window.confirm(t("Отключить {0}? Ключ будет удалён из BuildPath, сайт в вашем аккаунте останется.", [chosen.title]))) void run("hosting", () => api<CardState>(`/projects/${projectId}/deployment/hosting`, { method: "DELETE" })); }} />}
@@ -209,6 +222,9 @@ export default function ChoicePage() {
                         chosen.key === "github" ? (
                           <GithubConnect projectId={projectId} projectName={state.context?.publication?.slug ?? ""} fallback={tokenForm}
                             onConnected={(next) => { setState(next as CardState); setDone(t("Готово: репозиторий подключён. Ничего не отправлено — отправка только по вашей кнопке.")); }} />
+                        ) : chosen.key === "ssh" ? (
+                          <SshConnectForm projectId={projectId} busy={busy} run={(label, action) => void run(label, async () => { await action(); })}
+                            onConnected={(next) => { setState(next as CardState); setDone(t("Готово: BuildPath видит репозиторий. Право записи подтвердится первой отправкой — ничего не отправлено.")); }} />
                         ) : tokenForm
                       ) : <p className={`${styles.notice} ${styles.info}`}>{errors.REPO_CONNECT_NOT_CONFIGURED}</p>
                     )}
@@ -221,9 +237,9 @@ export default function ChoicePage() {
           {repository && (
             <section className={styles.card} aria-label={t("Репозиторий")}>
               <p className={styles.kicker}>{t("Подключено")}</p>
-              <p className={styles.cardTitle} style={{ marginTop: 0 }}><a href={repository.webUrl} target="_blank" rel="noreferrer">{repository.repoPath}</a></p>
+              <p className={styles.cardTitle} style={{ marginTop: 0, wordBreak: "break-all" }}>{repository.webUrl.startsWith("https://") ? <a href={repository.webUrl} target="_blank" rel="noreferrer">{repository.repoPath}</a> : repository.webUrl}</p>
               <p className={styles.small} style={{ margin: "0 0 8px" }}>
-                {repository.isPrivate ? t("Закрытый репозиторий") : t("Открытый репозиторий — код видят все")}{" "}{t("· ветка")}{" "}{repository.defaultBranch} · {repository.connectedVia === "oauth" ? t("через ваш аккаунт GitHub") : t("ключ {0}", [repository.tokenHint])}{" "}{t("· проверено")}{" "}{date(repository.verifiedAt)}
+                {repository.provider === "ssh" ? t("Git-сервер по SSH") : repository.isPrivate ? t("Закрытый репозиторий") : t("Открытый репозиторий — код видят все")}{" "}{t("· ветка")}{" "}{repository.defaultBranch} · {repository.connectedVia === "oauth" ? t("через ваш аккаунт GitHub") : repository.provider === "ssh" ? t("ключ развёртывания …{0}", [repository.tokenHint.replace(/^…/, "")]) : t("ключ {0}", [repository.tokenHint])}{" "}{t("· проверено")}{" "}{date(repository.verifiedAt)}
                 {repository.lastPushAt && <><br />{t("Последняя отправка:")}{" "}{date(repository.lastPushAt)}{repository.lastCommitUrl && <> · <a href={repository.lastCommitUrl} target="_blank" rel="noreferrer">{t("посмотреть")}</a></>}</>}
                 {repository.lastError && <><br />{t("Последняя попытка не удалась:")}{" "}{errors[repository.lastError] ?? repository.lastError}</>}
               </p>
@@ -238,7 +254,7 @@ export default function ChoicePage() {
                       <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                         <input type="checkbox" checked={preview.ci.included} disabled={Boolean(busy)} style={{ width: 20, height: 20, flex: "none" }}
                           onChange={(event) => run("preview", async () => { setPreview(await api<Preview>(`/projects/${projectId}/repository/push${event.target.checked ? "?ci=1" : ""}`)); })} />
-                        <span>{t("Выкладывать на мой сервер автоматически")}<br /><span className={styles.small}>{t("Добавим файл, который после каждой отправки копирует страницы сайта на ваш сервер. Для специалистов и тех, у кого свой сервер.")}</span></span>
+                        <span>{t("Выкладывать на мой сервер автоматически")}<br /><span className={styles.small}>{preview.ci.kind === "booking" ? t("Добавим программу записи и файл, который после каждой отправки обновляет её на вашем сервере и перезапускает. Записи на сервере не трогаются.") : t("Добавим файл, который после каждой отправки копирует страницы сайта на ваш сервер. Для специалистов и тех, у кого свой сервер.")}</span></span>
                       </label>
                       {preview.ci.included && <p className={styles.small} style={{ margin: "6px 0 0" }}>{t("Добавьте в настройках репозитория секреты {0}; папку на сервере можно задать секретом {1}. Ключ и адрес сервера остаются только в репозитории — BuildPath их не видит. Подробно — в решении «Где будет работать сайт», вариант «Свой сервер».", [preview.ci.secrets.join(", "), preview.ci.optional.join(", ")])}</p>}
                     </div>

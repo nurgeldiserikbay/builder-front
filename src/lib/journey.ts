@@ -339,6 +339,7 @@ const messages: Record<string, string> = {
   REASON_TOO_LONG: t("Объяснение слишком длинное — не больше 1000 символов."),
   FINDING_NOT_BLOCKING: t("Проверка уже изменилась: обновите страницу и посмотрите замечания ещё раз."),
   FINDINGS_NOT_FOUND: t("Этих замечаний больше нет — возможно, их уже исправили. Обновите страницу."),
+  OWNER_DECIDES: t("На вопросы «Вы это учли?» отвечаете вы: это решения о вашем бизнесе, ИИ их не принимает. Выберите ответ в карточке с вопросами."),
   INVALID_FINDING_IDS: t("Выберите замечания из списка проверки."),
   NOTHING_TO_FIX: t("Сначала сделайте черновик этапа."),
   NOTHING_TO_REVIEW: t("Сначала сделайте черновик этапа."),
@@ -433,10 +434,12 @@ export function explainError(error: unknown): string {
   if (code.startsWith("PORTFOLIO_PHOTO_INVALID")) return t("Фото на работе не найдено — загрузите его ещё раз.");
   if (code.startsWith("PORTFOLIO_DESCRIPTION_TOO_LONG")) return t("Описание работы — не больше 500 символов.");
   if (code.startsWith("STAGE_OUTPUTS_MISSING")) return t("Этап ещё не отдаёт следующим этапам всё нужное — смотрите карточку «Что получит следующий этап».");
+  if (code.startsWith("REVIEW_BLOCKING_OPEN") && code.includes("PROCESS_SITUATION_OPEN")) return t("Ответьте на важные вопросы в карточке «Вы это учли?» — без этого этап не принять. Если вопрос вам не подходит, объясните это в «Проверке качества».");
   if (code.startsWith("REVIEW_BLOCKING_OPEN")) return t("Проверка качества нашла блокирующие замечания. Исправьте их или объясните, почему этап можно принять (карточка «Проверка качества»).");
   if (code.startsWith("STAGE_INCOMPLETE")) return t("Этап ещё не заполнен до конца — посмотрите список «Чего не хватает».");
   if (code.startsWith("FIELD_TOO_LONG")) return t("Один из текстов слишком длинный. Сократите его.");
   if (code.startsWith("FIELD_REQUIRED")) return t("Заполните обязательные поля.");
+  if (code === "FIELD_INVALID:situations") return t("Один из ответов на вопросы «Вы это учли?» не подходит. Обновите страницу и выберите ответ заново.");
   if (code.startsWith("FIELD_INVALID")) return t("Одно из полей заполнено неверно.");
   // Codes without their own text: say what kind of problem it is and what to do, keep the code for support.
   if (error.status === 401 || code === "SESSION_INVALID") return t("Сессия закончилась. Войдите снова.");

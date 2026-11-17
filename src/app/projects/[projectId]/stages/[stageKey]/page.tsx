@@ -13,7 +13,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import {
-  explainError, isPlanMessage, originLabels, statusTone, type Content, type Design, type Journey, type Offer, type SiteCheck, type QualityReport, type StageDetail, type Sitemap, type Catalog,
+  explainError, isPlanMessage, stageFiles, type StageFile, originLabels, statusTone, type Content, type Design, type Journey, type Offer, type SiteCheck, type QualityReport, type StageDetail, type Sitemap, type Catalog,
 } from "@/lib/journey";
 import { ContentEditor, DesignPicker, FieldsForm } from "./editors";
 import { SpecialistsPanel, SuggestionsPanel } from "./specialists";
@@ -55,6 +55,8 @@ function summarize(key: string, content: unknown): string {
   return "";
 }
 
+type SpecFound = { summary: boolean; roles: number; features: number; acceptance: number; requirements: number; limits: number; questions: number };
+
 export default function StagePage() {
   const router = useRouter();
   const { projectId, stageKey } = useParams<{ projectId: string; stageKey: string }>();
@@ -67,6 +69,17 @@ export default function StagePage() {
   const [instruction, setInstruction] = useState("");
   const [saveAs, setSaveAs] = useState<SaveAs>("one_off");
   const [importText, setImportText] = useState("");
+  // «Есть своё ТЗ?»: documents of the stage to lay out, and what the last import found.
+  const [importDocs, setImportDocs] = useState<StageFile[] | null>(null);
+  const [importReport, setImportReport] = useState<{ found: SpecFound; issues: string[] } | null>(null);
+  type ImportResult = { status: string; issues: Array<{ message: string }>; found?: SpecFound };
+  const afterImport = (result: ImportResult) => {
+    if (result.found) setImportReport({ found: result.found, issues: result.issues.map((issue) => issue.message) });
+    setMessage(result.status === "imported" ? t("Материалы добавлены, этап засчитан. Следующие этапы открыты.") : t("Материалы добавлены как черновик. Проверьте его и дополните то, чего не хватает."));
+  };
+  const loadImportDocs = async () => {
+    try { setImportDocs((await stageFiles.list(projectId, stageKey)).files.filter((file) => ["pdf", "docx", "text"].includes(file.kind))); } catch (caught) { setError(explainError(caught)); }
+  };
   const [preview, setPreview] = useState<string | null>(null);
   // Multi-page sites: the pages the preview can switch between, and which one is shown.
   const [previewPages, setPreviewPages] = useState<Array<{ path: string; title: string }>>([]);
@@ -638,17 +651,60 @@ export default function StagePage() {
 
 
       {stage.canImport && stage.importHint && (
-        <details className={`${styles.card} ${styles.details}`} open={!detail.current && stage.artifactType !== "brief"}>
-          <summary>{t("У меня уже есть готовое")}</summary>
+        <details className={`${styles.card} ${styles.details}`} open={!detail.current && stage.artifactType !== "brief"}
+          onToggle={(event) => { if (stage.artifactType === "features" && (event.target as HTMLDetailsElement).open && importDocs === null) void loadImportDocs(); }}>
+          <summary>{stage.artifactType === "features" ? t("У меня уже есть ТЗ") : t("У меня уже есть готовое")}</summary>
           <p className={styles.small}>{stage.importHint}</p>
+          {stage.artifactType === "features" && (
+            <div style={{ margin: "0 0 12px" }}>
+              <p className={styles.label} style={{ margin: "0 0 6px" }}>{t("Из файла")}</p>
+              {importDocs && importDocs.length > 0 ? (
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+                  {importDocs.map((file) => (
+                    <li key={file.id} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <span style={{ flex: "1 1 160px", minWidth: 0, overflowWrap: "anywhere" }}>{file.name}</span>
+                      <button type="button" className={styles.secondary} disabled={Boolean(busy)} onClick={() => run("import", async () => {
+                        const result = await api<ImportResult>(`/projects/${projectId}/stages/${stageKey}/import`, { method: "POST", body: JSON.stringify({ fileId: file.id }) });
+                        await load(); afterImport(result);
+                      })}>{t("Разобрать")}</button>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className={styles.small} style={{ margin: 0 }}>{t("Загрузите ТЗ в PDF, Word или TXT в «Файлы этапа» — после проверки файл появится здесь.")}{" "}<button type="button" className={styles.linkButton} onClick={() => void loadImportDocs()}>{t("Обновить")}</button></p>}
+              <p className={styles.label} style={{ margin: "14px 0 6px" }}>{t("Или вставьте текст")}</p>
+            </div>
+          )}
           <textarea className={styles.textarea} style={{ minHeight: 140 }} value={importText} maxLength={20000} aria-label={t("Ваши материалы")} onChange={(event) => setImportText(event.target.value)} />
           <button className={styles.secondary} style={{ marginTop: 10 }} disabled={Boolean(busy) || importText.trim().length < 2}
             onClick={() => run("import", async () => {
-              const result = await api<{ status: string; issues: Array<{ message: string }> }>(`/projects/${projectId}/stages/${stageKey}/import`, { method: "POST", body: JSON.stringify({ text: importText }) });
-              await load(); setImportText("");
-              setMessage(result.status === "imported" ? t("Материалы добавлены, этап засчитан. Следующие этапы открыты.") : t("Материалы добавлены как черновик. Проверьте его и дополните то, чего не хватает."));
-            })}>{t("Добавить мои материалы")}</button>
+              const result = await api<ImportResult>(`/projects/${projectId}/stages/${stageKey}/import`, { method: "POST", body: JSON.stringify({ text: importText }) });
+              await load(); setImportText(""); afterImport(result);
+            })}>{stage.artifactType === "features" ? t("Разобрать текст") : t("Добавить мои материалы")}</button>
         </details>
+      )}
+      {importReport && stage.artifactType === "features" && (
+        <section className={styles.card} aria-labelledby="import-report-title" role="status">
+          <p id="import-report-title" className={styles.cardTitle}>{t("Что нашли в вашем ТЗ")}</p>
+          <ul className={styles.list} style={{ margin: 0 }}>
+            <li>{importReport.found.summary ? t("Описание продукта — есть") : t("Описание продукта — не нашли")}</li>
+            <li>{t("Ролей: {0}", [importReport.found.roles])}{importReport.found.roles === 0 ? t(" — поставили «Клиент», поправьте") : ""}</li>
+            <li>{t("Функций: {0}, условий «готово»: {1}", [importReport.found.features, importReport.found.acceptance])}</li>
+            <li>{t("Требований: {0}, ограничений: {1}, открытых вопросов: {2}", [importReport.found.requirements, importReport.found.limits, importReport.found.questions])}</li>
+          </ul>
+          {importReport.issues.length > 0 && <>
+            <p className={styles.label} style={{ margin: "10px 0 4px" }}>{t("Чего не хватает")}</p>
+            <ul className={styles.list} style={{ margin: 0 }}>{importReport.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
+          </>}
+          <div className={styles.row} style={{ marginTop: 12 }}>
+            {ai.configured && importReport.issues.length > 0 && stage.canEdit && (
+              <button type="button" className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", async () => {
+                await askAi({ instruction: t("Дополни ТЗ: допиши недостающие условия «готово», распредели функции по ролям, проверь приоритеты первой версии. Ничего не выдумывай сверх того, что уже есть в ТЗ, цели и процессе; чего не хватает — добавь в открытые вопросы."), saveAs: "one_off" });
+                setImportReport(null);
+              })}>{t("Дополнить пробелы с ИИ")}</button>
+            )}
+            <button type="button" className={styles.ghost} onClick={() => setImportReport(null)}>{t("Понятно")}</button>
+          </div>
+        </section>
       )}
 
 

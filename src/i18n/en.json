@@ -3000,5 +3000,21 @@
  "Например: онлайн-оплаты в первой версии нет": "For example: no online payment in the first version",
  "Открытые вопросы": "Open questions",
  "Например: брать ли предоплату за запись?": "For example: should we take prepayment for a booking?",
- "Открытые вопросы видны в проверке качества, пока вы их не решите.": "Open questions show in the quality review until you settle them."
+ "Открытые вопросы видны в проверке качества, пока вы их не решите.": "Open questions show in the quality review until you settle them.",
+ "У меня уже есть ТЗ": "I already have a specification",
+ "Из файла": "From a file",
+ "Загрузите ТЗ в PDF, Word или TXT в «Файлы этапа» — после проверки файл появится здесь.": "Upload the specification as PDF, Word or TXT to «Stage files» — after the check the file appears here.",
+ "Обновить": "Refresh",
+ "Или вставьте текст": "Or paste the text",
+ "Разобрать текст": "Lay out the text",
+ "Что нашли в вашем ТЗ": "What we found in your specification",
+ "Описание продукта — есть": "Product description — found",
+ "Описание продукта — не нашли": "Product description — not found",
+ "Ролей: {0}": "Roles: {0}",
+ " — поставили «Клиент», поправьте": " — we put «Client», please correct",
+ "Функций: {0}, условий «готово»: {1}": "Functions: {0}, «done» conditions: {1}",
+ "Требований: {0}, ограничений: {1}, открытых вопросов: {2}": "Requirements: {0}, limits: {1}, open questions: {2}",
+ "Дополни ТЗ: допиши недостающие условия «готово», распредели функции по ролям, проверь приоритеты первой версии. Ничего не выдумывай сверх того, что уже есть в ТЗ, цели и процессе; чего не хватает — добавь в открытые вопросы.": "Complete the specification: add the missing «done» conditions, assign functions to roles, check the first-version priorities. Do not invent anything beyond what is already in the specification, goal and process; add what is missing to the open questions.",
+ "Дополнить пробелы с ИИ": "Fill the gaps with AI",
+ "Понятно": "Got it"
 }

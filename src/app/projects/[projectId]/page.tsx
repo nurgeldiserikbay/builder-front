@@ -13,6 +13,7 @@ import MonitoringCard from "./monitoring-card";
 import ProjectMap from "./project-map";
 import PhaseStrip from "./phases";
 import ReadinessCard from "./readiness-card";
+import Decisions from "./decisions";
 import BudgetCard from "./budget-card";
 import WalletCard from "./wallet-card";
 import AppHeader from "../../app-header";
@@ -244,17 +245,7 @@ export default function JourneyPage() {
               </div>
             )}
 
-            {tab === "decisions" && !specialist && managing && <>
-            <section aria-labelledby="code-title">
-              <h2 id="code-title" className={styles.h2}>{t("Технологии, код и адрес")}</h2>
-              <div className={styles.tiles}>
-                <div className={styles.tile}><p>{t("На чём делать сайт: BuildPath соберёт его сам, а для личного кабинета или оплаты онлайн понадобится разработчик со своим стеком. Сравним варианты.")}</p><a className={styles.secondary} href={`/projects/${projectId}/choices/technologies`}>{t("Технологии")}</a></div>
-                <div className={styles.tile}><p>{t("Сайт работает на BuildPath и без этого. Копия у вас — страховка: можно переехать, отдать разработчику или восстановить. Выберите вариант — мы объясним, что сделать.")}</p><a className={styles.secondary} href={`/projects/${projectId}/choices/code_hosting`}>{t("Выбрать, где хранить код")}</a></div>
-                <div className={styles.tile}><p>{t("Сайт можно разместить не только на BuildPath: на своём сервере или в GitHub Pages. Мы проведём по шагам и проверим, что он открывается.")}</p><a className={styles.secondary} href={`/projects/${projectId}/choices/deployment`}>{t("Где будет работать сайт")}</a></div>
-                <div className={styles.tile}><p>{t("Свой домен вроде barber-usy.com вместо адреса BuildPath — объясним, где купить и что вписать у регистратора.")}</p><a className={styles.secondary} href={`/projects/${projectId}/choices/domain`}>{t("Адрес сайта")}</a></div>
-              </div>
-            </section>
-            </>}
+            {tab === "decisions" && !specialist && managing && <Decisions projectId={projectId} />}
 
             {tab === "result" && !specialist && (
               <div className={styles.panels}>

@@ -3201,5 +3201,16 @@
  "Попробовать ещё раз": "Try again",
  "Поставить BuildPath на экран iPhone: в Safari нажмите «Поделиться», затем «На экран «Домой»».": "To put BuildPath on your iPhone home screen: in Safari tap “Share”, then “Add to Home Screen”.",
  "Установить BuildPath на телефон": "Install BuildPath on the phone",
- "Откроется как приложение — с иконкой на экране и без строки браузера.": "It opens like an app — with an icon on the screen and no browser bar."
+ "Откроется как приложение — с иконкой на экране и без строки браузера.": "It opens like an app — with an icon on the screen and no browser bar.",
+ "Сначала примите предыдущие этапы: ИИ составляет этот этап с опорой на них.": "Accept the previous stages first: the AI composes this stage from them.",
+ "Готово: ИИ составил этап по разговору. Проверьте результат ниже, поправьте, если что-то не так, и примите этап.": "Done: the AI composed the stage from the conversation. Check the result below, fix anything that is off and accept the stage.",
+ "Расскажите, как всё устроено, в разговоре": "Tell how things work, in a conversation",
+ "Обсудите ТЗ в разговоре": "Discuss the specification in a conversation",
+ "ИИ задаст вопросы по одному простыми словами, а потом составит этап по вашим ответам и уже принятым этапам. Ничего не придумывает: чего вы не сказали, он от себя не допишет.": "The AI asks questions one at a time in plain words, then composes the stage from your answers and the stages already accepted. It invents nothing: what you did not say, it will not add on its own.",
+ "Каждый ваш ответ и составление этапа — по одному запросу к ИИ, около {0} каждый.": "Each of your answers and composing the stage are one AI request each, about {0} each.",
+ "Можно и без разговора: попросить ИИ составить этап сразу или заполнить его ниже самому.": "You can also skip the conversation: ask the AI to compose the stage right away or fill it in below yourself.",
+ "Составляем… (до минуты)": "Composing… (up to a minute)",
+ "Составить ещё раз": "Compose again",
+ "Составить по разговору": "Compose from the conversation",
+ "Уже обсудили: {0}": "Already discussed: {0}"
 }

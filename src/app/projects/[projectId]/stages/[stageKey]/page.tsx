@@ -360,9 +360,9 @@ export default function StagePage() {
         <p className={`${styles.notice} ${styles.info}`}>{t("Можно готовить этап заранее, но принять его получится после того, как будут приняты предыдущие этапы.")}</p>
       )}
 
-      {/* «Разговор»: the form stages can be filled by talking instead of typing into fields */}
-      {(stage.artifactType === "brief" || stage.artifactType === "offer") && stage.canEdit && stage.fields && (
-        <InterviewPanel projectId={projectId} stageKey={stageKey} fields={stage.fields} story={detail.options.brief?.intro ?? null} requestPrice={requestPrice}
+      {/* «Разговор»: form stages are filled by talking; on the process and the ТЗ the AI composes the stage from the talk */}
+      {((stage.artifactType === "brief" || stage.artifactType === "offer") && stage.fields || stage.artifactType === "process" || stage.artifactType === "features") && stage.canEdit && (
+        <InterviewPanel projectId={projectId} stageKey={stageKey} fields={stage.fields ?? undefined} story={detail.options.brief?.intro ?? null} requestPrice={requestPrice}
           onApplied={async () => { setDirty(false); await load(); loadBudget(); }} />
       )}
 

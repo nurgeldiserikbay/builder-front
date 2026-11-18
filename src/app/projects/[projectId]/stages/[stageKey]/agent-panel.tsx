@@ -7,6 +7,7 @@ import { explainError } from "@/lib/journey";
 import { formatTenge } from "@/lib/money";
 import { makeZip } from "@/lib/zip";
 import styles from "../../../journey.module.css";
+import AppLaunch, { type Deployment } from "./app-launch";
 
 type Step = { at: string; kind: "note" | "tool"; tool?: string; summary: string; status?: "ok" | "failed"; output?: string };
 type Check = { id: string; label: string; command: string; status: "passed" | "failed" | "timed_out" | "skipped"; output: string; durationMs: number };
@@ -20,7 +21,7 @@ type Task = {
 };
 type Repository = { provider: string; repoPath: string; webUrl: string; defaultBranch: string };
 type State = {
-  configured: boolean; repository: Repository | null; profile: { key: string; version: string }; limits: { turns: number; wallMs: number; costTiyn: number | null }; canStart: boolean;
+  configured: boolean; repository: Repository | null; deployment: Deployment | null; profile: { key: string; version: string }; limits: { turns: number; wallMs: number; costTiyn: number | null }; canStart: boolean;
   latest: Task | null; history: { id: string; statusLabel: string; createdAt: string; costTiyn: number }[];
 };
 
@@ -236,6 +237,8 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
           )}
         </div>
       )}
+      {(state.deployment || task?.pushed) && <AppLaunch projectId={projectId} deployment={state.deployment} canEdit={canEdit} onChecked={load} />}
+
       {notice && <p className={`${styles.notice} ${styles.success}`} role="status">{notice}</p>}
       {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
     </section>

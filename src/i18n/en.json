@@ -3187,5 +3187,13 @@
  "Вставьте адрес приложения ниже.": "Paste the application address below.",
  "Адрес приложения": "Application address",
  "Проверяем… (до минуты)": "Checking… (up to a minute)",
- "BuildPath откроет /api/health приложения. Пароли и строку базы данных сюда вводить не нужно — они остаются у вас.": "BuildPath opens the application's /api/health. Do not enter passwords or the database string here — they stay with you."
+ "BuildPath откроет /api/health приложения. Пароли и строку базы данных сюда вводить не нужно — они остаются у вас.": "BuildPath opens the application's /api/health. Do not enter passwords or the database string here — they stay with you.",
+ "Опишите, что изменить.": "Describe what to change.",
+ "У последней задачи нет кода, который можно менять. Соберите приложение заново.": "The latest task has no code to change. Build the application again.",
+ "Изменение: {0}": "Change: {0}",
+ "Что изменить в приложении?": "What should change in the application?",
+ "Например: добавь в заявку поле «Телефон» и покажи его в списке": "For example: add a “Phone” field to the request and show it in the list",
+ "Опишите словами, как человеку. Агент возьмёт код последней задачи, внесёт изменения и проверит, что остальное работает. Правки, которые вы сделали в репозитории сами, он не увидит.": "Describe it in words, as to a person. The agent takes the code of the latest task, makes the changes and checks that the rest still works. It does not see edits you made in the repository yourself.",
+ "Поручить изменение агенту": "Ask the agent to change it",
+ "Собрать заново с нуля": "Build again from scratch"
 }

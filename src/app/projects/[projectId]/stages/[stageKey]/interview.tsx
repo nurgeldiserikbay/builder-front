@@ -9,6 +9,7 @@ import styles from "../../../journey.module.css";
 
 type Message = { role: "assistant" | "owner"; text: string; at: string };
 type Interview = {
+  composed?: boolean; available?: boolean; topics?: Field[];
   mode: "ai" | "template"; messages: Message[]; extracted: Record<string, unknown>; filled: string[]; missingRequired: string[];
   done: boolean; applied: boolean; turnsLeft: number;
 };
@@ -17,14 +18,16 @@ type Field = { key: string; label: string; required: boolean };
 const errors: Record<string, string> = {
   INTERVIEW_TOO_LONG: t("Разговор получился длинным. Нажмите «Заполнить форму» и допишите остальное в полях ниже или начните заново."),
   INTERVIEW_NOTHING_TO_APPLY: t("Пока нечего переносить в форму: ответьте хотя бы на один вопрос."),
+  STAGE_INPUTS_NOT_ACCEPTED: t("Сначала примите предыдущие этапы: ИИ составляет этот этап с опорой на них."),
 };
 
 /**
- * «Разговор»: the owner tells about the business and answers one question at a time; the answers fill the stage form.
- * With AI the questions follow the conversation; without AI the form's questions come one by one.
+ * «Разговор»: the owner tells about the business and answers one question at a time. On form stages the answers fill the
+ * form (with AI the questions follow the conversation; without AI the form's questions come one by one). On the process and
+ * the ТЗ the AI gathers the answers by topic and then composes the stage from them.
  */
-export default function InterviewPanel({ projectId, stageKey, fields, story, requestPrice, onApplied }: {
-  projectId: string; stageKey: string; fields: Field[]; story: string | null; requestPrice: number | null; onApplied: () => Promise<unknown>;
+export default function InterviewPanel({ projectId, stageKey, fields: formFields, story, requestPrice, onApplied }: {
+  projectId: string; stageKey: string; fields?: Field[]; story: string | null; requestPrice: number | null; onApplied: () => Promise<unknown>;
 }) {
   const [state, setState] = useState<Interview | null>(null);
   const [text, setText] = useState("");
@@ -62,11 +65,13 @@ export default function InterviewPanel({ projectId, stageKey, fields, story, req
     await api(`${base}/apply`, { method: "POST" });
     await onApplied();
     setState(await api<Interview>(base));
-    setNotice(t("Готово: ответы перенесены в форму ниже. Проверьте их, поправьте, если нужно, и примите этап."));
+    setNotice(composed ? t("Готово: ИИ составил этап по разговору. Проверьте результат ниже, поправьте, если что-то не так, и примите этап.") : t("Готово: ответы перенесены в форму ниже. Проверьте их, поправьте, если нужно, и примите этап."));
   });
   const restart = () => { if (window.confirm(t("Начать разговор заново? Ответы в форме останутся, а переписка удалится."))) void act("restart", async () => { const next = await api<Interview>(base, { method: "POST", body: JSON.stringify({ message: null, restart: true }) }); setText(""); setState(next); offerStory(next); }); };
 
-  if (!state) return null;
+  if (!state || state.available === false) return null;
+  const composed = state.composed === true;
+  const fields = state.topics ?? formFields ?? [];
   const started = state.messages.length > 0;
   const label = (key: string) => fields.find((field) => field.key === key)?.label ?? key;
   const requiredCount = fields.filter((field) => field.required).length;
@@ -74,17 +79,19 @@ export default function InterviewPanel({ projectId, stageKey, fields, story, req
 
   return (
     <section className={styles.card} aria-labelledby="interview-title">
-      <p className={styles.cardTitle} id="interview-title">{stageKey === "offer" ? t("Расскажите об услугах в разговоре") : t("Расскажите о бизнесе в разговоре")}</p>
+      <p className={styles.cardTitle} id="interview-title">{stageKey === "offer" ? t("Расскажите об услугах в разговоре") : stageKey === "process" ? t("Расскажите, как всё устроено, в разговоре") : stageKey === "features" ? t("Обсудите ТЗ в разговоре") : t("Расскажите о бизнесе в разговоре")}</p>
       {!started && (
         <>
           <p className={styles.small} style={{ marginTop: 0 }}>
-            {state.mode === "ai"
+            {composed
+              ? t("ИИ задаст вопросы по одному простыми словами, а потом составит этап по вашим ответам и уже принятым этапам. Ничего не придумывает: чего вы не сказали, он от себя не допишет.")
+              : state.mode === "ai"
               ? t("ИИ задаст вопросы по одному простыми словами и сам заполнит форму. Ничего не придумывает — только то, что вы скажете.")
               : t("ИИ пока не подключён: зададим вопросы из формы по одному. Можно и сразу заполнить поля ниже.")}
-            {state.mode === "ai" && requestPrice !== null ? ` ${t("Каждый ваш ответ — один запрос к ИИ, около {0}.", [formatTenge(requestPrice)])}` : ""}
+            {state.mode === "ai" && requestPrice !== null ? ` ${composed ? t("Каждый ваш ответ и составление этапа — по одному запросу к ИИ, около {0} каждый.", [formatTenge(requestPrice)]) : t("Каждый ваш ответ — один запрос к ИИ, около {0}.", [formatTenge(requestPrice)])}` : ""}
           </p>
           <button type="button" className={`${styles.button} ${styles.block}`} disabled={Boolean(busy)} onClick={start}>{busy === "start" ? t("Начинаем…") : t("💬 Начать разговор")}</button>
-          <p className={styles.small}>{t("Удобнее формой? Заполните поля ниже — разговор не обязателен.")}</p>
+          <p className={styles.small}>{composed ? t("Можно и без разговора: попросить ИИ составить этап сразу или заполнить его ниже самому.") : t("Удобнее формой? Заполните поля ниже — разговор не обязателен.")}</p>
         </>
       )}
       {started && (
@@ -117,11 +124,13 @@ export default function InterviewPanel({ projectId, stageKey, fields, story, req
           )}
           <div className={styles.row} style={{ gap: 8, flexWrap: "wrap", marginTop: 8 }}>
             <button type="button" className={state.done ? styles.button : styles.secondary} disabled={Boolean(busy) || state.filled.length === 0} onClick={() => void apply()}>
-              {busy === "apply" ? t("Заполняем…") : state.applied ? t("Заполнить форму ещё раз") : t("Заполнить форму")}
+              {composed
+                ? busy === "apply" ? t("Составляем… (до минуты)") : state.applied ? t("Составить ещё раз") : t("Составить по разговору")
+                : busy === "apply" ? t("Заполняем…") : state.applied ? t("Заполнить форму ещё раз") : t("Заполнить форму")}
             </button>
             <button type="button" className={styles.ghost} disabled={Boolean(busy)} onClick={restart}>{t("Начать заново")}</button>
           </div>
-          {state.filled.length > 0 && <p className={styles.small}>{t("Уже есть ответы: {0}.", [state.filled.map(label).join(", ")])}</p>}
+          {state.filled.length > 0 && <p className={styles.small}>{composed ? t("Уже обсудили: {0}", [state.filled.map(label).join(" · ")]) : t("Уже есть ответы: {0}.", [state.filled.map(label).join(", ")])}</p>}
         </>
       )}
       {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}

@@ -5,6 +5,7 @@ import './globals.css';
 import TelegramBridge from './telegram-bridge';
 import ConsentGate from './consent-gate';
 import LocaleGate from './locale-gate';
+import { PwaRegistration } from './pwa';
 import { tl } from '@/lib/i18n';
 import { requestLocale } from '@/lib/request-locale';
 
@@ -24,7 +25,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const locale = await requestLocale();
   return (
     <html lang={locale}>
-      <body><LocaleGate locale={locale}><TelegramBridge />{children}<ConsentGate /></LocaleGate></body>
+      <body><LocaleGate locale={locale}><TelegramBridge /><PwaRegistration />{children}<ConsentGate /></LocaleGate></body>
     </html>
   );
 }

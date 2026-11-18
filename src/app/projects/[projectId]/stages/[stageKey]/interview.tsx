@@ -16,6 +16,9 @@ type Interview = {
 };
 type Field = { key: string; label: string; required: boolean };
 
+/** The Mini App remembers that it was opened from Telegram (see telegram-bridge). */
+const inTelegram = () => { try { return typeof window !== "undefined" && window.sessionStorage.getItem("bp_tg") === "1"; } catch { return false; } };
+
 const errors: Record<string, string> = {
   INTERVIEW_TOO_LONG: t("Разговор получился длинным. Нажмите «Заполнить форму» и допишите остальное в полях ниже или начните заново."),
   INTERVIEW_NOTHING_TO_APPLY: t("Пока нечего переносить в форму: ответьте хотя бы на один вопрос."),
@@ -44,7 +47,17 @@ export default function InterviewPanel({ projectId, stageKey, fields: formFields
   const offerStory = (next: Interview) => {
     if (story && stageKey === "goal" && next.mode === "ai" && next.messages.length > 0 && !next.messages.some((message) => message.role === "owner")) setText((current) => current || story.slice(0, 1000));
   };
-  useEffect(() => { void api<Interview>(base).then((next) => { setState(next); setVoice(next.voice ?? null); offerStory(next); }).catch(() => setState(null)); }, [base]); // eslint-disable-line react-hooks/exhaustive-deps
+  const card = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    void api<Interview>(base).then(async (next) => {
+      setState(next); setVoice(next.voice ?? null); offerStory(next);
+      // Opened from the Telegram bot («💬 Разговор» → Mini App): go straight to the conversation; starting it costs nothing.
+      if (new URLSearchParams(window.location.search).get("talk") === "1" && next.available !== false) {
+        window.setTimeout(() => card.current?.scrollIntoView({ block: "start" }), 50);
+        if (!next.messages.length) { const started = await api<Interview>(base, { method: "POST", body: JSON.stringify({ message: null }) }); setState(started); offerStory(started); }
+      }
+    }).catch(() => setState(null));
+  }, [base]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (state?.messages.length) end.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [state?.messages.length]);
 
   async function act(label: string, work: () => Promise<void>) {
@@ -81,7 +94,7 @@ export default function InterviewPanel({ projectId, stageKey, fields: formFields
   const requiredFilled = requiredCount - state.missingRequired.length;
 
   return (
-    <section className={styles.card} aria-labelledby="interview-title">
+    <section ref={card} className={styles.card} aria-labelledby="interview-title">
       <p className={styles.cardTitle} id="interview-title">{stageKey === "offer" ? t("Расскажите об услугах в разговоре") : stageKey === "process" ? t("Расскажите, как всё устроено, в разговоре") : stageKey === "features" ? t("Обсудите ТЗ в разговоре") : t("Расскажите о бизнесе в разговоре")}</p>
       {!started && (
         <>
@@ -124,6 +137,9 @@ export default function InterviewPanel({ projectId, stageKey, fields: formFields
                 onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void send(); } }} />
               <button className={`${styles.button} ${styles.block}`} style={{ marginTop: 8 }} disabled={Boolean(busy) || !text.trim()}>{busy === "send" ? t("Отправляем…") : t("Отправить")}</button>
               {voice && <VoiceInput endpoint={`${base}/voice`} voice={voice} disabled={Boolean(busy)} onText={(heard) => setText((current) => (current.trim() ? `${current.trim()} ${heard}` : heard).slice(0, 1000))} />}
+              {voice?.available && inTelegram() && typeof window !== "undefined" && typeof window.MediaRecorder === "undefined" && (
+                <p className={styles.small} style={{ margin: "6px 0 0" }}>{t("Здесь запись голоса не работает — ответьте голосовым прямо в чате с ботом: это тот же разговор.")}</p>
+              )}
             </form>
           )}
           <div className={styles.row} style={{ gap: 8, flexWrap: "wrap", marginTop: 8 }}>

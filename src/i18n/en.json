@@ -3225,5 +3225,6 @@
  "Согласие на распознавание речи": "Consent to speech recognition",
  "Чтобы понять голосовой ответ, BuildPath отправит запись в сервис распознавания речи ({0}). Запись не хранится: остаётся только текст — вы увидите его и сами решите, отправлять ли.": "To understand a voice answer, BuildPath sends the recording to the speech recognition service ({0}). The recording is not kept: only the text stays — you will see it and decide whether to send it.",
  "Разрешить и записать": "Allow and record",
- "До {0} секунд. Текст появится в поле ответа — проверьте его перед отправкой.": "Up to {0} seconds. The text appears in the answer field — check it before sending."
+ "До {0} секунд. Текст появится в поле ответа — проверьте его перед отправкой.": "Up to {0} seconds. The text appears in the answer field — check it before sending.",
+ "Здесь запись голоса не работает — ответьте голосовым прямо в чате с ботом: это тот же разговор.": "Voice recording does not work here — answer with a voice message right in the chat with the bot: it is the same conversation."
 }

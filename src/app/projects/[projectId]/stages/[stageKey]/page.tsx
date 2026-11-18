@@ -24,6 +24,7 @@ import QualityProfilePicker from "./quality-profile-picker";
 import BrowserCheckPanel from "./browser-check";
 import StarterCodePanel from "./starter-code";
 import AppCodePanel from "./app-code";
+import AgentPanel from "./agent-panel";
 import { TimesheetPanel } from "./timesheet";
 import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
@@ -440,6 +441,7 @@ export default function StagePage() {
           onBuilt={async () => { await load(); setMessage(t("Пакет собран. Посмотрите проверки и скачайте архив.")); }} />
       )}
       {stage.artifactType === "handoff" && stage.status !== "locked" && <StarterCodePanel projectId={projectId} packageBuilt={Boolean(detail.current)} key={detail.current?.versionNumber ?? 0} />}
+      {stage.artifactType === "handoff" && stage.status !== "locked" && <AgentPanel projectId={projectId} packageBuilt={Boolean(detail.current)} canEdit={stage.canEdit} key={`agent-${detail.current?.versionNumber ?? 0}`} />}
       {stage.artifactType === "handoff" && stage.status !== "locked" && <AppCodePanel projectId={projectId} packageBuilt={Boolean(detail.current)} key={`ai-${detail.current?.versionNumber ?? 0}`} />}
 
       {/* Starting point for an empty sitemap */}

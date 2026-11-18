@@ -38,6 +38,12 @@ export default function AccountPage() {
     });
   }, [router]);
 
+  async function logout() {
+    // The session ends on the server; the next page is the sign-in, as after any other way out.
+    try { await api<void>("/auth/logout", { method: "POST" }); } catch { /* already signed out */ }
+    window.location.replace("/login");
+  }
+
   async function startDeletion() {
     setError("");
     try {
@@ -104,6 +110,12 @@ export default function AccountPage() {
                 <a href="/legal/terms"><b>{t("Оферта")}</b><small>{t("Условия работы платформы")}</small></a>
                 <a href="/legal/privacy"><b>{t("Политика конфиденциальности")}</b><small>{t("Какие данные мы храним и зачем")}</small></a>
               </nav>
+            </section>
+
+            <section className={styles.card}>
+              <p className={styles.cardTitle} style={{ marginTop: 0 }}>{t("Выход")}</p>
+              <p className={styles.small} style={{ marginTop: 0 }}>{t("Выйти на этом устройстве. Проекты и данные остаются, войти можно в любой момент.")}</p>
+              <button type="button" className={styles.secondary} disabled={busy} onClick={() => void logout()}>{t("Выйти из аккаунта")}</button>
             </section>
 
             <section className={styles.card} aria-labelledby="delete-title">

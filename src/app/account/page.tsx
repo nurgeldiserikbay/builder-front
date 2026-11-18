@@ -8,6 +8,7 @@ import { API_BASE_URL, ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import styles from "../projects/journey.module.css";
 import AppHeader from "../app-header";
+import { InstallApp } from "../pwa";
 
 type Me = { id: string; email: string; name: string | null; hasPassword?: boolean };
 type Preview = { projects: number; liveSites: Array<{ slug: string; projectName: string }>; specialistStages: number; telegramLinked: boolean; retentionDays: number; purgeAfter: string };
@@ -91,6 +92,7 @@ export default function AccountPage() {
             </div>
             <LanguageSwitch style={{ margin: "0 0 14px" }} />
             {me.name && <p className={styles.small} style={{ marginTop: 0 }}>{me.email}</p>}
+            <InstallApp className={styles.small} buttonClassName={styles.secondary} />
 
             <section className={styles.card}>
               <p className={styles.cardTitle}>{t("Тариф и документы")}</p>

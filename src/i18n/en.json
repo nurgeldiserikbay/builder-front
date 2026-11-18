@@ -3195,5 +3195,11 @@
  "Например: добавь в заявку поле «Телефон» и покажи его в списке": "For example: add a “Phone” field to the request and show it in the list",
  "Опишите словами, как человеку. Агент возьмёт код последней задачи, внесёт изменения и проверит, что остальное работает. Правки, которые вы сделали в репозитории сами, он не увидит.": "Describe it in words, as to a person. The agent takes the code of the latest task, makes the changes and checks that the rest still works. It does not see edits you made in the repository yourself.",
  "Поручить изменение агенту": "Ask the agent to change it",
- "Собрать заново с нуля": "Build again from scratch"
+ "Собрать заново с нуля": "Build again from scratch",
+ "Нет связи": "No connection",
+ "Страница не загрузилась: телефон сейчас без интернета или связь слабая. Проекты и ответы сохранены на сервере — ничего не потеряно.": "The page did not load: the phone is offline or the connection is weak. Projects and answers are kept on the server — nothing is lost.",
+ "Попробовать ещё раз": "Try again",
+ "Поставить BuildPath на экран iPhone: в Safari нажмите «Поделиться», затем «На экран «Домой»».": "To put BuildPath on your iPhone home screen: in Safari tap “Share”, then “Add to Home Screen”.",
+ "Установить BuildPath на телефон": "Install BuildPath on the phone",
+ "Откроется как приложение — с иконкой на экране и без строки браузера.": "It opens like an app — with an icon on the screen and no browser bar."
 }

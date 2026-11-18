@@ -3146,5 +3146,12 @@
  "Отправить код в {0}? Он попадёт в отдельную ветку, основная ветка {1} не изменится. Слить изменения решаете вы.": "Send the code to {0}? It goes to a separate branch; the main branch {1} does not change. You decide when to merge.",
  "Готово: код в ветке {0}. Посмотрите изменения и слейте ветку на своём сервере, когда будете готовы.": "Done: the code is in branch {0}. Review the changes and merge the branch on your server when you are ready.",
  "Код уйдёт в {0} отдельной веткой. Основная ветка не меняется, пока вы сами не сольёте изменения.": "The code goes to {0} as a separate branch. The main branch does not change until you merge.",
- "Скачать код (файлов: {0})": "Download the code ({0} files)"
+ "Скачать код (файлов: {0})": "Download the code ({0} files)",
+ "Открываем…": "Opening…",
+ "▶ Попробовать приложение": "▶ Try the application",
+ "Приложение работает прямо в браузере на демо-данных; можно переключать роли. Ничего никуда не отправляется, данные сбрасываются при закрытии.": "The application runs right in the browser on demo data; you can switch roles. Nothing is sent anywhere; the data resets when you close it.",
+ "Предпросмотр не собрался — попробовать приложение в браузере пока нельзя. Код при этом сохранён.": "The preview did not build — you cannot try the application in the browser yet. The code is kept.",
+ "Предпросмотр приложения": "Application preview",
+ "Предпросмотр · демо-данные · написано ИИ-агентом": "Preview · demo data · written by the AI agent",
+ "Закрыть": "Close"
 }

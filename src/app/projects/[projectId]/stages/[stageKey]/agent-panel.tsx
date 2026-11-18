@@ -15,6 +15,7 @@ type Task = {
   createdAt: string; startedAt: string | null; finishedAt: string | null; stopRequested: boolean; turns: number; costTiyn: number;
   steps: Step[]; stopLabel: string | null; report: { summary: string; done: string[]; notDone: string[] } | null; checks: Check[]; error: string | null;
   files: { path: string; bytes: number }[]; filesTruncated: boolean;
+  hasDemo: boolean;
   pushed: { branch: string | null; pullRequestUrl: string | null; commitUrl: string | null; at: string } | null;
 };
 type Repository = { provider: string; repoPath: string; webUrl: string; defaultBranch: string };
@@ -43,6 +44,7 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
   const [notice, setNotice] = useState("");
+  const [preview, setPreview] = useState<string | null>(null);
   const log = useRef<HTMLOListElement | null>(null);
   const base = `/projects/${projectId}/agent/tasks`;
   const load = useCallback(async () => { try { setState(await api<State>(base)); } catch (caught) { setError(explainError(caught)); } }, [base]);
@@ -76,6 +78,18 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
         : t("Готово: код в ветке {0}. Посмотрите изменения и слейте ветку на своём сервере, когда будете готовы.", [result.pushed?.branch ?? ""]));
     await load();
   });
+  const openPreview = () => act("demo", async () => {
+    const result = await api<{ html: string }>(`${base}/${task!.id}/demo`);
+    setPreview(result.html);
+  });
+  useEffect(() => {
+    if (preview === null) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setPreview(null); };
+    document.addEventListener("keydown", close);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.removeEventListener("keydown", close); document.body.style.overflow = overflow; };
+  }, [preview]);
   const download = () => act("zip", async () => {
     const result = await api<{ files: { path: string; content: string }[] }>(`${base}/${task!.id}/files`);
     const link = document.createElement("a");
@@ -152,6 +166,26 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
           {task.report.done.length > 0 && <><p className={styles.small} style={{ margin: "6px 0 2px" }}>{t("Сделано:")}</p><ul style={{ margin: 0, paddingLeft: 18 }}>{task.report.done.map((line) => <li key={line}>{line}</li>)}</ul></>}
           {task.report.notDone.length > 0 && <><p className={styles.small} style={{ margin: "6px 0 2px" }}>{t("Не сделано или сделано частично:")}</p><ul style={{ margin: 0, paddingLeft: 18 }}>{task.report.notDone.map((line) => <li key={line}>{line}</li>)}</ul></>}
           <p className={styles.small}>{t("Это слова агента. Что работает на самом деле, показывает проверка BuildPath выше.")}</p>
+        </div>
+      )}
+
+      {task && !pending && task.hasDemo && (
+        <div style={{ marginTop: 10 }}>
+          <button type="button" className={`${styles.button} ${styles.block}`} disabled={Boolean(busy)} onClick={() => void openPreview()}>{busy === "demo" ? t("Открываем…") : t("▶ Попробовать приложение")}</button>
+          <p className={styles.small} style={{ margin: "4px 0 0" }}>{t("Приложение работает прямо в браузере на демо-данных; можно переключать роли. Ничего никуда не отправляется, данные сбрасываются при закрытии.")}</p>
+        </div>
+      )}
+      {task && !pending && task.files.length > 0 && !task.hasDemo && task.checks.some((check) => check.id === "demo") && (
+        <p className={styles.small} style={{ marginTop: 8 }}>{t("Предпросмотр не собрался — попробовать приложение в браузере пока нельзя. Код при этом сохранён.")}</p>
+      )}
+      {preview !== null && (
+        <div role="dialog" aria-modal="true" aria-label={t("Предпросмотр приложения")} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "var(--bg, #fff)", display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderBottom: "1px solid var(--line, #e3e6ee)" }}>
+            <span className={styles.small} style={{ flex: 1 }}>{t("Предпросмотр · демо-данные · написано ИИ-агентом")}</span>
+            <button type="button" className={styles.secondary} onClick={() => setPreview(null)} autoFocus>{t("Закрыть")}</button>
+          </div>
+          {/* The agent's page runs without same-origin rights and with a no-network policy: it cannot reach BuildPath or the internet. */}
+          <iframe title={t("Предпросмотр приложения")} srcDoc={preview} sandbox="allow-scripts allow-forms allow-modals" referrerPolicy="no-referrer" style={{ flex: 1, width: "100%", border: 0 }} />
         </div>
       )}
 

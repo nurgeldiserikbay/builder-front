@@ -3234,5 +3234,9 @@
  "Код последней задачи агента": "The code of the agent's latest task",
  "Если ветку агента ещё не слили или в репозитории что-то сломано.": "If the agent's branch is not merged yet or something is broken in the repository.",
  "Опишите словами, как человеку. Агент возьмёт код из основной ветки репозитория — с вашими правками, — внесёт изменения и проверит, что остальное работает. Изменения придут новой веткой с запросом на слияние.": "Describe it in words, as to a person. The agent takes the code from the repository's main branch — with your edits — makes the changes and checks that the rest still works. The changes arrive as a new branch with a pull request.",
- "Начато с кода из репозитория{0}.": "Started from the repository's code{0}."
+ "Начато с кода из репозитория{0}.": "Started from the repository's code{0}.",
+ "Сервер просыпается после простоя — это до минуты. Подождите немного и повторите.": "The server is waking up after being idle — up to a minute. Wait a little and try again.",
+ "Выход": "Sign out",
+ "Выйти на этом устройстве. Проекты и данные остаются, войти можно в любой момент.": "Sign out on this device. Projects and data stay; you can sign in at any time.",
+ "Выйти из аккаунта": "Sign out"
 }

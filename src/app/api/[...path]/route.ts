@@ -40,17 +40,27 @@ async function forward(request: NextRequest): Promise<Response> {
   headers.set("x-forwarded-proto", request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || incoming.protocol.replace(":", ""));
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
-  let upstream: Response;
-  try {
-    upstream = await fetch(target, {
-      method: request.method,
-      headers,
-      body: hasBody ? await request.arrayBuffer() : undefined,
-      redirect: "manual",
-      cache: "no-store",
-    });
-  } catch {
-    return Response.json({ error: { code: "API_UNAVAILABLE", message: "The API is not reachable right now." } }, { status: 502 });
+  const body = hasBody ? await request.arrayBuffer() : undefined;
+  const send = () => fetch(target, { method: request.method, headers, body, redirect: "manual", cache: "no-store" });
+  // A free API instance sleeps when idle and takes about a minute to wake. While it wakes, the platform answers with its own
+  // page (not the API's JSON) or the connection fails. Such a request never reached the API, so it is safe to send again —
+  // for every method; a JSON error from the API itself is passed on as it is.
+  const deadline = Date.now() + 75_000;
+  let upstream: Response | null = null;
+  while (true) {
+    try {
+      upstream = await send();
+      const fromPlatform = [502, 503, 504].includes(upstream.status) && !(upstream.headers.get("content-type") ?? "").includes("application/json");
+      if (!fromPlatform || Date.now() > deadline) break;
+      await upstream.body?.cancel().catch(() => undefined);
+    } catch {
+      // A failed connection: retried only for reads, as a write might have reached the API before the connection broke.
+      if (hasBody || Date.now() > deadline) { upstream = null; break; }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+  }
+  if (!upstream || ([502, 503, 504].includes(upstream.status) && !(upstream.headers.get("content-type") ?? "").includes("application/json"))) {
+    return Response.json({ message: "API_WAKING_UP", error: { code: "API_UNAVAILABLE", message: "The API is not reachable right now." } }, { status: 503 });
   }
 
   const responseHeaders = new Headers();

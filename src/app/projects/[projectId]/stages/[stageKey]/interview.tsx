@@ -6,10 +6,11 @@ import { explainError } from "@/lib/journey";
 import { t } from "@/lib/i18n";
 import { formatTenge } from "@/lib/money";
 import styles from "../../../journey.module.css";
+import VoiceInput, { type VoiceState } from "./voice-input";
 
 type Message = { role: "assistant" | "owner"; text: string; at: string };
 type Interview = {
-  composed?: boolean; available?: boolean; topics?: Field[];
+  composed?: boolean; available?: boolean; topics?: Field[]; voice?: VoiceState;
   mode: "ai" | "template"; messages: Message[]; extracted: Record<string, unknown>; filled: string[]; missingRequired: string[];
   done: boolean; applied: boolean; turnsLeft: number;
 };
@@ -34,6 +35,8 @@ export default function InterviewPanel({ projectId, stageKey, fields: formFields
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // Only GET says whether voice works here; the answers to messages do not repeat it.
+  const [voice, setVoice] = useState<VoiceState | null>(null);
   const end = useRef<HTMLDivElement | null>(null);
   const base = `/projects/${projectId}/stages/${stageKey}/interview`;
 
@@ -41,7 +44,7 @@ export default function InterviewPanel({ projectId, stageKey, fields: formFields
   const offerStory = (next: Interview) => {
     if (story && stageKey === "goal" && next.mode === "ai" && next.messages.length > 0 && !next.messages.some((message) => message.role === "owner")) setText((current) => current || story.slice(0, 1000));
   };
-  useEffect(() => { void api<Interview>(base).then((next) => { setState(next); offerStory(next); }).catch(() => setState(null)); }, [base]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void api<Interview>(base).then((next) => { setState(next); setVoice(next.voice ?? null); offerStory(next); }).catch(() => setState(null)); }, [base]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (state?.messages.length) end.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [state?.messages.length]);
 
   async function act(label: string, work: () => Promise<void>) {
@@ -120,6 +123,7 @@ export default function InterviewPanel({ projectId, stageKey, fields: formFields
                 onChange={(event) => setText(event.target.value)}
                 onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void send(); } }} />
               <button className={`${styles.button} ${styles.block}`} style={{ marginTop: 8 }} disabled={Boolean(busy) || !text.trim()}>{busy === "send" ? t("Отправляем…") : t("Отправить")}</button>
+              {voice && <VoiceInput endpoint={`${base}/voice`} voice={voice} disabled={Boolean(busy)} onText={(heard) => setText((current) => (current.trim() ? `${current.trim()} ${heard}` : heard).slice(0, 1000))} />}
             </form>
           )}
           <div className={styles.row} style={{ gap: 8, flexWrap: "wrap", marginTop: 8 }}>

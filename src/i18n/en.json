@@ -3226,5 +3226,13 @@
  "Чтобы понять голосовой ответ, BuildPath отправит запись в сервис распознавания речи ({0}). Запись не хранится: остаётся только текст — вы увидите его и сами решите, отправлять ли.": "To understand a voice answer, BuildPath sends the recording to the speech recognition service ({0}). The recording is not kept: only the text stays — you will see it and decide whether to send it.",
  "Разрешить и записать": "Allow and record",
  "До {0} секунд. Текст появится в поле ответа — проверьте его перед отправкой.": "Up to {0} seconds. The text appears in the answer field — check it before sending.",
- "Здесь запись голоса не работает — ответьте голосовым прямо в чате с ботом: это тот же разговор.": "Voice recording does not work here — answer with a voice message right in the chat with the bot: it is the same conversation."
+ "Здесь запись голоса не работает — ответьте голосовым прямо в чате с ботом: это тот же разговор.": "Voice recording does not work here — answer with a voice message right in the chat with the bot: it is the same conversation.",
+ "В основной ветке репозитория пока нет кода. Отправьте туда код агента или начните с кода последней задачи.": "The repository's main branch has no code yet. Send the agent's code there or start from the latest task's code.",
+ "С какого кода начать": "Which code to start from",
+ "Из репозитория, ветка {0}": "From the repository, branch {0}",
+ "Со всеми правками, которые вы или разработчик внесли в git. Рекомендуем.": "With every edit you or a developer made in git. Recommended.",
+ "Код последней задачи агента": "The code of the agent's latest task",
+ "Если ветку агента ещё не слили или в репозитории что-то сломано.": "If the agent's branch is not merged yet or something is broken in the repository.",
+ "Опишите словами, как человеку. Агент возьмёт код из основной ветки репозитория — с вашими правками, — внесёт изменения и проверит, что остальное работает. Изменения придут новой веткой с запросом на слияние.": "Describe it in words, as to a person. The agent takes the code from the repository's main branch — with your edits — makes the changes and checks that the rest still works. The changes arrive as a new branch with a pull request.",
+ "Начато с кода из репозитория{0}.": "Started from the repository's code{0}."
 }

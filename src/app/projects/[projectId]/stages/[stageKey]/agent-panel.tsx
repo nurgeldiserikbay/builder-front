@@ -12,7 +12,7 @@ import AppLaunch, { type Deployment } from "./app-launch";
 type Step = { at: string; kind: "note" | "tool"; tool?: string; summary: string; status?: "ok" | "failed"; output?: string };
 type Check = { id: string; label: string; command: string; status: "passed" | "failed" | "timed_out" | "skipped"; output: string; durationMs: number };
 type Task = {
-  id: string; kind: string; baseTaskId: string | null; status: "queued" | "running" | "succeeded" | "failed" | "stopped" | "unavailable"; statusLabel: string; instruction: string | null; model: string | null;
+  id: string; kind: string; baseTaskId: string | null; baseSource?: string | null; baseCommit?: string | null; status: "queued" | "running" | "succeeded" | "failed" | "stopped" | "unavailable"; statusLabel: string; instruction: string | null; model: string | null;
   createdAt: string; startedAt: string | null; finishedAt: string | null; stopRequested: boolean; turns: number; costTiyn: number;
   steps: Step[]; stopLabel: string | null; report: { summary: string; done: string[]; notDone: string[] } | null; checks: Check[]; error: string | null;
   files: { path: string; bytes: number }[]; filesTruncated: boolean;
@@ -21,7 +21,7 @@ type Task = {
 };
 type Repository = { provider: string; repoPath: string; webUrl: string; defaultBranch: string };
 type State = {
-  configured: boolean; repository: Repository | null; deployment: Deployment | null; profile: { key: string; version: string }; limits: { turns: number; wallMs: number; costTiyn: number | null }; canStart: boolean; changeBase: string | null;
+  configured: boolean; repository: Repository | null; deployment: Deployment | null; profile: { key: string; version: string }; limits: { turns: number; wallMs: number; costTiyn: number | null }; canStart: boolean; changeBase: string | null; changeFromRepository?: boolean;
   latest: Task | null; history: { id: string; statusLabel: string; createdAt: string; costTiyn: number }[];
 };
 
@@ -33,6 +33,7 @@ const errors: Record<string, string> = {
   REPO_NOT_CONNECTED: t("Репозиторий не подключён. Подключите его в решении «Где хранить код»."),
   AGENT_TASK_NO_FILES: t("Агент не оставил файлов — отправлять нечего."),
   CHANGE_INSTRUCTION_REQUIRED: t("Опишите, что изменить."),
+  REPO_BRANCH_EMPTY: t("В основной ветке репозитория пока нет кода. Отправьте туда код агента или начните с кода последней задачи."),
   AGENT_BASE_HAS_NO_CODE: t("У последней задачи нет кода, который можно менять. Соберите приложение заново."),
 };
 
@@ -44,6 +45,8 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
   const [state, setState] = useState<State | null>(null);
   const [instruction, setInstruction] = useState("");
   const [change, setChange] = useState("");
+  // Where a change starts: the repository's main branch (with the owner's own edits) when connected, else the latest task.
+  const [source, setSource] = useState<"repository" | "task">("repository");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -68,7 +71,8 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
   }
   const start = () => act("start", async () => { await api(base, { method: "POST", body: JSON.stringify({ kind: "build_app", instruction: instruction.trim() || null }) }); setInstruction(""); await load(); });
   const startChange = () => act("change", async () => {
-    await api(base, { method: "POST", body: JSON.stringify({ kind: "change_app", baseTaskId: state!.changeBase, instruction: change.trim() }) });
+    const fromRepo = source === "repository" || !state!.changeBase;
+    await api(base, { method: "POST", body: JSON.stringify(fromRepo ? { kind: "change_app", base: "repository", instruction: change.trim() } : { kind: "change_app", baseTaskId: state!.changeBase, instruction: change.trim() }) });
     setChange(""); await load();
   });
   const stop = () => act("stop", async () => { await api(`${base}/${task!.id}/stop`, { method: "POST" }); await load(); });
@@ -126,6 +130,7 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
         <div className={`${styles.notice} ${tone}`} role="status" style={{ marginTop: 8 }}>
           <strong>{task.statusLabel}</strong>
           {task.kind === "change_app" && task.instruction && <span style={{ display: "block", overflowWrap: "anywhere" }}>{t("Изменение: {0}", [task.instruction])}</span>}
+          {task.kind === "change_app" && task.baseSource === "repository" && <span className={styles.small} style={{ display: "block" }}>{t("Начато с кода из репозитория{0}.", [task.baseCommit ? ` (${task.baseCommit.slice(0, 7)})` : ""])}</span>}
           {task.stopRequested && pending && ` · ${t("останавливаем…")}`}
           <span className={styles.small} style={{ display: "block" }}>
             {t("Шагов: {0}", [task.turns])}{task.costTiyn > 0 ? ` · ${t("потрачено {0}", [formatTenge(task.costTiyn / 100)])}` : ""}{task.stopLabel ? ` · ${task.stopLabel}` : ""}
@@ -234,12 +239,27 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
 
       {canEdit && state.configured && !pending && (
         <div style={{ marginTop: 12 }}>
-          {!packageBuilt ? <p className={styles.small}>{errors.HANDOFF_NOT_BUILT}</p> : state.changeBase ? (
+          {!packageBuilt ? <p className={styles.small}>{errors.HANDOFF_NOT_BUILT}</p> : state.changeBase || state.changeFromRepository ? (
             <>
               <form onSubmit={(event) => { event.preventDefault(); void startChange(); }}>
                 <label className={styles.label} htmlFor="agent-change">{t("Что изменить в приложении?")}</label>
                 <textarea id="agent-change" className={styles.textarea} rows={3} maxLength={2000} required value={change} placeholder={t("Например: добавь в заявку поле «Телефон» и покажи его в списке")} onChange={(event) => setChange(event.target.value)} />
-                <p className={styles.small} style={{ margin: "4px 0 0" }}>{t("Опишите словами, как человеку. Агент возьмёт код последней задачи, внесёт изменения и проверит, что остальное работает. Правки, которые вы сделали в репозитории сами, он не увидит.")}</p>
+                {state.changeFromRepository && state.changeBase && (
+                  <fieldset style={{ border: 0, padding: 0, margin: "8px 0 0" }}>
+                    <legend className={styles.small} style={{ marginBottom: 4 }}>{t("С какого кода начать")}</legend>
+                    <label style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 4 }}>
+                      <input type="radio" name="change-source" checked={source === "repository"} onChange={() => setSource("repository")} />
+                      <span>{t("Из репозитория, ветка {0}", [state.repository?.defaultBranch ?? "main"])}<span className={styles.small} style={{ display: "block" }}>{t("Со всеми правками, которые вы или разработчик внесли в git. Рекомендуем.")}</span></span>
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <input type="radio" name="change-source" checked={source === "task"} onChange={() => setSource("task")} />
+                      <span>{t("Код последней задачи агента")}<span className={styles.small} style={{ display: "block" }}>{t("Если ветку агента ещё не слили или в репозитории что-то сломано.")}</span></span>
+                    </label>
+                  </fieldset>
+                )}
+                <p className={styles.small} style={{ margin: "4px 0 0" }}>{(state.changeFromRepository && (source === "repository" || !state.changeBase))
+                  ? t("Опишите словами, как человеку. Агент возьмёт код из основной ветки репозитория — с вашими правками, — внесёт изменения и проверит, что остальное работает. Изменения придут новой веткой с запросом на слияние.")
+                  : t("Опишите словами, как человеку. Агент возьмёт код последней задачи, внесёт изменения и проверит, что остальное работает. Правки, которые вы сделали в репозитории сами, он не увидит.")}</p>
                 <button className={`${styles.button} ${styles.block}`} style={{ marginTop: 8 }} disabled={Boolean(busy) || !state.canStart || !change.trim()}>
                   {busy === "change" ? t("Запускаем…") : t("Поручить изменение агенту")}
                 </button>

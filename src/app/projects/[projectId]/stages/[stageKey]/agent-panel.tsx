@@ -15,9 +15,11 @@ type Task = {
   createdAt: string; startedAt: string | null; finishedAt: string | null; stopRequested: boolean; turns: number; costTiyn: number;
   steps: Step[]; stopLabel: string | null; report: { summary: string; done: string[]; notDone: string[] } | null; checks: Check[]; error: string | null;
   files: { path: string; bytes: number }[]; filesTruncated: boolean;
+  pushed: { branch: string | null; pullRequestUrl: string | null; commitUrl: string | null; at: string } | null;
 };
+type Repository = { provider: string; repoPath: string; webUrl: string; defaultBranch: string };
 type State = {
-  configured: boolean; profile: { key: string; version: string }; limits: { turns: number; wallMs: number; costTiyn: number | null }; canStart: boolean;
+  configured: boolean; repository: Repository | null; profile: { key: string; version: string }; limits: { turns: number; wallMs: number; costTiyn: number | null }; canStart: boolean;
   latest: Task | null; history: { id: string; statusLabel: string; createdAt: string; costTiyn: number }[];
 };
 
@@ -26,6 +28,8 @@ const errors: Record<string, string> = {
   AGENT_TASK_RUNNING: t("Агент уже работает над задачей. Дождитесь конца или остановите её."),
   AGENT_NOT_CONFIGURED: t("ИИ-агент не подключён на этом сервере: нужны модель ИИ и изолированная среда (E2B)."),
   HANDOFF_NOT_BUILT: t("Сначала соберите пакет для разработки на этом этапе."),
+  REPO_NOT_CONNECTED: t("Репозиторий не подключён. Подключите его в решении «Где хранить код»."),
+  AGENT_TASK_NO_FILES: t("Агент не оставил файлов — отправлять нечего."),
 };
 
 /**
@@ -38,6 +42,7 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
+  const [notice, setNotice] = useState("");
   const log = useRef<HTMLOListElement | null>(null);
   const base = `/projects/${projectId}/agent/tasks`;
   const load = useCallback(async () => { try { setState(await api<State>(base)); } catch (caught) { setError(explainError(caught)); } }, [base]);
@@ -57,6 +62,20 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
   }
   const start = () => act("start", async () => { await api(base, { method: "POST", body: JSON.stringify({ kind: "build_app", instruction: instruction.trim() || null }) }); setInstruction(""); await load(); });
   const stop = () => act("stop", async () => { await api(`${base}/${task!.id}/stop`, { method: "POST" }); await load(); });
+  const push = () => act("push", async () => {
+    const repo = state!.repository!;
+    const where = repo.provider === "ssh" ? repo.webUrl : repo.repoPath;
+    const failed = task!.checks.some((check) => check.status === "failed" || check.status === "timed_out");
+    const question = `${repo.provider === "ssh"
+      ? t("Отправить код в {0}? Он попадёт в отдельную ветку, основная ветка {1} не изменится. Слить изменения решаете вы.", [where, repo.defaultBranch])
+      : t("Отправить код в {0}? Он попадёт в отдельную ветку с запросом на слияние, основная ветка {1} не изменится. Слить изменения решаете вы.", [where, repo.defaultBranch])}${failed ? `\n\n${t("Внимание: проверка BuildPath нашла ошибки — в запросе это будет видно.")}` : ""}`;
+    if (!window.confirm(question)) return;
+    const result = await api<Task & { mainBranch: boolean }>(`${base}/${task!.id}/push`, { method: "POST", body: JSON.stringify({ confirm: true }) });
+    setNotice(result.mainBranch ? t("Репозиторий был пустым — код стал его первой версией в ветке {0}.", [result.pushed?.branch ?? ""])
+      : result.pushed?.pullRequestUrl ? t("Готово: код в ветке {0}. Откройте запрос на слияние, посмотрите изменения и слейте их, когда будете готовы.", [result.pushed?.branch ?? ""])
+        : t("Готово: код в ветке {0}. Посмотрите изменения и слейте ветку на своём сервере, когда будете готовы.", [result.pushed?.branch ?? ""]));
+    await load();
+  });
   const download = () => act("zip", async () => {
     const result = await api<{ files: { path: string; content: string }[] }>(`${base}/${task!.id}/files`);
     const link = document.createElement("a");
@@ -75,7 +94,7 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
         {t("ИИ-агент пишет всё приложение по пакету — интерфейс, сервер, вход по ролям, базу данных и тесты. Он работает в отдельном одноразовом компьютере: пишет код, запускает его, читает ошибки и исправляет. Потом BuildPath сам проверяет результат: установку, тесты и сборку.")}
       </p>
       <p className={styles.small}>
-        {t("Стек: Node.js, React и PostgreSQL ({0}). На одну задачу — до {1} шагов и {2} минут{3}. Считается как один запрос к ИИ. Ничего не публикуется и не отправляется в репозиторий.",
+        {t("Стек: Node.js, React и PostgreSQL ({0}). На одну задачу — до {1} шагов и {2} минут{3}. Считается как один запрос к ИИ. Ничего не публикуется; в репозиторий код уходит только по вашей кнопке.",
           [`${state.profile.key}@${state.profile.version}`, state.limits.turns, minutes, state.limits.costTiyn !== null ? `, ${t("не больше {0}", [formatTenge(state.limits.costTiyn / 100)])}` : ""])}
       </p>
 
@@ -137,9 +156,33 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
       )}
 
       {task && !pending && task.files.length > 0 && (
-        <button type="button" className={styles.secondary} style={{ marginTop: 8 }} disabled={Boolean(busy)} onClick={() => void download()}>
-          {busy === "zip" ? t("Готовим архив…") : t("Скачать код ({0} файлов)", [task.files.length])}
-        </button>
+        <div style={{ marginTop: 10 }}>
+          <p className={styles.label} style={{ margin: "0 0 4px" }}>{t("Код в вашем репозитории")}</p>
+          {task.pushed && (
+            <p className={`${styles.notice} ${styles.success}`} style={{ margin: "0 0 8px", overflowWrap: "anywhere" }}>
+              {t("Отправлено в ветку {0}.", [task.pushed.branch ?? ""])}{" "}
+              {task.pushed.pullRequestUrl ? <a href={task.pushed.pullRequestUrl} target="_blank" rel="noreferrer">{t("Открыть запрос на слияние")}</a>
+                : task.pushed.commitUrl ? <a href={task.pushed.commitUrl} target="_blank" rel="noreferrer">{t("Открыть изменения")}</a> : null}
+            </p>
+          )}
+          {state.repository ? (
+            canEdit && (
+              <>
+                <p className={styles.small} style={{ margin: "0 0 6px", overflowWrap: "anywhere" }}>{state.repository.provider === "ssh"
+                  ? t("Код уйдёт в {0} отдельной веткой. Основная ветка не меняется, пока вы сами не сольёте изменения.", [state.repository.webUrl])
+                  : t("Код уйдёт в {0} отдельной веткой с запросом на слияние и отчётом агента. Основная ветка не меняется, пока вы сами не сольёте изменения.", [state.repository.repoPath])}</p>
+                <button type="button" className={styles.button} disabled={Boolean(busy)} onClick={() => void push()}>
+                  {busy === "push" ? t("Отправляем…") : task.pushed ? t("Отправить ещё раз") : t("Отправить в репозиторий")}
+                </button>
+              </>
+            )
+          ) : (
+            <p className={styles.small} style={{ margin: "0 0 6px" }}>{t("Чтобы отправить код в git, подключите репозиторий в решении «Где хранить код»: GitHub, GitLab, Gitea, Bitbucket или любой сервер по SSH.")} <a href={`/projects/${projectId}/choices/code_hosting`}>{t("Открыть решение")}</a></p>
+          )}
+          <button type="button" className={styles.ghost} style={{ marginTop: 6 }} disabled={Boolean(busy)} onClick={() => void download()}>
+            {busy === "zip" ? t("Готовим архив…") : t("Скачать код (файлов: {0})", [task.files.length])}
+          </button>
+        </div>
       )}
 
       {pending && canEdit && !task?.stopRequested && (
@@ -159,6 +202,7 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
           )}
         </div>
       )}
+      {notice && <p className={`${styles.notice} ${styles.success}`} role="status">{notice}</p>}
       {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
     </section>
   );

@@ -3212,5 +3212,18 @@
  "Составляем… (до минуты)": "Composing… (up to a minute)",
  "Составить ещё раз": "Compose again",
  "Составить по разговору": "Compose from the conversation",
- "Уже обсудили: {0}": "Already discussed: {0}"
+ "Уже обсудили: {0}": "Already discussed: {0}",
+ "Не получилось разобрать запись. Скажите ещё раз или напишите текстом.": "Could not make out the recording. Say it again or type it.",
+ "На сегодня лимит голосовых ответов исчерпан — напишите, пожалуйста, текстом.": "Today's limit of voice answers is used up — please type it.",
+ "Запись слишком длинная — скажите короче.": "The recording is too long — say it shorter.",
+ "Этот браузер записывает звук в формате, который мы пока не принимаем. Напишите текстом.": "This browser records sound in a format we do not accept yet. Please type it.",
+ "Голосовые ответы на этом сервере не подключены.": "Voice answers are not connected on this server.",
+ "Нет доступа к микрофону. Разрешите его в настройках браузера или напишите текстом.": "No access to the microphone. Allow it in the browser settings or type your answer.",
+ "Запись {0} — нажмите, чтобы закончить": "Recording {0} — tap to finish",
+ "Распознаём речь…": "Recognising speech…",
+ "🎙 Ответить голосом": "🎙 Answer by voice",
+ "Согласие на распознавание речи": "Consent to speech recognition",
+ "Чтобы понять голосовой ответ, BuildPath отправит запись в сервис распознавания речи ({0}). Запись не хранится: остаётся только текст — вы увидите его и сами решите, отправлять ли.": "To understand a voice answer, BuildPath sends the recording to the speech recognition service ({0}). The recording is not kept: only the text stays — you will see it and decide whether to send it.",
+ "Разрешить и записать": "Allow and record",
+ "До {0} секунд. Текст появится в поле ответа — проверьте его перед отправкой.": "Up to {0} seconds. The text appears in the answer field — check it before sending."
 }

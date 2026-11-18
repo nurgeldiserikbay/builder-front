@@ -12,7 +12,7 @@ import AppLaunch, { type Deployment } from "./app-launch";
 type Step = { at: string; kind: "note" | "tool"; tool?: string; summary: string; status?: "ok" | "failed"; output?: string };
 type Check = { id: string; label: string; command: string; status: "passed" | "failed" | "timed_out" | "skipped"; output: string; durationMs: number };
 type Task = {
-  id: string; status: "queued" | "running" | "succeeded" | "failed" | "stopped" | "unavailable"; statusLabel: string; instruction: string | null; model: string | null;
+  id: string; kind: string; baseTaskId: string | null; status: "queued" | "running" | "succeeded" | "failed" | "stopped" | "unavailable"; statusLabel: string; instruction: string | null; model: string | null;
   createdAt: string; startedAt: string | null; finishedAt: string | null; stopRequested: boolean; turns: number; costTiyn: number;
   steps: Step[]; stopLabel: string | null; report: { summary: string; done: string[]; notDone: string[] } | null; checks: Check[]; error: string | null;
   files: { path: string; bytes: number }[]; filesTruncated: boolean;
@@ -21,7 +21,7 @@ type Task = {
 };
 type Repository = { provider: string; repoPath: string; webUrl: string; defaultBranch: string };
 type State = {
-  configured: boolean; repository: Repository | null; deployment: Deployment | null; profile: { key: string; version: string }; limits: { turns: number; wallMs: number; costTiyn: number | null }; canStart: boolean;
+  configured: boolean; repository: Repository | null; deployment: Deployment | null; profile: { key: string; version: string }; limits: { turns: number; wallMs: number; costTiyn: number | null }; canStart: boolean; changeBase: string | null;
   latest: Task | null; history: { id: string; statusLabel: string; createdAt: string; costTiyn: number }[];
 };
 
@@ -32,6 +32,8 @@ const errors: Record<string, string> = {
   HANDOFF_NOT_BUILT: t("Сначала соберите пакет для разработки на этом этапе."),
   REPO_NOT_CONNECTED: t("Репозиторий не подключён. Подключите его в решении «Где хранить код»."),
   AGENT_TASK_NO_FILES: t("Агент не оставил файлов — отправлять нечего."),
+  CHANGE_INSTRUCTION_REQUIRED: t("Опишите, что изменить."),
+  AGENT_BASE_HAS_NO_CODE: t("У последней задачи нет кода, который можно менять. Соберите приложение заново."),
 };
 
 /**
@@ -41,6 +43,7 @@ const errors: Record<string, string> = {
 export default function AgentPanel({ projectId, packageBuilt, canEdit }: { projectId: string; packageBuilt: boolean; canEdit: boolean }) {
   const [state, setState] = useState<State | null>(null);
   const [instruction, setInstruction] = useState("");
+  const [change, setChange] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
@@ -64,6 +67,10 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
     try { await work(); } catch (caught) { const code = caught instanceof Error ? caught.message : ""; setError(errors[code] ?? explainError(caught)); } finally { setBusy(""); }
   }
   const start = () => act("start", async () => { await api(base, { method: "POST", body: JSON.stringify({ kind: "build_app", instruction: instruction.trim() || null }) }); setInstruction(""); await load(); });
+  const startChange = () => act("change", async () => {
+    await api(base, { method: "POST", body: JSON.stringify({ kind: "change_app", baseTaskId: state!.changeBase, instruction: change.trim() }) });
+    setChange(""); await load();
+  });
   const stop = () => act("stop", async () => { await api(`${base}/${task!.id}/stop`, { method: "POST" }); await load(); });
   const push = () => act("push", async () => {
     const repo = state!.repository!;
@@ -118,6 +125,7 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
       {task && (
         <div className={`${styles.notice} ${tone}`} role="status" style={{ marginTop: 8 }}>
           <strong>{task.statusLabel}</strong>
+          {task.kind === "change_app" && task.instruction && <span style={{ display: "block", overflowWrap: "anywhere" }}>{t("Изменение: {0}", [task.instruction])}</span>}
           {task.stopRequested && pending && ` · ${t("останавливаем…")}`}
           <span className={styles.small} style={{ display: "block" }}>
             {t("Шагов: {0}", [task.turns])}{task.costTiyn > 0 ? ` · ${t("потрачено {0}", [formatTenge(task.costTiyn / 100)])}` : ""}{task.stopLabel ? ` · ${task.stopLabel}` : ""}
@@ -226,7 +234,28 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
 
       {canEdit && state.configured && !pending && (
         <div style={{ marginTop: 12 }}>
-          {!packageBuilt ? <p className={styles.small}>{errors.HANDOFF_NOT_BUILT}</p> : (
+          {!packageBuilt ? <p className={styles.small}>{errors.HANDOFF_NOT_BUILT}</p> : state.changeBase ? (
+            <>
+              <form onSubmit={(event) => { event.preventDefault(); void startChange(); }}>
+                <label className={styles.label} htmlFor="agent-change">{t("Что изменить в приложении?")}</label>
+                <textarea id="agent-change" className={styles.textarea} rows={3} maxLength={2000} required value={change} placeholder={t("Например: добавь в заявку поле «Телефон» и покажи его в списке")} onChange={(event) => setChange(event.target.value)} />
+                <p className={styles.small} style={{ margin: "4px 0 0" }}>{t("Опишите словами, как человеку. Агент возьмёт код последней задачи, внесёт изменения и проверит, что остальное работает. Правки, которые вы сделали в репозитории сами, он не увидит.")}</p>
+                <button className={`${styles.button} ${styles.block}`} style={{ marginTop: 8 }} disabled={Boolean(busy) || !state.canStart || !change.trim()}>
+                  {busy === "change" ? t("Запускаем…") : t("Поручить изменение агенту")}
+                </button>
+              </form>
+              <details style={{ marginTop: 10 }}>
+                <summary className={styles.small}>{t("Собрать заново с нуля")}</summary>
+                <div style={{ marginTop: 8 }}>
+              <label className={styles.label} htmlFor="agent-instruction">{t("Пожелание агенту (необязательно)")}</label>
+              <textarea id="agent-instruction" className={styles.textarea} rows={2} maxLength={2000} value={instruction} placeholder={t("Например: сделай акцент на удобстве для мастеров с телефона")} onChange={(event) => setInstruction(event.target.value)} />
+              <button type="button" className={`${styles.button} ${styles.block}`} style={{ marginTop: 8 }} disabled={Boolean(busy) || !state.canStart} onClick={() => void start()}>
+                {busy === "start" ? t("Запускаем…") : task ? t("Собрать приложение заново") : t("Собрать приложение")}
+              </button>
+                </div>
+              </details>
+            </>
+          ) : (
             <>
               <label className={styles.label} htmlFor="agent-instruction">{t("Пожелание агенту (необязательно)")}</label>
               <textarea id="agent-instruction" className={styles.textarea} rows={2} maxLength={2000} value={instruction} placeholder={t("Например: сделай акцент на удобстве для мастеров с телефона")} onChange={(event) => setInstruction(event.target.value)} />

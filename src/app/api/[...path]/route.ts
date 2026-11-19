@@ -41,7 +41,10 @@ async function forward(request: NextRequest): Promise<Response> {
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const body = hasBody ? await request.arrayBuffer() : undefined;
-  const send = () => fetch(target, { method: request.method, headers, body, redirect: "manual", cache: "no-store" });
+  // Each try has its own time limit. Without it, a request held at the platform's edge while the API sleeps can hang for
+  // minutes (Node waits up to 5 minutes for response headers) and the page stays on «Загружаем…». A read that runs out of
+  // time is sent again; a write is not, and the person sees the honest «waking up» message instead.
+  const send = () => fetch(target, { method: request.method, headers, body, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(hasBody ? 60_000 : 20_000) });
   // A free API instance sleeps when idle and takes about a minute to wake. While it wakes, the platform answers with its own
   // page (not the API's JSON) or the connection fails. Such a request never reached the API, so it is safe to send again —
   // for every method; a JSON error from the API itself is passed on as it is.
@@ -54,7 +57,7 @@ async function forward(request: NextRequest): Promise<Response> {
       if (!fromPlatform || Date.now() > deadline) break;
       await upstream.body?.cancel().catch(() => undefined);
     } catch {
-      // A failed connection: retried only for reads, as a write might have reached the API before the connection broke.
+      // A failed or timed-out connection: retried only for reads, as a write might have reached the API before it broke.
       if (hasBody || Date.now() > deadline) { upstream = null; break; }
     }
     await new Promise((resolve) => setTimeout(resolve, 4000));

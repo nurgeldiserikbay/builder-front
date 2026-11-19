@@ -71,7 +71,8 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
   }
   const start = () => act("start", async () => { await api(base, { method: "POST", body: JSON.stringify({ kind: "build_app", instruction: instruction.trim() || null }) }); setInstruction(""); await load(); });
   const startChange = () => act("change", async () => {
-    const fromRepo = source === "repository" || !state!.changeBase;
+    // The repository is the start only when it can be read; without it the change starts from the latest task's code.
+    const fromRepo = Boolean(state!.changeFromRepository) && (source === "repository" || !state!.changeBase);
     await api(base, { method: "POST", body: JSON.stringify(fromRepo ? { kind: "change_app", base: "repository", instruction: change.trim() } : { kind: "change_app", baseTaskId: state!.changeBase, instruction: change.trim() }) });
     setChange(""); await load();
   });

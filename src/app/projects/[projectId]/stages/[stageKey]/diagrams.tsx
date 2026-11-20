@@ -44,13 +44,30 @@ const arrowMarker = (id: string, color: string) => (
   <marker id={id} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill={color} /></marker>
 );
 
+/** Lines a text takes when wrapped at whole words, roughly `perLine` characters each (a long word takes its own lines). */
+export function wrappedLines(text: string, perLine: number): number {
+  let lines = 1; let used = 0;
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    const length = word.length;
+    if (used && used + 1 + length > perLine) { lines += 1; used = 0; }
+    if (length > perLine) { lines += Math.floor((used + length - 1) / perLine); used = (used + length) % perLine || perLine; continue; }
+    used += (used ? 1 : 0) + length;
+  }
+  return lines;
+}
+
 /** One lane per participant; steps go top to bottom in order, each in the lane of whoever does it. */
 export function SwimlaneDiagram({ actors, scenario, highlight, flagged }: { actors: ProcessActor[]; scenario: ProcessScenario; highlight?: Record<string, "built" | "manual" | "not_built">; flagged?: Set<string> }) {
-  const lane = 112; const head = 40; const row = 62; const box = { width: 100, height: 48 };
+  // Each step box is as tall as its text needs: long actions were cut at three lines in a fixed box.
+  const lane = 124; const head = 40; const gap = 14; const boxWidth = 112;
+  const lineHeight = 14.5; const perLine = 16;
+  const heights = scenario.steps.map((step, i) => Math.max(48, Math.ceil(wrappedLines(`${i + 1}. ${step.action}`, perLine) * lineHeight + 12)));
+  const tops = heights.reduce<number[]>((acc, h, i) => [...acc, i === 0 ? head + 8 : acc[i - 1]! + heights[i - 1]! + gap], []);
   const width = Math.max(1, actors.length) * lane;
-  const height = head + Math.max(1, scenario.steps.length) * row + 10;
+  const height = (tops.at(-1) ?? head) + (heights.at(-1) ?? 0) + 10;
   const index = new Map(actors.map((actor, i) => [actor.key, i]));
-  const center = (step: ProcessStep, i: number) => ({ x: (index.get(step.actor) ?? 0) * lane + lane / 2, y: head + i * row + 8 + box.height / 2 });
+  const center = (step: ProcessStep, i: number) => ({ x: (index.get(step.actor) ?? 0) * lane + lane / 2, y: tops[i]! + heights[i]! / 2 });
+  const box = (i: number) => ({ width: boxWidth, height: heights[i]! });
   const mark = { built: "#128a5e", manual: "#8a8f8a", not_built: "#b3261e" };
   return (
     <Scroll label={t("Схема сценария «{0}» по ролям", [scenario.title])}>
@@ -67,7 +84,7 @@ export function SwimlaneDiagram({ actors, scenario, highlight, flagged }: { acto
         })}
         {scenario.steps.slice(1).map((step, i) => {
           const from = center(scenario.steps[i]!, i); const to = center(step, i + 1);
-          const startY = from.y + box.height / 2; const endY = to.y - box.height / 2 - 2;
+          const startY = from.y + box(i).height / 2; const endY = to.y - box(i + 1).height / 2 - 2;
           const path = from.x === to.x ? `M${from.x},${startY} L${to.x},${endY}` : `M${from.x},${startY} C${from.x},${startY + 14} ${to.x},${endY - 14} ${to.x},${endY}`;
           return <path key={step.key} d={path} fill="none" stroke="#4b5550" strokeWidth={1.3} markerEnd="url(#lane-arrow)" />;
         })}
@@ -77,10 +94,11 @@ export function SwimlaneDiagram({ actors, scenario, highlight, flagged }: { acto
           const c = center(step, i); const status = highlight?.[step.key];
           return (
             <g key={step.key}>
-              <Box x={c.x - box.width / 2} y={c.y - box.height / 2} width={box.width} height={box.height} fill="#fff" stroke={status ? mark[status] : colors.stroke} color="#1c241f">
+              <title>{`${i + 1}. ${step.action}`}</title>
+              <Box x={c.x - box(i).width / 2} y={c.y - box(i).height / 2} width={box(i).width} height={box(i).height} fill="#fff" stroke={status ? mark[status] : colors.stroke} color="#1c241f">
                 <span>{i + 1}. {step.action}</span>
               </Box>
-              {status && <circle cx={c.x + box.width / 2 - 4} cy={c.y - box.height / 2 + 4} r={6} fill={mark[status]} />}
+              {status && <circle cx={c.x + box(i).width / 2 - 4} cy={c.y - box(i).height / 2 + 4} r={6} fill={mark[status]} />}
             </g>
           );
         })}

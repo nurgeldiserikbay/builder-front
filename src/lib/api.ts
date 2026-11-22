@@ -10,7 +10,18 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+/**
+ * Wakes the sleeping API from the visitor's browser. The host wakes a free service for a browser request but did not for the
+ * site server's own requests, so the proxy passes the address and the browser asks it once, without reading the answer.
+ */
+let waking: Promise<void> | null = null;
+function wake(url: string): Promise<void> {
+  if (typeof window === "undefined" || !/^https:\/\//.test(url)) return Promise.resolve();
+  waking ??= fetch(url, { mode: "no-cors", cache: "no-store", credentials: "omit" }).then(() => undefined, () => undefined).finally(() => { setTimeout(() => { waking = null; }, 30_000); });
+  return waking;
+}
+
+export async function api<T>(path: string, init: RequestInit = {}, wakeTries = 3): Promise<T> {
   const headers = new Headers(init.headers);
   if (!headers.has("Accept-Language")) headers.set("Accept-Language", getLocale());
   if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
@@ -20,7 +31,16 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     credentials: "include",
   });
   if (response.status === 204) return undefined as T;
-  const payload = await response.json().catch(() => null) as { data?: T; message?: string; code?: string } | null;
+  const payload = await response.json().catch(() => null) as { data?: T; message?: string; code?: string; wake?: string } | null;
+  if (response.status === 503 && payload?.message === "API_WAKING_UP" && typeof payload.wake === "string") {
+    await wake(payload.wake);
+    // A read is asked again once the API is up; a write is not, as the person decides whether to repeat it.
+    const method = (init.method ?? "GET").toUpperCase();
+    if (wakeTries > 0 && (method === "GET" || method === "HEAD")) {
+      await new Promise((resolve) => setTimeout(resolve, 5_000));
+      return api<T>(path, init, wakeTries - 1);
+    }
+  }
   if (!response.ok) {
     const message = typeof payload?.message === "string"
       ? payload.message

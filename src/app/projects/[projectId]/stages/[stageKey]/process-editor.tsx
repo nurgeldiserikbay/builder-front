@@ -101,7 +101,7 @@ export function ProcessEditor({ value, onChange, options, disabled, issues, flag
 
       <section className={styles.card} aria-labelledby="process-scenarios">
         <p id="process-scenarios" className={styles.cardTitle}>{t("Сценарии")}</p>
-        <p className={styles.small} style={{ marginTop: 0 }}>{t("Сценарий — путь от начала до результата: запись, заказ, отмена. Для каждого шага выберите, что он делает, — по этому архитектура покажет, что сделает сайт, а что останется за вами.")}</p>
+        <p className={styles.small} style={{ marginTop: 0 }}>{t("Сценарий — путь от начала до результата: запись, заказ, заявка, отмена. Для каждого шага выберите, что он делает, — по этому архитектура покажет, что сделает сайт или приложение, а что останется за вами.")}</p>
         {value.scenarios.map((item, index) => (
           <details key={item.key} open={index === scenarioIndex} style={{ borderTop: "1px solid var(--line)", padding: "8px 0" }} onToggle={(event) => { if ((event.target as HTMLDetailsElement).open) setScenarioIndex(index); }}>
             <summary style={{ fontWeight: 700 }}>{item.title || t("Сценарий {0}", [index + 1])} · {t("шагов: {0}", [item.steps.length])}</summary>

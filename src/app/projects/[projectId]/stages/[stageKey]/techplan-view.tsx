@@ -48,7 +48,10 @@ export function TechPlanView({ plan, outdated, notes, onNotes, disabled, onRefre
   if (!plan) return <div className={`${styles.notice} ${styles.info}`}>{t("Архитектура появится, когда будут приняты этапы, от которых она зависит (список вверху страницы).")}</div>;
   const coverage = plan.coverage ?? null;
   const count = (status: Coverage["status"]) => coverage?.filter((step) => step.status === status).length ?? 0;
-  const statusText = { built: t("делает сайт"), manual: t("вручную, вне сайта"), not_built: t("сайт не делает") };
+  const app = plan.kind === "app";
+  const statusText = app
+    ? { built: t("делает приложение"), manual: t("вручную, вне приложения"), not_built: t("приложение не делает") }
+    : { built: t("делает сайт"), manual: t("вручную, вне сайта"), not_built: t("сайт не делает") };
   const statusColor = { built: "var(--brand-ink)", manual: "#6b716d", not_built: "#b3261e" };
   return (
     <>
@@ -64,8 +67,8 @@ export function TechPlanView({ plan, outdated, notes, onNotes, disabled, onRefre
       </section>
       {coverage && coverage.length > 0 && (
         <section id="review-target-coverage" className={styles.card} aria-labelledby="coverage-title">
-          <p id="coverage-title" className={styles.cardTitle}>{t("Что из вашего процесса делает сайт")}</p>
-          <p className={styles.small} style={{ marginTop: 0 }}>{t("Шаги из этапа «Бизнес-процесс»: {0} делает сайт, {1} — вручную, {2} сайт не делает.", [count("built"), count("manual"), count("not_built")])}</p>
+          <p id="coverage-title" className={styles.cardTitle}>{app ? t("Что из вашего процесса делает приложение") : t("Что из вашего процесса делает сайт")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{app ? t("Шаги из этапа «Бизнес-процесс»: {0} делает приложение, {1} — вручную, {2} приложение не делает.", [count("built"), count("manual"), count("not_built")]) : t("Шаги из этапа «Бизнес-процесс»: {0} делает сайт, {1} — вручную, {2} сайт не делает.", [count("built"), count("manual"), count("not_built")])}</p>
           {count("not_built") > 0 && <p className={`${styles.notice} ${styles.warning}`}>{t("Шаги, которые сайт не делает, можно оставить ручными, записать в заметки для разработчика или выбрать свой стек в решении «Технологии».")}</p>}
           <ul className={styles.list} style={{ listStyle: "none", paddingLeft: 0 }}>
             {coverage.map((step, i) => (

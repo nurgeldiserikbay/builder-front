@@ -309,7 +309,7 @@ export function HandoffView({ projectId, content, canBuild, inputsReady, onBuilt
   return (
     <section className={styles.card} aria-label={t("Пакет для разработки")}>
       <p className={styles.cardTitle}>{t("Пакет для разработки")}</p>
-      <p className={styles.small} style={{ marginTop: 0 }}>{t("Платформа соберёт ТЗ, права по ролям, схему данных, контракт API и прототип из принятых этапов. Код приложения BuildPath не пишет — пакет для разработчика.")}</p>
+      <p className={styles.small} style={{ marginTop: 0 }}>{t("Платформа соберёт ТЗ, права по ролям, схему данных, контракт API и прототип из принятых этапов. По пакету ИИ-агент ниже напишет код приложения; его же можно передать разработчику.")}</p>
       {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
       {canBuild && <button className={`${styles.button} ${styles.block}`} disabled={Boolean(busy) || !inputsReady} onClick={build}>{busy === "build" ? t("Собираем…") : content ? t("Собрать заново") : t("Собрать пакет")}</button>}
       {!inputsReady && <p className={styles.small}>{t("Сначала примите функции, экраны и архитектуру.")}</p>}

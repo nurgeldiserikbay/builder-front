@@ -75,7 +75,7 @@ export function SituationsCard({ items, answers, onChange, disabled }: {
         <p id="situations-title" className={styles.cardTitle} style={{ margin: 0 }}>{t("Вы это учли?")}</p>
         <span className={`${styles.chip} ${styles[answered === items.length ? "done" : "active"]}`} style={{ marginTop: 0 }}>{t("Ответов: {0} из {1}", [answered, items.length])}</span>
       </div>
-      <p className={styles.small}>{t("Ситуации, которые бывают у такого бизнеса. Выберите, как вы поступаете: ответ станет правилом процесса, по нему ИИ напишет тексты сайта. Не знаете — берите вариант «Обычно так делают».")}</p>
+      <p className={styles.small}>{t("Ситуации, которые бывают у такого бизнеса. Выберите, как вы поступаете: ответ станет правилом процесса, и ИИ будет строить по нему следующие этапы. Не знаете — берите вариант «Обычно так делают».")}</p>
       {blockingLeft > 0 && <p className={`${styles.notice} ${styles.warn}`} role="status">{t("Без ответа на важные вопросы ({0}) этап не принять.", [blockingLeft])}</p>}
 
       <ul style={{ listStyle: "none", padding: 0, margin: "10px 0 0", display: "grid", gap: 8 }}>

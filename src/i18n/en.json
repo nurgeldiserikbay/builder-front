@@ -3238,5 +3238,13 @@
  "Сервер просыпается после простоя — это до минуты. Подождите немного и повторите.": "The server is waking up after being idle — up to a minute. Wait a little and try again.",
  "Выход": "Sign out",
  "Выйти на этом устройстве. Проекты и данные остаются, войти можно в любой момент.": "Sign out on this device. Projects and data stay; you can sign in at any time.",
- "Выйти из аккаунта": "Sign out"
+ "Выйти из аккаунта": "Sign out",
+ "Ситуации, которые бывают у такого бизнеса. Выберите, как вы поступаете: ответ станет правилом процесса, и ИИ будет строить по нему следующие этапы. Не знаете — берите вариант «Обычно так делают».": "Situations that happen in a business like yours. Choose what you do: the answer becomes a process rule, and the AI builds the next stages on it. Not sure — take «Usually done this way».",
+ "Сценарий — путь от начала до результата: запись, заказ, заявка, отмена. Для каждого шага выберите, что он делает, — по этому архитектура покажет, что сделает сайт или приложение, а что останется за вами.": "A scenario is a path from start to result: a booking, an order, a request, a cancellation. For each step choose what it does — the architecture then shows what the site or app will do and what stays with you.",
+ "Платформа соберёт ТЗ, права по ролям, схему данных, контракт API и прототип из принятых этапов. По пакету ИИ-агент ниже напишет код приложения; его же можно передать разработчику.": "The platform assembles the specification, permissions by role, data model, API contract and prototype from the accepted stages. From the package the AI agent below writes the app's code; you can also hand it to a developer.",
+ "делает приложение": "done by the app",
+ "вручную, вне приложения": "by hand, outside the app",
+ "приложение не делает": "not done by the app",
+ "Что из вашего процесса делает приложение": "What the app does from your process",
+ "Шаги из этапа «Бизнес-процесс»: {0} делает приложение, {1} — вручную, {2} приложение не делает.": "Steps from the «Business process» stage: {0} done by the app, {1} by hand, {2} not done by the app."
 }

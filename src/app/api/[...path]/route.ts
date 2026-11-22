@@ -48,12 +48,15 @@ async function forward(request: NextRequest): Promise<Response> {
   // A free API instance sleeps when idle and takes about a minute to wake. While it wakes, the platform answers with its own
   // page (not the API's JSON) or the connection fails. Such a request never reached the API, so it is safe to send again —
   // for every method; a JSON error from the API itself is passed on as it is.
+  // The host's own answers (its loading page, its 429 for a sleeping service, a bad gateway) are not JSON; the API always
+  // answers in JSON, so its own 429 or 503 is passed on as it is.
+  const fromHost = (response: Response) => [429, 502, 503, 504].includes(response.status) && !(response.headers.get("content-type") ?? "").includes("application/json");
   const deadline = Date.now() + 75_000;
   let upstream: Response | null = null;
   while (true) {
     try {
       upstream = await send();
-      const fromPlatform = [502, 503, 504].includes(upstream.status) && !(upstream.headers.get("content-type") ?? "").includes("application/json");
+      const fromPlatform = fromHost(upstream);
       if (!fromPlatform || Date.now() > deadline) break;
       await upstream.body?.cancel().catch(() => undefined);
     } catch {
@@ -62,8 +65,10 @@ async function forward(request: NextRequest): Promise<Response> {
     }
     await new Promise((resolve) => setTimeout(resolve, 4000));
   }
-  if (!upstream || ([502, 503, 504].includes(upstream.status) && !(upstream.headers.get("content-type") ?? "").includes("application/json"))) {
-    return Response.json({ message: "API_WAKING_UP", error: { code: "API_UNAVAILABLE", message: "The API is not reachable right now." } }, { status: 503 });
+  if (!upstream || fromHost(upstream)) {
+    // The host wakes a sleeping service for a visitor's browser but not always for this server's requests (on 22 November it
+    // answered them with 429 and stayed asleep), so the page is given the address to wake it from the browser.
+    return Response.json({ message: "API_WAKING_UP", wake: `${base}/api/v1/health`, error: { code: "API_UNAVAILABLE", message: "The API is not reachable right now." } }, { status: 503 });
   }
 
   const responseHeaders = new Headers();

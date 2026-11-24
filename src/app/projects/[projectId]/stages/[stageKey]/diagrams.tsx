@@ -16,6 +16,22 @@ export type Sequence = { title: string; participants: string[]; messages: Array<
 
 /** Colours of a place the quality review has a finding about. */
 export const FLAG = { fill: "#fdecea", stroke: "#b3261e", text: "#7a1a14" };
+/** Colours of a place an AI proposal adds or changes («Изменить через ИИ»). */
+export const MARK = {
+  added: { fill: "#e7f6ee", stroke: "#128a5e", text: "#0d5c3f" },
+  changed: { fill: "#fdf1dd", stroke: "#a86a12", text: "#5c3a07" },
+} as const;
+export type Marks = Record<string, keyof typeof MARK>;
+
+/** Makes a diagram block open its place in the editor: a click, or Enter/Space from the keyboard. */
+function pickable(key: string, label: string, onPick?: (key: string) => void) {
+  if (!onPick) return {};
+  return {
+    role: "button", tabIndex: 0, "aria-label": label, style: { cursor: "pointer" },
+    onClick: () => onPick(key),
+    onKeyDown: (event: React.KeyboardEvent) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onPick(key); } },
+  };
+}
 
 export const kindColors: Record<ActorKind, { fill: string; stroke: string; text: string }> = {
   client: { fill: "#e8ecff", stroke: "#2445d4", text: "#1a32a6" },
@@ -57,7 +73,7 @@ export function wrappedLines(text: string, perLine: number): number {
 }
 
 /** One lane per participant; steps go top to bottom in order, each in the lane of whoever does it. */
-export function SwimlaneDiagram({ actors, scenario, highlight, flagged }: { actors: ProcessActor[]; scenario: ProcessScenario; highlight?: Record<string, "built" | "manual" | "not_built">; flagged?: Set<string> }) {
+export function SwimlaneDiagram({ actors, scenario, highlight, flagged, marks, onPick }: { actors: ProcessActor[]; scenario: ProcessScenario; highlight?: Record<string, "built" | "manual" | "not_built">; flagged?: Set<string>; marks?: Marks; onPick?: (key: string) => void }) {
   // Each step box is as tall as its text needs: long actions were cut at three lines in a fixed box.
   const lane = 124; const head = 40; const gap = 14; const boxWidth = 112;
   const lineHeight = 14.5; const perLine = 16;
@@ -74,11 +90,14 @@ export function SwimlaneDiagram({ actors, scenario, highlight, flagged }: { acto
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block", minWidth: width }}>
         <defs>{arrowMarker("lane-arrow", "#4b5550")}</defs>
         {actors.map((actor, i) => {
-          const colors = kindColors[actor.kind];
+          const mark = marks?.[actor.key];
+          const colors = flagged?.has(actor.key) ? FLAG : mark ? MARK[mark] : { ...kindColors[actor.kind] };
           return (
             <g key={actor.key}>
               <rect x={i * lane + 2} y={0} width={lane - 4} height={height} rx={10} fill={i % 2 ? "#fafbfa" : "#f3f5f3"} />
-              <Box x={i * lane + 6} y={4} width={lane - 12} height={30} fill={flagged?.has(actor.key) ? FLAG.fill : colors.fill} stroke={flagged?.has(actor.key) ? FLAG.stroke : colors.stroke} color={flagged?.has(actor.key) ? FLAG.text : colors.text} bold>{flagged?.has(actor.key) ? `! ${actor.name}` : actor.name}</Box>
+              <g {...pickable(actor.key, t("Изменить участника «{0}»", [actor.name]), onPick)}>
+                <Box x={i * lane + 6} y={4} width={lane - 12} height={30} fill={colors.fill} stroke={colors.stroke} color={"text" in colors ? colors.text : "#1c241f"} bold>{flagged?.has(actor.key) ? `! ${actor.name}` : mark === "added" ? `+ ${actor.name}` : actor.name}</Box>
+              </g>
             </g>
           );
         })}
@@ -92,11 +111,14 @@ export function SwimlaneDiagram({ actors, scenario, highlight, flagged }: { acto
           const actor = actors.find((item) => item.key === step.actor);
           const colors = kindColors[actor?.kind ?? "external"];
           const c = center(step, i); const status = highlight?.[step.key];
+          const change = marks?.[step.key]; const flaggedStep = flagged?.has(step.key);
+          const fill = flaggedStep ? FLAG.fill : change ? MARK[change].fill : "#fff";
+          const stroke = flaggedStep ? FLAG.stroke : change ? MARK[change].stroke : status ? mark[status] : colors.stroke;
           return (
-            <g key={step.key}>
+            <g key={step.key} id={`diagram-step-${step.key}`} {...pickable(step.key, t("Изменить шаг {0}: {1}", [i + 1, step.action]), onPick)}>
               <title>{`${i + 1}. ${step.action}`}</title>
-              <Box x={c.x - box(i).width / 2} y={c.y - box(i).height / 2} width={box(i).width} height={box(i).height} fill="#fff" stroke={status ? mark[status] : colors.stroke} color="#1c241f">
-                <span>{i + 1}. {step.action}</span>
+              <Box x={c.x - box(i).width / 2} y={c.y - box(i).height / 2} width={box(i).width} height={box(i).height} fill={fill} stroke={stroke} color="#1c241f" bold={Boolean(change)}>
+                <span>{change === "added" ? "+ " : ""}{i + 1}. {step.action}</span>
               </Box>
               {status && <circle cx={c.x + box(i).width / 2 - 4} cy={c.y - box(i).height / 2 + 4} r={6} fill={mark[status]} />}
             </g>
@@ -108,7 +130,7 @@ export function SwimlaneDiagram({ actors, scenario, highlight, flagged }: { acto
 }
 
 /** Entities as cards with their fields; lines show how they are linked («many» ends with a fork). */
-export function DataDiagram({ entities, flagged }: { entities: DataEntity[]; flagged?: Set<string> }) {
+export function DataDiagram({ entities, flagged, marks, onPick }: { entities: DataEntity[]; flagged?: Set<string>; marks?: Marks; onPick?: (key: string) => void }) {
   if (!entities.length) return null;
   // One column of cards (readable on a phone). Links run as arcs in the left gutter,
   // each in its own track, and are also listed in words inside the card.
@@ -144,11 +166,13 @@ export function DataDiagram({ entities, flagged }: { entities: DataEntity[]; fla
           const x = gutter; const y = tops[i]!;
           const outgoing = links.filter((link) => link.from === i);
           const fieldsBottom = y + 34 + Math.max(1, entity.fields.length) * 16;
+          const change = marks?.[entity.key]; const flaggedEntity = flagged?.has(entity.key);
+          const head = flaggedEntity ? FLAG : change ? MARK[change] : { fill: "#e6f0fa", stroke: "#2d6da3", text: "#173a5a" };
           return (
-            <g key={entity.key}>
-              <rect x={x} y={y} width={cardWidth} height={heights[i]} rx={10} fill="#fff" stroke={flagged?.has(entity.key) ? FLAG.stroke : "#2d6da3"} strokeWidth={flagged?.has(entity.key) ? 2.2 : 1.3} />
-              <rect x={x} y={y} width={cardWidth} height={28} rx={10} fill={flagged?.has(entity.key) ? FLAG.fill : "#e6f0fa"} />
-              <text x={x + 10} y={y + 19} fontSize={12.5} fontWeight={800} fill={flagged?.has(entity.key) ? FLAG.text : "#173a5a"}>{flagged?.has(entity.key) ? `! ${entity.name}` : entity.name}</text>
+            <g key={entity.key} {...pickable(entity.key, t("Изменить данные «{0}»", [entity.name]), onPick)}>
+              <rect x={x} y={y} width={cardWidth} height={heights[i]} rx={10} fill="#fff" stroke={head.stroke} strokeWidth={flaggedEntity || change ? 2.2 : 1.3} />
+              <rect x={x} y={y} width={cardWidth} height={28} rx={10} fill={head.fill} />
+              <text x={x + 10} y={y + 19} fontSize={12.5} fontWeight={800} fill={head.text}>{flaggedEntity ? `! ${entity.name}` : change === "added" ? `+ ${entity.name}` : entity.name}</text>
               {entity.fields.map((item, k) => {
                 const label = typeof item === "string" ? item : `${item.name}: ${item.type}`;
                 return <text key={k} x={x + 10} y={y + 46 + k * 16} fontSize={11} fill="#3a423d">{label.length > 40 ? `${label.slice(0, 39)}…` : label}</text>;

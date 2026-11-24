@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { t } from "@/lib/i18n";
 import styles from "../../../journey.module.css";
+import DiagramCanvas from "./canvas";
 
 export type ActorKind = "client" | "business" | "staff" | "system" | "external";
 export type ProcessActor = { key: string; name: string; kind: ActorKind };
@@ -41,8 +42,8 @@ export const kindColors: Record<ActorKind, { fill: string; stroke: string; text:
   external: { fill: "#f1f1f1", stroke: "#6b6b6b", text: "#333" },
 };
 
-function Scroll({ children, label }: { children: React.ReactNode; label: string }) {
-  return <div role="img" aria-label={label} style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", margin: "8px -4px 4px", padding: "0 4px" }}>{children}</div>;
+function Scroll({ children, label, legend }: { children: React.ReactElement<{ width: number; height: number }>; label: string; legend?: React.ReactNode }) {
+  return <DiagramCanvas label={label} legend={legend}>{children}</DiagramCanvas>;
 }
 
 function Box({ x, y, width, height, fill, stroke, color, children, bold }: { x: number; y: number; width: number; height: number; fill: string; stroke: string; color: string; children: React.ReactNode; bold?: boolean }) {
@@ -78,15 +79,21 @@ export function SwimlaneDiagram({ actors, scenario, highlight, flagged, marks, o
   const lane = 124; const head = 40; const gap = 14; const boxWidth = 112;
   const lineHeight = 14.5; const perLine = 16;
   const heights = scenario.steps.map((step, i) => Math.max(48, Math.ceil(wrappedLines(`${i + 1}. ${step.action}`, perLine) * lineHeight + 12)));
-  const tops = heights.reduce<number[]>((acc, h, i) => [...acc, i === 0 ? head + 8 : acc[i - 1]! + heights[i - 1]! + gap], []);
+  // Room for the start event above the first step and the end event below the last one (BPMN-style circles).
+  const startSpace = 34; const endSpace = 44;
+  const tops = heights.reduce<number[]>((acc, h, i) => [...acc, i === 0 ? head + 8 + startSpace : acc[i - 1]! + heights[i - 1]! + gap], []);
   const width = Math.max(1, actors.length) * lane;
-  const height = (tops.at(-1) ?? head) + (heights.at(-1) ?? 0) + 10;
+  const height = (tops.at(-1) ?? head) + (heights.at(-1) ?? 0) + 10 + (scenario.steps.length ? endSpace : 0);
   const index = new Map(actors.map((actor, i) => [actor.key, i]));
   const center = (step: ProcessStep, i: number) => ({ x: (index.get(step.actor) ?? 0) * lane + lane / 2, y: tops[i]! + heights[i]! / 2 });
   const box = (i: number) => ({ width: boxWidth, height: heights[i]! });
   const mark = { built: "#128a5e", manual: "#8a8f8a", not_built: "#b3261e" };
   return (
-    <Scroll label={t("Схема сценария «{0}» по ролям", [scenario.title])}>
+    <Scroll label={t("Схема сценария «{0}» по ролям", [scenario.title])} legend={<>
+      <span><svg width={14} height={14} aria-hidden="true"><circle cx={7} cy={7} r={5.5} fill="#e7f6ee" stroke="#128a5e" strokeWidth={1.6} /></svg> {t("начало")}</span>
+      <span><svg width={14} height={14} aria-hidden="true"><circle cx={7} cy={7} r={5} fill="#fff" stroke="#1c241f" strokeWidth={2.4} /></svg> {t("результат")}</span>
+      <span>{t("колонка — участник, блок — шаг")}</span>
+    </>}>
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block", minWidth: width }}>
         <defs>{arrowMarker("lane-arrow", "#4b5550")}</defs>
         {actors.map((actor, i) => {
@@ -101,6 +108,20 @@ export function SwimlaneDiagram({ actors, scenario, highlight, flagged, marks, o
             </g>
           );
         })}
+        {scenario.steps.length > 0 && (() => {
+          // Start: where the scenario begins; end: what it gives, with the scenario's goal as the tooltip.
+          const first = center(scenario.steps[0]!, 0); const lastIndex = scenario.steps.length - 1;
+          const last = center(scenario.steps[lastIndex]!, lastIndex);
+          const startY = head + 8 + 12; const endY = last.y + box(lastIndex).height / 2 + 26;
+          return (
+            <g>
+              <g><title>{t("Начало сценария")}</title><circle cx={first.x} cy={startY} r={9} fill="#e7f6ee" stroke="#128a5e" strokeWidth={2} /></g>
+              <path d={`M${first.x},${startY + 9} L${first.x},${first.y - box(0).height / 2 - 2}`} stroke="#4b5550" strokeWidth={1.3} markerEnd="url(#lane-arrow)" />
+              <path d={`M${last.x},${last.y + box(lastIndex).height / 2} L${last.x},${endY - 12}`} stroke="#4b5550" strokeWidth={1.3} markerEnd="url(#lane-arrow)" />
+              <g><title>{scenario.goal ? t("Результат: {0}", [scenario.goal]) : t("Конец сценария")}</title><circle cx={last.x} cy={endY} r={10} fill="#fff" stroke="#1c241f" strokeWidth={3.2} /></g>
+            </g>
+          );
+        })()}
         {scenario.steps.slice(1).map((step, i) => {
           const from = center(scenario.steps[i]!, i); const to = center(step, i + 1);
           const startY = from.y + box(i).height / 2; const endY = to.y - box(i + 1).height / 2 - 2;
@@ -121,6 +142,12 @@ export function SwimlaneDiagram({ actors, scenario, highlight, flagged, marks, o
                 <span>{change === "added" ? "+ " : ""}{i + 1}. {step.action}</span>
               </Box>
               {status && <circle cx={c.x + box(i).width / 2 - 4} cy={c.y - box(i).height / 2 + 4} r={6} fill={mark[status]} />}
+              {step.capability === "offline" && !status && (
+                <g><title>{t("Делается вручную, вне продукта")}</title>
+                  <rect x={c.x + box(i).width / 2 - 44} y={c.y - box(i).height / 2 - 8} width={46} height={15} rx={7} fill="#f1f1f1" stroke="#8a8f8a" />
+                  <text x={c.x + box(i).width / 2 - 21} y={c.y - box(i).height / 2 + 3} fontSize={9.5} textAnchor="middle" fill="#4b5550">{t("вручную")}</text>
+                </g>
+              )}
             </g>
           );
         })}
@@ -129,58 +156,126 @@ export function SwimlaneDiagram({ actors, scenario, highlight, flagged, marks, o
   );
 }
 
-/** Entities as cards with their fields; lines show how they are linked («many» ends with a fork). */
+/**
+ * Data as tables, the way database tools draw them (dbdiagram, DrawSQL, ChartDB): a card per record with its fields and
+ * types, a link field where one record points to another, and lines in crow's-foot notation — a bar for «one», a fork
+ * for «many». Laid out automatically: linked tables next to each other. Tapping a table highlights its links.
+ */
 export function DataDiagram({ entities, flagged, marks, onPick }: { entities: DataEntity[]; flagged?: Set<string>; marks?: Marks; onPick?: (key: string) => void }) {
+  const [selected, setSelected] = useState<string | null>(null);
   if (!entities.length) return null;
-  // One column of cards (readable on a phone). Links run as arcs in the left gutter,
-  // each in its own track, and are also listed in words inside the card.
-  const index = new Map(entities.map((entity, i) => [entity.key, i]));
-  const links = entities.flatMap((entity, i) => entity.links
-    .map((link) => ({ from: i, to: index.get(link.to), kind: link.kind, label: link.label }))
-    .filter((link): link is { from: number; to: number; kind: "one" | "many"; label: string } => link.to !== undefined && link.to !== link.from));
-  const tracks = Math.min(links.length, 6);
-  const gutter = 14 + tracks * 9;
-  const cardWidth = 250; const gapY = 18;
-  const heights = entities.map((entity) => {
-    const outgoing = links.filter((link) => link.from === index.get(entity.key)).length;
-    return 34 + Math.max(1, entity.fields.length) * 16 + (outgoing ? 8 + outgoing * 16 : 0) + 8;
-  });
-  const tops: number[] = []; let cursor = 4;
-  for (const h of heights) { tops.push(cursor); cursor += h + gapY; }
-  const width = gutter + cardWidth + 8; const height = cursor - gapY + 4;
-  const anchor = (i: number) => tops[i]! + 14;
-  const names = entities.map((entity) => entity.name);
+  const byKey = new Map(entities.map((entity) => [entity.key, entity]));
+  // «A has many B»: B keeps a link to A. «A has one B»: A keeps a link to B. The keeping side is the «many» end.
+  type Relation = { id: string; holder: string; ref: string; label: string };
+  const relations: Relation[] = [];
+  for (const entity of entities) {
+    for (const [i, link] of entity.links.entries()) {
+      if (!byKey.has(link.to) || link.to === entity.key) continue;
+      relations.push(link.kind === "many" ? { id: `${entity.key}-${i}`, holder: link.to, ref: entity.key, label: link.label } : { id: `${entity.key}-${i}`, holder: entity.key, ref: link.to, label: link.label });
+    }
+  }
+  // Order: the most connected table first, then its neighbours (breadth first), so linked tables sit close.
+  const degree = (key: string) => relations.filter((item) => item.holder === key || item.ref === key).length;
+  const order: string[] = [];
+  const rest = [...entities.map((entity) => entity.key)].sort((a, b) => degree(b) - degree(a));
+  while (rest.length) {
+    const queue = [rest.shift()!];
+    while (queue.length) {
+      const key = queue.shift()!;
+      if (order.includes(key)) continue;
+      order.push(key);
+      for (const item of relations) {
+        const other = item.holder === key ? item.ref : item.ref === key ? item.holder : null;
+        if (other && !order.includes(other) && !queue.includes(other)) { queue.push(other); rest.splice(rest.indexOf(other), 1); }
+      }
+    }
+  }
+  const columns = entities.length <= 2 ? entities.length : entities.length <= 4 ? 2 : 3;
+  const cardWidth = 228; const gapX = 96; const gapY = 36; const head = 34; const row = 22; const margin = 44;
+  const rowsOf = (key: string) => {
+    const entity = byKey.get(key)!;
+    const fields = entity.fields.map((item) => (typeof item === "string" ? { name: item, type: "" } : item));
+    const refs = relations.filter((item) => item.holder === key).map((item) => ({ name: byKey.get(item.ref)!.name, type: t("ссылка"), relation: item.id }));
+    return [{ name: "id", type: t("ключ"), key: true }, ...fields, ...refs] as Array<{ name: string; type: string; key?: boolean; relation?: string }>;
+  };
+  const heights = new Map(order.map((key) => [key, head + rowsOf(key).length * row + 8]));
+  const rowTops: number[] = [];
+  let cursor = 8;
+  for (let r = 0; r < Math.ceil(order.length / columns); r += 1) {
+    rowTops.push(cursor);
+    cursor += Math.max(...order.slice(r * columns, r * columns + columns).map((key) => heights.get(key)!)) + gapY;
+  }
+  const place = new Map(order.map((key, index) => [key, { x: margin + (index % columns) * (cardWidth + gapX), y: rowTops[Math.floor(index / columns)]! }]));
+  const width = margin * 2 + columns * cardWidth + (columns - 1) * gapX;
+  const height = cursor - gapY + 8;
+  const linked = (relation: Relation) => !selected || relation.holder === selected || relation.ref === selected;
+  const near = (key: string) => !selected || key === selected || relations.some((item) => (item.holder === key && item.ref === selected) || (item.ref === key && item.holder === selected));
+
+  /** Crow's-foot end at point p, the line leaving the table in direction dx (±1, horizontal). */
+  const fork = (x: number, y: number, dx: number, color: string) => <g stroke={color} strokeWidth={1.4} fill="none"><path d={`M${x + dx * 12},${y} L${x},${y - 7} M${x + dx * 12},${y} L${x},${y + 7} M${x + dx * 12},${y} L${x},${y}`} /><path d={`M${x + dx * 16},${y - 6} V${y + 6}`} /></g>;
+  const bar = (x: number, y: number, dx: number, color: string) => <g stroke={color} strokeWidth={1.4}><path d={`M${x + dx * 8},${y - 7} V${y + 7}`} /><path d={`M${x + dx * 13},${y - 7} V${y + 7}`} /></g>;
+
   return (
-    <Scroll label={t("Схема данных")}>
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: "block", minWidth: width }}>
-        <defs>{arrowMarker("data-arrow", "#7a827d")}</defs>
-        {links.map((link, k) => {
-          const trackX = gutter - 10 - (k % Math.max(1, tracks)) * 9;
-          const y1 = anchor(link.from) + 4 + (k % 3) * 3; const y2 = anchor(link.to) - 4 + (k % 3) * 3;
+    <Scroll label={t("Схема данных")} legend={<>
+      <span><svg width={34} height={14} aria-hidden="true">{bar(2, 7, 1, "#4b5550")}<path d="M2,7 H32" stroke="#4b5550" /></svg> {t("один")}</span>
+      <span><svg width={34} height={14} aria-hidden="true">{fork(2, 7, 1, "#4b5550")}<path d="M2,7 H32" stroke="#4b5550" /></svg> {t("много")}</span>
+      <span>🔑 {t("ключ записи")}</span><span>↗ {t("ссылка на другую запись")}</span>
+      {onPick && <span>{t("Нажмите на таблицу — подсветятся её связи; ✎ — изменить")}</span>}
+    </>}>
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} onClick={(event) => { if (event.target === event.currentTarget) setSelected(null); }}>
+        {relations.map((relation) => {
+          const from = place.get(relation.holder)!; const to = place.get(relation.ref)!;
+          const rows = rowsOf(relation.holder);
+          const fromY = from.y + head + rows.findIndex((item) => item.relation === relation.id) * row + row / 2;
+          const toY = to.y + head / 2;
+          const color = selected && linked(relation) ? "#2445d4" : "#7a827d";
+          let path: string; let fromX: number; let toX: number; let fromDir: number; let toDir: number;
+          if (to.x > from.x) { fromX = from.x + cardWidth; toX = to.x; fromDir = 1; toDir = -1; path = `M${fromX},${fromY} C${fromX + 48},${fromY} ${toX - 48},${toY} ${toX},${toY}`; }
+          else if (to.x < from.x) { fromX = from.x; toX = to.x + cardWidth; fromDir = -1; toDir = 1; path = `M${fromX},${fromY} C${fromX - 48},${fromY} ${toX + 48},${toY} ${toX},${toY}`; }
+          else { fromX = from.x + cardWidth; toX = to.x + cardWidth; fromDir = 1; toDir = 1; path = `M${fromX},${fromY} C${fromX + 40},${fromY} ${toX + 40},${toY} ${toX},${toY}`; }
+          const midX = (fromX + toX) / 2 + (from.x === to.x ? 30 : 0); const midY = (fromY + toY) / 2;
           return (
-            <path key={k} d={`M${gutter},${y1} H${trackX} V${y2} H${gutter - 2}`} fill="none" stroke="#7a827d" strokeWidth={1.3}
-              strokeDasharray={link.kind === "many" ? undefined : "4 3"} markerEnd="url(#data-arrow)" />
+            <g key={relation.id} opacity={linked(relation) ? 1 : 0.18}>
+              <path d={path} fill="none" stroke={color} strokeWidth={selected && linked(relation) ? 2 : 1.4} />
+              {fork(fromX, fromY, fromDir, color)}
+              {bar(toX, toY, toDir, color)}
+              {relation.label && <g>
+                <rect x={midX - relation.label.length * 3.1 - 5} y={midY - 9} width={relation.label.length * 6.2 + 10} height={16} rx={4} fill="#fff" stroke="#e1e6e2" />
+                <text x={midX} y={midY + 3} fontSize={10.5} textAnchor="middle" fill="#4b5550">{relation.label}</text>
+              </g>}
+            </g>
           );
         })}
-        {entities.map((entity, i) => {
-          const x = gutter; const y = tops[i]!;
-          const outgoing = links.filter((link) => link.from === i);
-          const fieldsBottom = y + 34 + Math.max(1, entity.fields.length) * 16;
-          const change = marks?.[entity.key]; const flaggedEntity = flagged?.has(entity.key);
-          const head = flaggedEntity ? FLAG : change ? MARK[change] : { fill: "#e6f0fa", stroke: "#2d6da3", text: "#173a5a" };
+        {order.map((key) => {
+          const entity = byKey.get(key)!; const { x, y } = place.get(key)!;
+          const rows = rowsOf(key); const h = heights.get(key)!;
+          const change = marks?.[key]; const flaggedEntity = flagged?.has(key);
+          const tone = flaggedEntity ? FLAG : change ? MARK[change] : { fill: "#e6f0fa", stroke: "#2d6da3", text: "#173a5a" };
+          const active = selected === key;
           return (
-            <g key={entity.key} {...pickable(entity.key, t("Изменить данные «{0}»", [entity.name]), onPick)}>
-              <rect x={x} y={y} width={cardWidth} height={heights[i]} rx={10} fill="#fff" stroke={head.stroke} strokeWidth={flaggedEntity || change ? 2.2 : 1.3} />
-              <rect x={x} y={y} width={cardWidth} height={28} rx={10} fill={head.fill} />
-              <text x={x + 10} y={y + 19} fontSize={12.5} fontWeight={800} fill={head.text}>{flaggedEntity ? `! ${entity.name}` : change === "added" ? `+ ${entity.name}` : entity.name}</text>
-              {entity.fields.map((item, k) => {
-                const label = typeof item === "string" ? item : `${item.name}: ${item.type}`;
-                return <text key={k} x={x + 10} y={y + 46 + k * 16} fontSize={11} fill="#3a423d">{label.length > 40 ? `${label.slice(0, 39)}…` : label}</text>;
-              })}
-              {outgoing.length ? <line x1={x + 10} y1={fieldsBottom + 2} x2={x + cardWidth - 10} y2={fieldsBottom + 2} stroke="#e1e6e2" /> : null}
-              {outgoing.map((link, k) => {
-                const text = `→ ${names[link.to]} · ${link.kind === "many" ? t("много") : t("один")}${link.label ? ` (${link.label})` : ""}`;
-                return <text key={k} x={x + 10} y={fieldsBottom + 18 + k * 16} fontSize={11} fill="#2445d4">{text.length > 40 ? `${text.slice(0, 39)}…` : text}</text>;
+            <g key={key} opacity={near(key) ? 1 : 0.3} role="button" tabIndex={0} aria-pressed={active} aria-label={t("Таблица «{0}»: показать связи", [entity.name])} style={{ cursor: "pointer" }}
+              onClick={() => setSelected(active ? null : key)}
+              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelected(active ? null : key); } }}>
+              <rect x={x} y={y} width={cardWidth} height={h} rx={8} fill="#fff" stroke={active ? "#2445d4" : tone.stroke} strokeWidth={active || flaggedEntity || change ? 2.2 : 1.2} />
+              <path d={`M${x},${y + 8} a8,8 0 0 1 8,-8 h${cardWidth - 16} a8,8 0 0 1 8,8 v${head - 8} h-${cardWidth} z`} fill={tone.fill} />
+              <text x={x + 10} y={y + 22} fontSize={13} fontWeight={700} fill={tone.text}>{flaggedEntity ? "! " : change === "added" ? "+ " : ""}{entity.name.length > 24 ? `${entity.name.slice(0, 23)}…` : entity.name}</text>
+              {onPick && (
+                <g role="button" tabIndex={0} aria-label={t("Изменить данные «{0}»", [entity.name])} onClick={(event) => { event.stopPropagation(); onPick(key); }}
+                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); onPick(key); } }}>
+                  <rect x={x + cardWidth - 32} y={y + 5} width={26} height={24} rx={6} fill="#fff" stroke={tone.stroke} strokeOpacity={0.5} />
+                  <text x={x + cardWidth - 19} y={y + 22} fontSize={13} textAnchor="middle" fill={tone.text}>✎</text>
+                </g>
+              )}
+              {rows.map((item, index) => {
+                const top = y + head + index * row;
+                const name = item.name.length > 22 ? `${item.name.slice(0, 21)}…` : item.name;
+                return (
+                  <g key={`${index}-${item.name}`}>
+                    {index > 0 && <line x1={x + 8} x2={x + cardWidth - 8} y1={top} y2={top} stroke="#eef1ef" />}
+                    <text x={x + 10} y={top + 15} fontSize={11.5} fill={item.relation ? "#2445d4" : "#1c241f"} fontWeight={item.key ? 600 : 400}>{item.key ? "🔑 " : item.relation ? "↗ " : ""}{name}</text>
+                    {item.type && <text x={x + cardWidth - 10} y={top + 15} fontSize={10.5} textAnchor="end" fill="#7a827d">{item.type}</text>}
+                  </g>
+                );
               })}
             </g>
           );

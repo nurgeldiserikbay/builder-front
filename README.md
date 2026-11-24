@@ -4,9 +4,13 @@ Mobile-first Next.js web application and Telegram Mini App.
 
 ## Current scope
 
+### App frame and design system
+
+Every signed-in screen uses one frame (`app-header.tsx`): a light sidebar with the workspace, «Поиск и переход» (⌘K / Ctrl+K: jump to a project or section), sections grouped as Работа / Инструменты / Настройки with a count of waiting decisions, plan usage and the account; on phones the sections become a bottom tab bar. Styles live in `globals.css` (tokens) and `projects/journey.module.css` (shared classes): neutral surfaces, 1 px lines, 8–10 px radii, one font (Onest), an ink primary button, brand blue only for links, focus, selection and progress. Text stays 15 px on desktop and 16 px on phones. See `builder-docs/docs/UX_ENTERPRISE_AUDIT.md`.
+
 ### Step-by-step builder (`/projects`)
 
-After login the owner lands on `/projects`: a three-step wizard (site type → project name → where to start: from scratch or from ready material) creates a project with its stage route. `/projects/[projectId]` shows progress, the next action, every stage with a plain-language status, and a result package that can be downloaded at any stage (`project.md`, `project.json`, and `site.html` after the build is accepted).
+After login the owner lands on `/projects`: a summary (projects in progress, decisions waiting for the owner, published, AI requests this month), a «Требует решения» list and a projects table (current stage and its status, stage progress, waiting decisions, people, last change) built from the `overview` the API returns with each project. «Новый проект» (or `/projects?new=1`, also reachable from ⌘K search) opens a three-step wizard (site type → project name → where to start: from scratch or from ready material) creates a project with its stage route. `/projects/[projectId]` shows progress, the next action, every stage with a plain-language status, and a result package that can be downloaded at any stage (`project.md`, `project.json`, and `site.html` after the build is accepted).
 
 `/projects/[projectId]/stages/[stageKey]` is one template for every stage: why the stage exists, what it takes from earlier stages, the editor (form for the project brief and services, block editor for texts, style presets, build with checks), AI instructions (whole stage, one block, or saved as a stage/project rule), protection of manually edited parts from AI rewrites, pasting ready material, version history with provenance and restore, and a sticky bar that explains why the stage can or cannot be accepted yet. Previews render the backend's script-free HTML in a sandboxed iframe. Error codes from the API are translated into Russian explanations in `src/lib/journey.ts`.
 

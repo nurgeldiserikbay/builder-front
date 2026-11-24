@@ -532,3 +532,25 @@ button.chip:disabled{opacity:.5;cursor:not-allowed}
 }
 .navDot{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--brand)}
 @media(max-width:720px){.navDot{position:absolute;top:10px;left:calc(50% + 8px);margin:0}}
+
+/* ---------- Key–value facts ---------- */
+.facts{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:8px 0 0;font-size:14px}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.facts dd .cellSub{font-weight:400}
+.estimate{border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:var(--r-card);background:var(--surface);padding:14px 18px;margin:16px 0 0}
+.estimate .h2{font-size:15.5px;margin:0}
+
+/* ---------- «Моя работа» ---------- */
+.stats5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.workGrid{display:grid;gap:20px;align-items:start}
+@media(min-width:1180px){.workGrid{grid-template-columns:minmax(0,1fr) 340px}}
+.bars{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;height:110px;align-items:end;margin-top:10px}
+.bars > div{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;min-width:0}
+.bars span{display:block;width:100%;max-width:28px;min-height:2px;background:var(--brand);border-radius:4px 4px 1px 1px}
+.bars small{font-size:11.5px;color:var(--muted)}
+.stars{color:#e3a008;letter-spacing:1px}
+.review{padding:10px 0;border-top:1px solid var(--line-soft)}
+.review p{margin:4px 0 2px;font-size:14px}
+@media(max-width:1100px){.stats5{grid-template-columns:repeat(3,minmax(0,1fr))}.stats5 .stat:nth-child(4){border-left:0}.stats5 .stat:nth-child(n+4){border-top:1px solid var(--line)}}
+@media(max-width:720px){.stats5{grid-template-columns:1fr 1fr}.stats5 .stat:nth-child(5){grid-column:1 / -1}.stats5 .stat:nth-child(4){border-left:1px solid var(--line)}.stats5 .stat:nth-child(odd){border-left:0}.stats5 .stat:nth-child(n+3){border-top:1px solid var(--line)}}

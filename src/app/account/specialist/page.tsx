@@ -94,6 +94,7 @@ export default function SpecialistProfilePage() {
         <p className={styles.kicker}>{t("Каталог специалистов")}</p>
         <h1 className={styles.h1}>{t("Ваша карточка")}</h1>
         <p className={styles.muted} style={{ marginTop: 0 }}>{t("По карточке владельцы проектов находят вас и приглашают на этап. Почту в каталоге никто не видит — её узнает только тот, кто вас пригласит.")}</p>
+        <p className={styles.small} style={{ marginTop: -6 }}>{t("Этапы, время, начисления и выплаты —")}{" "}<a className={styles.linkButton} href="/work">{t("в разделе «Моя работа»")}</a>.</p>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
         {saved && <p className={`${styles.notice} ${styles.success}`} role="status">{saved}{data?.profile && <> <a href={`/specialists/${data.profile.id}`} style={{ color: "inherit", fontWeight: 700 }}>{t("Посмотреть →")}</a></>}</p>}
         {!data && !error && <p className={styles.muted}>{t("Загружаем…")}</p>}

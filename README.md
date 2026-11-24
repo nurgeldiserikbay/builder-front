@@ -12,6 +12,12 @@ Every signed-in screen uses one frame (`app-header.tsx`): a light sidebar with t
 
 `/inbox` («Входящие») lists what waits for the signed-in person across projects — stage acceptance, returned stages, change notices, proposals, specialists' hours, disputes and mentions — computed by the API from the current state (`GET /me/inbox`), overdue first; each row opens the place to act. The «Обновления» tab shows what other people did in the last 14 days and marks new items as seen (`POST /me/inbox/seen`). The sidebar shows the count; the `/projects` summary lists the first five. The project screen has a «Журнал» tab (`activity.tsx`, `GET /projects/{id}/activity`) with filters by kind and stage and «Показать раньше» paging. Texts for items and events live in `src/lib/inbox.ts`.
 
+### Specialist workspace and costs
+
+`/work` («Моя работа», `GET /me/work`) is the specialist's own workspace: stages they work on (role, stage status, terms, time, what the approved time is worth), money by state (waiting for the owner, held by BuildPath after the fee, paid out), hours by day for the last week, payments, reviews, payout account (`PayoutAccount` from the timesheet) and whether their catalog profile is published. The sidebar shows it to people with assignments.
+
+Costs are shown before work starts: step 4 of the «Новый проект» wizard asks `GET /journey/estimate` for the AI requests and tenge of the chosen route from the chosen start, next to what is left on the plan this month; the stage screen has «Стоимость этапа» (`stage-cost.tsx`: AI estimate and spend, specialists' terms, due and paid for those who decide); the «Деньги» tab has «План и факт по этапам».
+
 ### Step-by-step builder (`/projects`)
 
 After login the owner lands on `/projects`: a summary (projects in progress, decisions waiting for the owner, published, AI requests this month), a «Требует решения» list and a projects table (current stage and its status, stage progress, waiting decisions, people, last change) built from the `overview` the API returns with each project. «Новый проект» (or `/projects?new=1`, also reachable from ⌘K search) opens a three-step wizard (site type → project name → where to start: from scratch or from ready material) creates a project with its stage route. `/projects/[projectId]` shows progress, the next action, every stage with a plain-language status, and a result package that can be downloaded at any stage (`project.md`, `project.json`, and `site.html` after the build is accepted).

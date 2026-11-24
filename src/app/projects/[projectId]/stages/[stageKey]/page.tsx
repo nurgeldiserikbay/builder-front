@@ -1,4 +1,5 @@
 "use client";
+import StageCost from "./stage-cost";
 
 import ApprovalPanel from "./approval";
 import StageRoute from "./stage-route";
@@ -707,6 +708,7 @@ export default function StagePage() {
           targetLabel={(key) => (stage.artifactType === "content" ? (detail.current?.content as Content | undefined)?.sections.find((section) => section.key === key)?.title || key : stage.fields?.find((field) => field.key === key)?.label ?? key)} />
       )}
       {stage.status !== "locked" && <StageFilesPanel projectId={projectId} stageKey={stageKey} />}
+      {!specialist && <StageCost projectId={projectId} stageKey={stageKey} />}
       {!specialist && stage.status !== "locked" && <ApprovalPanel key={JSON.stringify(stage.approval.policy)} projectId={projectId} stageKey={stageKey} approval={stage.approval} onChange={() => void load()} />}
       {detail.extraReads && detail.extraReads.length > 0 && (
         <details className={`${styles.card} ${styles.details}`}>

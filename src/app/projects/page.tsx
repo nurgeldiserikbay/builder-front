@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { isPlanMessage, explainError, statusTone, type CatalogType, type StageStatus } from "@/lib/journey";
 import { dueText, inboxLine, type Inbox } from "@/lib/inbox";
+import { formatTenge } from "@/lib/money";
 import styles from "./journey.module.css";
 import AppHeader from "../app-header";
 
@@ -18,6 +19,7 @@ type Overview = {
 };
 type Project = { id: string; name: string; status: string; projectType: string | null; startMode?: string; createdAt: string; updatedAt: string; overview?: Overview };
 type Filter = "open" | "live" | "archived" | "all";
+type RouteEstimate = { requests: { min: number; max: number }; pricingConfigured: boolean; perRequest: number | null; cost: { min: number; max: number } | null; stages: Array<{ key: string; title: string; brought: boolean; aiUsed: boolean; requests: { min: number; max: number } }> };
 const stageStatusText: Record<StageStatus, string> = {
   locked: t("Закрыт"), ready: t("Можно начинать"), awaiting_lead: t("Ждёт ведущего"), in_progress: t("В работе"), in_review: t("На приёмке"),
   changes_requested: t("Нужны правки"), approved: t("Принят"), stale: t("Устарел"), imported: t("Свои материалы"), skipped: t("Пропущен"), blocked: t("Заблокирован"),
@@ -67,6 +69,7 @@ export default function ProjectsPage() {
   const [filter, setFilter] = useState<Filter>("open");
   const [aiUsage, setAiUsage] = useState<{ used: number; limit: number } | null>(null);
   const [inbox, setInbox] = useState<Inbox | null>(null);
+  const [estimate, setEstimate] = useState<RouteEstimate | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -117,6 +120,14 @@ export default function ProjectsPage() {
   }, [creating, step, story, answers, pickYourself]);
 
   const type = types.find((item) => item.key === typeKey) ?? null;
+  // What the chosen route costs before anything is created: AI requests (and tenge once prices are set) from the start.
+  useEffect(() => {
+    if (step !== 4 || !type) return;
+    let alive = true;
+    const params = new URLSearchParams({ projectType: type.key, ...(start ? { startStageKey: start } : {}) });
+    api<RouteEstimate>(`/journey/estimate?${params}`).then((value) => { if (alive) setEstimate(value); }).catch(() => { if (alive) setEstimate(null); });
+    return () => { alive = false; };
+  }, [step, type, start]);
   const startOptions = type ? type.stages.filter((stage, index) => index > 0 && stage.importHint) : [];
 
   const analysisOnly = typeKey === ANALYSIS;
@@ -267,7 +278,10 @@ export default function ProjectsPage() {
               </div>
             )}
             {(masterPlaces > 0 || teamProjects.length > 0 || assignments.length > 0) && (
-              <div className={styles.sectionHeader}><h2 className={styles.h2}>{t("Где вы участвуете")}</h2></div>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.h2}>{t("Где вы участвуете")}</h2>
+                {assignments.length > 0 && <a className={styles.small} href="/work" style={{ marginLeft: "auto", color: "var(--brand)", fontWeight: 600, textDecoration: "none" }}>{t("Моя работа: время и выплаты")} →</a>}
+              </div>
             )}
             <div className={styles.projectGrid}>
               {masterPlaces > 0 && (
@@ -443,6 +457,29 @@ export default function ProjectsPage() {
                   ))}
                 </div>
                 {start && <p className={`${styles.notice} ${styles.info}`} style={{ marginTop: 14 }}>{t("Мы откроем этот этап и предыдущие, чтобы вы могли вставить готовые материалы. Остальное сделаем вместе.")}</p>}
+                {estimate && (
+                  <section className={styles.estimate} aria-labelledby="estimate-title">
+                    <h2 id="estimate-title" className={styles.h2}>{t("Сколько это будет стоить")}</h2>
+                    <dl className={styles.facts}>
+                      <dt>{t("Работа ИИ")}</dt>
+                      <dd>
+                        {estimate.cost ? `${formatTenge(estimate.cost.min)} – ${formatTenge(estimate.cost.max)}` : t("{0}–{1} запросов", [estimate.requests.min, estimate.requests.max])}
+                        {estimate.cost && <span className={styles.cellSub}>{t("{0}–{1} запросов, один — около {2}", [estimate.requests.min, estimate.requests.max, formatTenge(estimate.perRequest ?? 0)])}</span>}
+                      </dd>
+                      {aiUsage && aiUsage.limit > 0 && (
+                        <>
+                          <dt>{t("По вашему тарифу")}</dt>
+                          <dd>{t("в этом месяце осталось: {0}", [Math.max(0, aiUsage.limit - aiUsage.used)])}<span className={styles.cellSub}>{t("запросов из {0} по тарифу", [aiUsage.limit])}</span></dd>
+                        </>
+                      )}
+                      <dt>{t("Специалисты")}</dt>
+                      <dd>{t("по желанию")}<span className={styles.cellSub}>{t("цену или ставку вы согласуете сами")}</span></dd>
+                    </dl>
+                    <p className={styles.small} style={{ margin: "10px 0 0" }}>
+                      {t("Смета — сколько запросов обычно уходит на этапы, которые сделает ИИ")}{estimate.stages.some((stage) => stage.brought) ? t("; этапы с вашими готовыми материалами не считаются") : ""}{t(". Ничего не списывается заранее: платите за фактические запросы, а специалисту — только за принятую работу. Лимит расходов можно поставить в проекте.")}
+                    </p>
+                  </section>
+                )}
                 <div className={styles.row} style={{ marginTop: 18 }}>
                   <button className={styles.ghost} onClick={() => setStep(3)}>{t("Назад")}</button>
                   <div className={styles.spacer} />

@@ -104,7 +104,12 @@ export default function JourneyPage() {
             <div className={styles.projectBar}>
               <div className={styles.projectBarTitle}>
                 <h1 className={styles.h1}>{journey.project.name}</h1>
-                <span className={styles.small}>{journey.project.typeTitle}</span>
+                <span className={styles.typeTag}>{journey.project.typeTitle}</span>
+                {(paused || cancelled || archived || completed || live) && (
+                  <span className={`${styles.chip} ${styles[live || completed ? "done" : paused ? "attention" : "closed"]}`} style={{ marginTop: 0 }}>
+                    {live ? t("Опубликован") : completed ? t("Завершён") : paused ? t("На паузе") : archived ? t("В архиве") : t("Отменён")}
+                  </span>
+                )}
               </div>
               <div className={styles.progressInline}>
                 <div className={styles.progress} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={journey.progress.percent} aria-label={t("Готовность проекта")}>
@@ -174,8 +179,8 @@ export default function JourneyPage() {
                 <ResponseDays projectId={projectId} value={journey.project.changeResponseDays} />
               )}
               <div className={styles.spacer} />
-              <a className={styles.back} href={`/projects/${projectId}/history`}>{t("История запросов к ИИ →")}</a>
-              {!specialist && <a className={styles.back} href={`/projects/${projectId}/analysis`}>{t("Разбор кода и ТЗ →")}</a>}
+              <a className={styles.back} href={`/projects/${projectId}/history`}>{t("История запросов к ИИ")}</a>
+              {!specialist && <a className={styles.back} href={`/projects/${projectId}/analysis`}>{t("Разбор кода и ТЗ")}</a>}
             </div>
             {view === "map" && <ProjectMap projectId={projectId} stages={journey.stages} aiOn={journey.ai.configured} />}
             {view === "list" && <ol className={styles.stageList}>
@@ -324,12 +329,12 @@ function ResponseDays({ projectId, value }: { projectId: string; value: number }
     try { await api(`/projects/${projectId}/change-settings`, { method: "POST", body: JSON.stringify({ responseDays: next }) }); setSaved(true); } catch { setDays(value); }
   }
   return (
-    <label className={styles.small} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "0 0 10px" }}>
+    <label className={styles.small} style={{ display: "flex", gap: 8, alignItems: "center", margin: 0 }} title={t("Потом — напоминание, а ещё через 2 дня вы сможете решить за этап.")}>
       <span>{t("Срок ответа на изменения:")}</span>
-      <select className={styles.input} style={{ width: "auto", minHeight: 36, padding: "4px 8px" }} value={days} onChange={(event) => void save(Number(event.target.value))}>
+      <select className={styles.input} style={{ width: "auto", minHeight: 30, padding: "2px 8px", fontSize: 13.5 }} value={days} onChange={(event) => void save(Number(event.target.value))}>
         {[1, 2, 3, 5, 7, 14].map((item) => <option key={item} value={item}>{item}{" "}{t("дн.")}</option>)}
       </select>
-      <span>{saved ? t("Сохранено.") : t("Потом — напоминание, а ещё через 2 дня вы сможете решить за этап.")}</span>
+      {saved && <span>{t("Сохранено.")}</span>}
     </label>
   );
 }

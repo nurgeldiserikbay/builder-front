@@ -1,4 +1,4 @@
-.page{padding:0 24px 56px;color:var(--ink);font-size:16px}
+.page{padding:0 28px 56px;color:var(--ink);font-size:15px}
 .topbar{height:72px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:9px;font-size:19px;font-weight:700;text-decoration:none;color:var(--ink)}
 .logo{display:grid;place-items:center;width:30px;height:30px;border-radius:var(--r-control);background:var(--brand-ink);color:white}
@@ -7,23 +7,23 @@
 .topbar nav .current{color:var(--brand-ink);font-weight:750;border-bottom:2px solid var(--brand-ink);height:100%;display:grid;place-items:center}
 .account{display:flex;align-items:center;gap:13px;color:var(--muted);font-size:15px}
 .account button{border:1px solid var(--line);background:#fff;border-radius:var(--r-control);padding:8px 12px;color:var(--brand-ink);font-weight:700;cursor:pointer}
-.intro{padding:36px 0 25px;display:flex;justify-content:space-between;gap:24px;align-items:flex-end}
-.eyebrow{font-size:14px;font-weight:700;color:var(--brand-ink);margin:0 0 8px}
-.intro h1{font-size:clamp(27px,3vw,39px);letter-spacing:-1.6px;line-height:1.15;margin:0 0 9px}
-.subhead{color:var(--muted);font-size:16px;line-height:1.6;max-width:680px;margin:0}
+.intro{padding:28px 0 20px;display:flex;justify-content:space-between;gap:24px;align-items:flex-end}
+.eyebrow{font-size:12.5px;font-weight:600;color:var(--muted);margin:0 0 4px}
+.intro h1{font-size:24px;letter-spacing:-.02em;font-weight:650;line-height:1.25;margin:0 0 6px}
+.subhead{color:var(--muted);font-size:15px;line-height:1.55;max-width:680px;margin:0}
 .progressCard{min-width:232px;background:var(--brand-wash);border:1px solid var(--line);border-radius:var(--r-card);padding:14px 16px;display:grid;gap:7px}
 .progressCard span,.progressCard small{font-size:14px;color:var(--muted)}
 .progressCard strong{font-size:17px;color:var(--brand-ink)}
 .progress{height:5px;background:var(--line);border-radius:8px;overflow:hidden}
 .progress i{display:block;width:30%;height:100%;background:var(--brand);border-radius:8px;transition:width .2s ease}
 .progress i.complete{width:100%}
-.sourcebar{display:flex;align-items:flex-end;gap:11px;padding:14px;background:var(--canvas);border:1px solid var(--line);border-radius:var(--r-card)}
+.sourcebar{display:flex;align-items:flex-end;gap:11px;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card)}
 .urlField,.selectField{display:grid;gap:6px;min-width:0}
 .urlField{flex:1}
-.urlField span,.selectField span{font-size:14px;font-weight:750;color:var(--muted)}
-.urlField input,.selectField select{height:48px;border:1px solid var(--line-strong);border-radius:var(--r-control);padding:0 11px;background:#fff;color:var(--ink);font:inherit;font-size:15px;min-width:0}
+.urlField span,.selectField span{font-size:13px;font-weight:600;color:var(--muted)}
+.urlField input,.selectField select{height:38px;border:1px solid var(--line-strong);border-radius:var(--r-control);padding:0 11px;background:#fff;color:var(--ink);font:inherit;font-size:15px;min-width:0}
 .selectField select{max-width:200px}
-.primary{height:48px;border:0;border-radius:var(--r-control);background:var(--brand-ink);color:#fff;padding:0 16px;font-size:15px;font-weight:750;white-space:nowrap;cursor:pointer}
+.primary{height:38px;border:0;border-radius:var(--r-control);background:var(--ink);color:#fff;padding:0 14px;font-size:14px;font-weight:600;white-space:nowrap;cursor:pointer}
 .primary:disabled{opacity:.6;cursor:wait}
 .notice{margin:12px 0 0;padding:10px 13px;border-radius:var(--r-control);background:var(--line);color:var(--muted);font-size:15px;line-height:1.5;display:flex;gap:9px}
 .notice span{font-weight:700}

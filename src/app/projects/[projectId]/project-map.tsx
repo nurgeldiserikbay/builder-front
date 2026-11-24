@@ -68,7 +68,7 @@ export default function ProjectMap({ projectId, stages, aiOn }: { projectId: str
                   className={`${styles.mapNode} ${styles[tone]} ${stage.needsYou ? styles.mapNodeAttention : ""}`}>
                   {stage.needsYou && <span className={styles.mapBadge}>{stage.needsYou}</span>}
                   {stage.contract && <span className={styles.mapContract}>{t("Контракт")}</span>}
-                  <strong className={styles.mapTitle}>{tone === "done" ? "✓ " : ""}{stage.title}</strong>
+                  <strong className={styles.mapTitle}>{stage.title}</strong>
                   <span className={`${styles.chip} ${styles[tone]}`}>{stage.statusLabel}{version ? t(" · версия {0}", [version]) : ""}</span>
                   <span className={styles.mapWho}>{locked && waiting.length ? t("Откроется после: {0}", [waiting.join(", ")]) : who(stage, aiOn)}</span>
                 </a>

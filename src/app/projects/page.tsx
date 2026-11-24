@@ -1,17 +1,39 @@
 "use client";
 
-import { t , getLocale } from "@/lib/i18n";
+import { t, getLocale, dateLocale } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
-import { isPlanMessage, explainError, type CatalogType } from "@/lib/journey";
+import { isPlanMessage, explainError, statusTone, type CatalogType, type StageStatus } from "@/lib/journey";
 import styles from "./journey.module.css";
 import AppHeader from "../app-header";
 
 type Workspace = { id: string; name: string; role: string };
 type Assignment = { id: string; projectId: string; projectName: string; stageKey: string; stageTitle: string; stageStatus: string; role: string; roleTitle: string; status: string };
 type TeamProject = { id: string; name: string; status: string; ownerName: string | null; role: string; roleTitle: string };
-type Project = { id: string; name: string; status: string; projectType: string | null; startMode?: string; createdAt: string; updatedAt: string };
+type Overview = {
+  stagesTotal: number; stagesAccepted: number; currentStage: { key: string; status: StageStatus } | null; waiting: number; openChanges: number; people: number;
+  publication: { slug: string; status: string; monitor: string } | null; lastActivityAt: string | null;
+};
+type Project = { id: string; name: string; status: string; projectType: string | null; startMode?: string; createdAt: string; updatedAt: string; overview?: Overview };
+type Filter = "open" | "live" | "archived" | "all";
+const stageStatusText: Record<StageStatus, string> = {
+  locked: t("Закрыт"), ready: t("Можно начинать"), awaiting_lead: t("Ждёт ведущего"), in_progress: t("В работе"), in_review: t("На приёмке"),
+  changes_requested: t("Нужны правки"), approved: t("Принят"), stale: t("Устарел"), imported: t("Свои материалы"), skipped: t("Пропущен"), blocked: t("Заблокирован"),
+};
+/** «5 мин назад», «вчера», «3 дн. назад», then the date. */
+function ago(value: string | null | undefined): string {
+  if (!value) return "—";
+  const minutes = Math.round((Date.now() - new Date(value).getTime()) / 60_000);
+  if (minutes < 1) return t("только что");
+  if (minutes < 60) return t("{0} мин назад", [minutes]);
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return t("{0} ч назад", [hours]);
+  const days = Math.round(hours / 24);
+  if (days === 1) return t("вчера");
+  if (days < 7) return t("{0} дн. назад", [days]);
+  return new Date(value).toLocaleDateString(dateLocale(), { day: "numeric", month: "short" });
+}
 
 const ANALYSIS = "__analysis" as const;
 type Answers = { appointments?: boolean; products?: boolean; accounts?: boolean; size?: "one" | "few" | "many" };
@@ -41,6 +63,8 @@ export default function ProjectsPage() {
   const [answers, setAnswers] = useState<Answers>({});
   const [suggested, setSuggested] = useState<Suggestion | null>(null);
   const [pickYourself, setPickYourself] = useState(false);
+  const [filter, setFilter] = useState<Filter>("open");
+  const [aiUsage, setAiUsage] = useState<{ used: number; limit: number } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -53,13 +77,15 @@ export default function ProjectsPage() {
           api<TeamProject[]>("/me/team-projects").catch(() => []),
         ]);
         setTeamProjects(team);
+        api<{ usage: Array<{ key: string; used: number; limit: number }> }>("/me/plan").then((plan) => setAiUsage(plan.usage.find((item) => item.key === "aiPerMonth") ?? null)).catch(() => undefined);
+        if (new URLSearchParams(window.location.search).get("new") === "1") setCreating(true);
         setMasterPlaces(master.places.length);
         setTypes(catalog.projectTypes);
         setAssignments(mine);
         const first = workspaces[0] ?? null;
         setWorkspace(first);
         if (first) {
-          const list = await api<Project[]>(`/projects?workspaceId=${encodeURIComponent(first.id)}`);
+          const list = await api<Project[]>(`/projects?workspaceId=${encodeURIComponent(first.id)}&limit=100`);
           // Projects without a route are «Только анализ»: code analysis and site checks, no development stages.
           setProjects(list.filter((project) => project.projectType || project.startMode === "analysis_only"));
           if (!list.some((project) => project.projectType) && mine.length === 0 && master.places.length === 0 && team.length === 0) setCreating(true);
@@ -113,67 +139,156 @@ export default function ProjectsPage() {
   return (
     <div className={styles.shell}>
       <AppHeader />
-      <main className={`${styles.container} ${styles.wide}`}>
+      <main className={`${styles.container} ${creating ? "" : styles.wide}`}>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть тариф →")}</a></>}</p>}
         {loading && <p className={styles.muted}>{t("Загружаем ваши проекты…")}</p>}
 
-        {!loading && !creating && (
+        {!loading && !creating && (() => {
+          const typeTitle = (project: Project) => project.projectType ? types.find((item) => item.key === project.projectType)?.title ?? t("Проект") : t("Только анализ");
+          const stageTitle = (project: Project, key: string) => types.find((item) => item.key === project.projectType)?.stages.find((stage) => stage.key === key)?.title ?? key;
+          const isLive = (project: Project) => project.status === "live" || project.overview?.publication?.status === "live";
+          const open = projects.filter((project) => !["archived", "cancelled", "completed"].includes(project.status));
+          const live = projects.filter(isLive);
+          const archived = projects.filter((project) => project.status === "archived");
+          const waiting = open.filter((project) => (project.overview?.waiting ?? 0) > 0);
+          const waitingTotal = waiting.reduce((sum, project) => sum + (project.overview?.waiting ?? 0), 0);
+          const shown = filter === "open" ? open : filter === "live" ? live : filter === "archived" ? archived : projects;
+          const filters: Array<{ key: Filter; label: string; count: number }> = [
+            { key: "open", label: t("В работе"), count: open.length }, { key: "live", label: t("Опубликованы"), count: live.length },
+            { key: "archived", label: t("Архив"), count: archived.length }, { key: "all", label: t("Все"), count: projects.length },
+          ];
+          return (
           <>
             <div className={styles.pageHead}>
               <div>
-                <p className={styles.kicker}>{t("Ваши проекты")}</p>
-                <h1 className={styles.h1} style={{ margin: 0 }}>{t("Продолжите с того места, где остановились")}</h1>
+                <p className={styles.kicker}>{!workspace || workspace.name === "My workspace" ? t("Моё пространство") : workspace.name}</p>
+                <h1 className={styles.h1}>{t("Проекты")}</h1>
               </div>
-              <button className={styles.button} onClick={() => { setCreating(true); setStep(1); }}>{t("+ Новый проект")}</button>
+              <button className={styles.button} onClick={() => { setCreating(true); setStep(1); }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                {t("Новый проект")}
+              </button>
             </div>
+
+            <div className={styles.stats}>
+              <div className={styles.stat}><span>{t("В работе")}</span><b>{open.length}</b><small>{t("из {0} проектов", [projects.length])}</small></div>
+              <div className={styles.stat}><span>{t("Ждут вашего решения")}</span><b style={waitingTotal ? { color: "#8a4b00" } : undefined}>{waitingTotal}</b><small>{waiting.length ? t("в {0} проектах", [waiting.length]) : t("всё решено")}</small></div>
+              <div className={styles.stat}><span>{t("Опубликовано")}</span><b>{live.length}</b><small>{t("сайтов и приложений")}</small></div>
+              <div className={styles.stat}><span>{t("Запросы к ИИ")}</span><b>{aiUsage ? aiUsage.used : "—"}</b><small>{aiUsage ? t("из {0} в этом месяце", [aiUsage.limit]) : t("в этом месяце")}</small></div>
+            </div>
+
+            {waiting.length > 0 && (
+              <>
+                <div className={styles.sectionHeader}><h2 className={styles.h2}>{t("Требует решения")}</h2></div>
+                <ul className={styles.attnList}>
+                  {waiting.map((project) => {
+                    const current = project.overview?.currentStage;
+                    return (
+                      <li key={project.id}>
+                        <a href={current && ["in_review", "changes_requested"].includes(current.status) ? `/projects/${project.id}/stages/${current.key}` : `/projects/${project.id}`}>
+                          <span className={styles.attnDot} aria-hidden="true" />
+                          <span><b>{project.name}</b><span className={styles.cellSub}>
+                            {current ? t("Этап «{0}» — {1}", [stageTitle(project, current.key), stageStatusText[current.status].toLowerCase()]) : ""}
+                            {project.overview?.openChanges ? `${current ? " · " : ""}${t("изменений от других этапов: {0}", [project.overview.openChanges])}` : ""}
+                          </span></span>
+                          <span className={styles.count}>{project.overview?.waiting}</span>
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.h2}>{t("Все проекты")}</h2>
+              <div className={styles.segmented} role="group" aria-label={t("Показать")} style={{ marginLeft: "auto" }}>
+                {filters.map((item) => (
+                  <button key={item.key} type="button" aria-pressed={filter === item.key} onClick={() => setFilter(item.key)}>{item.label} <span className={styles.num} style={{ opacity: .6 }}>{item.count}</span></button>
+                ))}
+              </div>
+            </div>
+            {shown.length === 0 ? (
+              <div className={styles.empty}>
+                {filter === "open" ? <>{t("Нет проектов в работе.")} <button type="button" className={styles.linkButton} onClick={() => { setCreating(true); setStep(1); }}>{t("Начать новый")}</button></> : t("Здесь пока пусто.")}
+              </div>
+            ) : (
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>{t("Проект")}</th>
+                      <th>{t("Сейчас")}</th>
+                      <th className={styles.hideMobile}>{t("Прогресс")}</th>
+                      <th className={styles.hideMobile} style={{ textAlign: "center" }}>{t("Решения")}</th>
+                      <th className={styles.hideMobile} style={{ textAlign: "center" }}>{t("Люди")}</th>
+                      <th className={styles.hideMobile}>{t("Обновлён")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shown.map((project) => {
+                      const view = project.overview;
+                      const current = view?.currentStage;
+                      const percent = view && view.stagesTotal ? Math.round((view.stagesAccepted / view.stagesTotal) * 100) : 0;
+                      const href = project.projectType ? `/projects/${project.id}` : `/projects/${project.id}/analysis`;
+                      return (
+                        <tr key={project.id}>
+                          <td>
+                            <a className={styles.tableLink} href={href}>{project.name}</a>
+                            <span className={styles.cellSub}>{typeTitle(project)}</span>
+                          </td>
+                          <td>
+                            {project.status !== "active" || !current
+                              ? <span className={`${styles.chip} ${styles[isLive(project) || project.status === "completed" ? "done" : project.status === "paused" ? "attention" : project.status === "active" ? "active" : "closed"]}`} style={{ marginTop: 0 }}>{isLive(project) ? t("Опубликован") : projectStatus[project.status] ?? project.status}</span>
+                              : <>
+                                  <span style={{ fontWeight: 500 }}>{stageTitle(project, current.key)}</span>
+                                  <span className={styles.cellSub}><span className={`${styles.chip} ${styles[statusTone[current.status]]}`} style={{ marginTop: 2 }}>{stageStatusText[current.status]}</span></span>
+                                </>}
+                          </td>
+                          <td className={styles.hideMobile}>
+                            {view && view.stagesTotal > 0
+                              ? <span className={`${styles.meter} ${percent === 100 ? styles.complete : ""}`}><span><i style={{ width: `${percent}%` }} /></span><small>{view.stagesAccepted}/{view.stagesTotal}</small></span>
+                              : <span className={styles.small}>—</span>}
+                          </td>
+                          <td className={styles.hideMobile} style={{ textAlign: "center" }}><span className={`${styles.count} ${view?.waiting ? "" : styles.zero}`}>{view?.waiting ?? 0}</span></td>
+                          <td className={`${styles.hideMobile} ${styles.num}`} style={{ textAlign: "center", color: "var(--muted)" }}>{view?.people ?? "—"}</td>
+                          <td className={`${styles.hideMobile} ${styles.small}`} style={{ whiteSpace: "nowrap" }}>{ago(view?.lastActivityAt ?? project.updatedAt)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {(masterPlaces > 0 || teamProjects.length > 0 || assignments.length > 0) && (
+              <div className={styles.sectionHeader}><h2 className={styles.h2}>{t("Где вы участвуете")}</h2></div>
+            )}
             <div className={styles.projectGrid}>
-              {projects.filter((project) => project.status !== "archived").map((project) => (
-                <a key={project.id} className={styles.projectCard} data-status={project.status} href={project.projectType ? `/projects/${project.id}` : `/projects/${project.id}/analysis`}>
-                  <span className={styles.small}>{project.projectType ? types.find((item) => item.key === project.projectType)?.title ?? t("Проект") : t("Только анализ")}</span>
-                  <strong>{project.name}</strong>
-                  <span className={`${styles.chip} ${styles[project.status === "live" || project.status === "completed" ? "done" : project.status === "active" ? "active" : project.status === "paused" ? "attention" : "closed"]}`} style={{ alignSelf: "flex-start", marginTop: "auto" }}>{projectStatus[project.status] ?? project.status}</span>
+              {masterPlaces > 0 && (
+                <a className={styles.projectCard} href="/master">
+                  <span className={styles.kicker} style={{ margin: 0 }}>{t("Мастер")}</span>
+                  <strong>{t("Мои записи как мастера")}</strong>
+                  <div className={styles.small}>{t("Клиенты, которые записались к вам")}{masterPlaces > 1 ? t(" — в {0} местах", [masterPlaces]) : ""}</div>
+                </a>
+              )}
+              {teamProjects.map((item) => (
+                <a key={item.id} className={styles.projectCard} href={`/projects/${item.id}`}>
+                  <span className={styles.kicker} style={{ margin: 0 }}>{t("Команда проекта")}</span>
+                  <strong>{item.name}</strong>
+                  <div className={styles.small}>{item.roleTitle}{item.ownerName ? ` · ${t("владелец:")} ${item.ownerName}` : ""} · {projectStatus[item.status] ?? item.status}</div>
+                </a>
+              ))}
+              {assignments.map((item) => (
+                <a key={item.id} className={styles.projectCard} href={`/projects/${item.projectId}/stages/${item.stageKey}`}>
+                  <span className={styles.kicker} style={{ margin: 0 }}>{t("Вы специалист")} · {item.roleTitle}</span>
+                  <strong>{item.projectName}</strong>
+                  <div className={styles.small}>{t("Этап «")}{item.stageTitle}»{item.status === "completed" ? t(" · этап принят") : item.stageStatus === "in_review" ? t(" · на приёмке") : item.stageStatus === "changes_requested" ? t(" · нужны правки") : ""}</div>
                 </a>
               ))}
             </div>
-            {projects.some((project) => project.status === "archived") && (
-              <details className={`${styles.card} ${styles.details}`} style={{ marginTop: 14 }}>
-                <summary>{t("Архив (")}{projects.filter((project) => project.status === "archived").length})</summary>
-                {projects.filter((project) => project.status === "archived").map((project) => (
-                  <a key={project.id} className={styles.projectCard} href={`/projects/${project.id}`}><strong>{project.name}</strong></a>
-                ))}
-              </details>
-            )}
-            {masterPlaces > 0 && (
-              <a className={styles.projectCard} href="/master" style={{ marginTop: 14 }}>
-                <strong>{t("Мои записи как мастера")}</strong>
-                <div className={styles.small}>{t("Клиенты, которые записались к вам")}{masterPlaces > 1 ? t(" — в {0} местах", [masterPlaces]) : ""}</div>
-              </a>
-            )}
-            {teamProjects.length > 0 && (
-              <>
-                <h2 className={styles.h2} style={{ marginTop: 22 }}>{t("Вы в команде")}</h2>
-                {teamProjects.map((item) => (
-                  <a key={item.id} className={styles.projectCard} href={`/projects/${item.id}`}>
-                    <strong>{item.name}</strong>
-                    <div className={styles.small}>{item.roleTitle}{item.ownerName ? ` · ${t("владелец:")} ${item.ownerName}` : ""} · {projectStatus[item.status] ?? item.status}</div>
-                  </a>
-                ))}
-              </>
-            )}
-            {assignments.length > 0 && (
-              <>
-                <h2 className={styles.h2} style={{ marginTop: 22 }}>{t("Вы помогаете в проектах")}</h2>
-                <p className={styles.small} style={{ margin: "0 0 10px" }}>{t("Сюда попадают этапы, на которые вас пригласили как специалиста.")}</p>
-                {assignments.map((item) => (
-                  <a key={item.id} className={styles.projectCard} href={`/projects/${item.projectId}/stages/${item.stageKey}`}>
-                    <strong>{item.projectName}</strong>
-                    <div className={styles.small}>{t("Этап «")}{item.stageTitle}» · {item.roleTitle}{item.status === "completed" ? t(" · этап принят") : item.stageStatus === "in_review" ? t(" · на приёмке") : item.stageStatus === "changes_requested" ? t(" · нужны правки") : ""}</div>
-                  </a>
-                ))}
-              </>
-            )}
           </>
-        )}
+          );
+        })()}
 
         {!loading && creating && (
           <>

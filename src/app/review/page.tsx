@@ -784,12 +784,9 @@ export default function ReviewPage() {
     setMessage(t("HTML-отчёт сохранён. Его можно открыть в браузере или передать команде."));
   }
 
-  async function logout() {
-    try { await api<void>("/auth/logout", { method: "POST" }); } finally { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); }
-  }
 
   return <div className={app.shell}>
-    <AppHeader extra={<div className={styles.account}>{user?.email && <span>{user.email}</span>}<button onClick={logout}>{t("Выйти")}</button></div>} />
+    <AppHeader />
     <main className={styles.page}>
 
     <section className={styles.intro}>

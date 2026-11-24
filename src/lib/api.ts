@@ -22,6 +22,18 @@ function wake(url: string): Promise<void> {
 }
 
 export async function api<T>(path: string, init: RequestInit = {}, wakeTries = 3): Promise<T> {
+  return (await request<T>(path, init, wakeTries))?.data as T;
+}
+
+/** For list endpoints with a cursor: the data and the meta of a { data, meta } response. */
+export async function apiPage<T>(path: string, init: RequestInit = {}): Promise<{ data: T; meta: { nextCursor: string | null } }> {
+  const payload = await request<T>(path, init, 3);
+  return { data: payload?.data as T, meta: { nextCursor: payload?.meta?.nextCursor ?? null } };
+}
+
+type Payload<T> = { data?: T; meta?: { nextCursor?: string | null }; message?: string; code?: string; wake?: string } | null;
+
+async function request<T>(path: string, init: RequestInit, wakeTries: number): Promise<Payload<T>> {
   const headers = new Headers(init.headers);
   if (!headers.has("Accept-Language")) headers.set("Accept-Language", getLocale());
   if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
@@ -30,15 +42,15 @@ export async function api<T>(path: string, init: RequestInit = {}, wakeTries = 3
     headers,
     credentials: "include",
   });
-  if (response.status === 204) return undefined as T;
-  const payload = await response.json().catch(() => null) as { data?: T; message?: string; code?: string; wake?: string } | null;
+  if (response.status === 204) return null;
+  const payload = await response.json().catch(() => null) as Payload<T>;
   if (response.status === 503 && payload?.message === "API_WAKING_UP" && typeof payload.wake === "string") {
     await wake(payload.wake);
     // A read is asked again once the API is up; a write is not, as the person decides whether to repeat it.
     const method = (init.method ?? "GET").toUpperCase();
     if (wakeTries > 0 && (method === "GET" || method === "HEAD")) {
       await new Promise((resolve) => setTimeout(resolve, 5_000));
-      return api<T>(path, init, wakeTries - 1);
+      return request<T>(path, init, wakeTries - 1);
     }
   }
   if (!response.ok) {
@@ -49,5 +61,5 @@ export async function api<T>(path: string, init: RequestInit = {}, wakeTries = 3
         : `Request failed (${response.status})`;
     throw new ApiError(response.status, message, payload);
   }
-  return payload?.data as T;
+  return payload;
 }

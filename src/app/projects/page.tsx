@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { isPlanMessage, explainError, statusTone, type CatalogType, type StageStatus } from "@/lib/journey";
+import { dueText, inboxLine, type Inbox } from "@/lib/inbox";
 import styles from "./journey.module.css";
 import AppHeader from "../app-header";
 
@@ -65,6 +66,7 @@ export default function ProjectsPage() {
   const [pickYourself, setPickYourself] = useState(false);
   const [filter, setFilter] = useState<Filter>("open");
   const [aiUsage, setAiUsage] = useState<{ used: number; limit: number } | null>(null);
+  const [inbox, setInbox] = useState<Inbox | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -77,6 +79,7 @@ export default function ProjectsPage() {
           api<TeamProject[]>("/me/team-projects").catch(() => []),
         ]);
         setTeamProjects(team);
+        api<Inbox>("/me/inbox").then(setInbox).catch(() => undefined);
         api<{ usage: Array<{ key: string; used: number; limit: number }> }>("/me/plan").then((plan) => setAiUsage(plan.usage.find((item) => item.key === "aiPerMonth") ?? null)).catch(() => undefined);
         if (new URLSearchParams(window.location.search).get("new") === "1") setCreating(true);
         setMasterPlaces(master.places.length);
@@ -150,8 +153,9 @@ export default function ProjectsPage() {
           const open = projects.filter((project) => !["archived", "cancelled", "completed"].includes(project.status));
           const live = projects.filter(isLive);
           const archived = projects.filter((project) => project.status === "archived");
-          const waiting = open.filter((project) => (project.overview?.waiting ?? 0) > 0);
-          const waitingTotal = waiting.reduce((sum, project) => sum + (project.overview?.waiting ?? 0), 0);
+          const waiting = inbox?.waiting ?? [];
+          const waitingProjects = new Set(waiting.map((item) => item.projectId)).size;
+          const stageOf = (projectType: string | null, key: string | null) => types.find((item) => item.key === projectType)?.stages.find((stage) => stage.key === key)?.title ?? key ?? "";
           const shown = filter === "open" ? open : filter === "live" ? live : filter === "archived" ? archived : projects;
           const filters: Array<{ key: Filter; label: string; count: number }> = [
             { key: "open", label: t("В работе"), count: open.length }, { key: "live", label: t("Опубликованы"), count: live.length },
@@ -172,26 +176,28 @@ export default function ProjectsPage() {
 
             <div className={styles.stats}>
               <div className={styles.stat}><span>{t("В работе")}</span><b>{open.length}</b><small>{t("из {0} проектов", [projects.length])}</small></div>
-              <div className={styles.stat}><span>{t("Ждут вашего решения")}</span><b style={waitingTotal ? { color: "#8a4b00" } : undefined}>{waitingTotal}</b><small>{waiting.length ? t("в {0} проектах", [waiting.length]) : t("всё решено")}</small></div>
+              <a className={styles.stat} href="/inbox" style={{ color: "inherit", textDecoration: "none" }}><span>{t("Ждут вашего решения")}</span><b style={waiting.length ? { color: "#8a4b00" } : undefined}>{inbox ? waiting.length : "—"}</b><small>{waiting.length ? t("в {0} проектах", [waitingProjects]) : t("всё решено")}</small></a>
               <div className={styles.stat}><span>{t("Опубликовано")}</span><b>{live.length}</b><small>{t("сайтов и приложений")}</small></div>
               <div className={styles.stat}><span>{t("Запросы к ИИ")}</span><b>{aiUsage ? aiUsage.used : "—"}</b><small>{aiUsage ? t("из {0} в этом месяце", [aiUsage.limit]) : t("в этом месяце")}</small></div>
             </div>
 
             {waiting.length > 0 && (
               <>
-                <div className={styles.sectionHeader}><h2 className={styles.h2}>{t("Требует решения")}</h2></div>
+                <div className={styles.sectionHeader}>
+                  <h2 className={styles.h2}>{t("Требует решения")}</h2>
+                  <a className={styles.small} href="/inbox" style={{ marginLeft: "auto", color: "var(--brand)", fontWeight: 600, textDecoration: "none" }}>{t("Все входящие")}{waiting.length > 5 ? ` (${waiting.length})` : ""} →</a>
+                </div>
                 <ul className={styles.attnList}>
-                  {waiting.map((project) => {
-                    const current = project.overview?.currentStage;
+                  {waiting.slice(0, 5).map((item) => {
+                    const line = inboxLine(item, stageOf);
+                    const due = item.dueAt ? dueText(item.dueAt) : null;
                     return (
-                      <li key={project.id}>
-                        <a href={current && ["in_review", "changes_requested"].includes(current.status) ? `/projects/${project.id}/stages/${current.key}` : `/projects/${project.id}`}>
-                          <span className={styles.attnDot} aria-hidden="true" />
-                          <span><b>{project.name}</b><span className={styles.cellSub}>
-                            {current ? t("Этап «{0}» — {1}", [stageTitle(project, current.key), stageStatusText[current.status].toLowerCase()]) : ""}
-                            {project.overview?.openChanges ? `${current ? " · " : ""}${t("изменений от других этапов: {0}", [project.overview.openChanges])}` : ""}
-                          </span></span>
-                          <span className={styles.count}>{project.overview?.waiting}</span>
+                      <li key={item.id}>
+                        <a href={line.href}>
+                          <span className={styles.attnDot} aria-hidden="true" style={item.kind === "dispute" || due?.overdue ? { background: "var(--danger)" } : undefined} />
+                          <span><b>{line.title}</b><span className={styles.cellSub}>{item.projectName}{item.who ? ` · ${item.who}` : ""}</span></span>
+                          {due && <span className={`${styles.due} ${due.overdue ? styles.overdue : ""}`}>{due.text}</span>}
+                          <span className={styles.small} style={{ color: "var(--brand)", fontWeight: 600 }}>{line.action}</span>
                         </a>
                       </li>
                     );
@@ -220,7 +226,7 @@ export default function ProjectsPage() {
                       <th>{t("Проект")}</th>
                       <th>{t("Сейчас")}</th>
                       <th className={styles.hideMobile}>{t("Прогресс")}</th>
-                      <th className={styles.hideMobile} style={{ textAlign: "center" }}>{t("Решения")}</th>
+                      <th className={styles.hideMobile} style={{ textAlign: "center" }} title={t("Этапы на приёмке, доработке или устаревшие и изменения без решения — у всех участников проекта")}>{t("Открыто")}</th>
                       <th className={styles.hideMobile} style={{ textAlign: "center" }}>{t("Люди")}</th>
                       <th className={styles.hideMobile}>{t("Обновлён")}</th>
                     </tr>

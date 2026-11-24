@@ -10,26 +10,27 @@ type Me = { id: string; email: string; name: string | null };
 type Workspace = { id: string; name: string; role: string };
 type PlanOverview = { plan: { title: string }; usage: Array<{ key: string; title: string; used: number; limit: number }> };
 type ProjectRow = { id: string; name: string; projectType: string | null; startMode?: string; status: string; overview?: { waiting: number } };
-type Frame = { me: Me | null; workspace: Workspace | null; plan: PlanOverview | null; projects: ProjectRow[] };
+type Frame = { me: Me | null; workspace: Workspace | null; plan: PlanOverview | null; projects: ProjectRow[]; waiting: number; unread: number };
 
 /** The frame data is the same on every screen: asked once per page load, shared by every header on it. */
 let frameRequest: Promise<Frame> | null = null;
 function loadFrame(): Promise<Frame> {
   frameRequest ??= (async () => {
-    const [me, workspaces, plan] = await Promise.all([
+    const [me, workspaces, plan, inbox] = await Promise.all([
       api<Me>("/me").catch(() => null),
       api<Workspace[]>("/workspaces").catch(() => [] as Workspace[]),
       api<PlanOverview>("/me/plan").catch(() => null),
+      api<{ waiting: unknown[]; unreadUpdates: number }>("/me/inbox").catch(() => null),
     ]);
     const workspace = workspaces[0] ?? null;
     const projects = workspace ? await api<ProjectRow[]>(`/projects?workspaceId=${encodeURIComponent(workspace.id)}&limit=100`).catch(() => [] as ProjectRow[]) : [];
-    return { me, workspace, plan, projects: projects.filter((project) => project.projectType || project.startMode === "analysis_only") };
+    return { me, workspace, plan, projects: projects.filter((project) => project.projectType || project.startMode === "analysis_only"), waiting: inbox?.waiting.length ?? 0, unread: inbox?.unreadUpdates ?? 0 };
   })();
   return frameRequest;
 }
 
 const icons = {
-  home: <><path d="M3 10.5 12 4l9 6.5" /><path d="M5 9.5V20h14V9.5" /></>,
+  inbox: <><path d="M3 13h5l1.5 3h5L16 13h5" /><path d="M5.5 5h13L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z" /></>,
   projects: <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
   people: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c1-3.5 3.6-5.5 6.5-5.5s5.5 2 6.5 5.5" /><circle cx="17" cy="9" r="2.5" /><path d="M16.5 14.6c2.4.2 4.2 1.9 5 5.4" /></>,
   review: <><rect x="3" y="4" width="8" height="16" rx="1.5" /><rect x="13" y="4" width="8" height="16" rx="1.5" /></>,
@@ -79,13 +80,13 @@ export default function AppHeader({ back, title, minimal = false, extra }: {
     return () => window.removeEventListener("keydown", onKey);
   }, [minimal]);
 
-  const waiting = (frame?.projects ?? []).filter((project) => project.status !== "archived").reduce((sum, project) => sum + (project.overview?.waiting ?? 0), 0);
   const work = [
-    { href: "/projects", label: t("Проекты"), active: path === "/projects" || path.startsWith("/projects/"), icon: "projects" as const, count: waiting },
+    { href: "/projects", label: t("Проекты"), active: path === "/projects" || path.startsWith("/projects/"), icon: "projects" as const },
+    { href: "/inbox", label: t("Входящие"), active: path.startsWith("/inbox"), icon: "inbox" as const, count: frame?.waiting ?? 0, dot: Boolean(frame?.unread) },
     { href: "/specialists", label: t("Специалисты"), active: path.startsWith("/specialists"), icon: "people" as const },
   ];
   const tools = [
-    { href: "/review", label: t("Сверка сайта"), active: path.startsWith("/review"), icon: "review" as const },
+    { href: "/review", label: t("Сверка сайта"), active: path.startsWith("/review"), icon: "review" as const, mobileHide: true },
   ];
   const settings = [
     { href: "/account", label: t("Аккаунт"), active: path === "/account" || (path.startsWith("/account/") && !path.startsWith("/account/plan") && !path.startsWith("/account/specialist")), icon: "account" as const, mobileHide: false },
@@ -93,11 +94,12 @@ export default function AppHeader({ back, title, minimal = false, extra }: {
     { href: "/account/plan", label: t("Тариф и лимиты"), active: path.startsWith("/account/plan"), icon: "plan" as const, mobileHide: true },
   ];
   const aiUsage = frame?.plan?.usage.find((item) => item.key === "aiPerMonth") ?? null;
-  const link = (item: { href: string; label: string; active: boolean; icon: keyof typeof icons; count?: number; mobileHide?: boolean }) => (
+  const link = (item: { href: string; label: string; active: boolean; icon: keyof typeof icons; count?: number; dot?: boolean; mobileHide?: boolean }) => (
     <a key={item.href} href={item.href} className={`${styles.navLink} ${item.mobileHide ? styles.navMobileHide : ""}`} aria-current={item.active ? "page" : undefined}>
       <Icon name={item.icon} />
       <span>{item.label}</span>
-      {!!item.count && <span className={styles.navCount} aria-label={t("ждут решения: {0}", [item.count])}>{item.count}</span>}
+      {item.count ? <span className={styles.navCount} aria-label={t("ждут решения: {0}", [item.count])}>{item.count}</span>
+        : item.dot ? <span className={styles.navDot} aria-label={t("есть новые обновления")} /> : null}
     </a>
   );
 
@@ -176,6 +178,7 @@ function CommandPalette({ projects, onClose }: { projects: ProjectRow[]; onClose
         href: project.projectType ? `/projects/${project.id}` : `/projects/${project.id}/analysis`,
       })),
       { group: t("Действия"), label: t("Новый проект"), hint: "", href: "/projects?new=1" },
+      { group: t("Разделы"), label: t("Входящие"), hint: "", href: "/inbox" },
       { group: t("Разделы"), label: t("Проекты"), hint: "", href: "/projects" },
       { group: t("Разделы"), label: t("Специалисты"), hint: "", href: "/specialists" },
       { group: t("Разделы"), label: t("Сверка сайта"), hint: "", href: "/review" },

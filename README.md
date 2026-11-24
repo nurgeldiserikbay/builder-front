@@ -18,6 +18,10 @@ Every signed-in screen uses one frame (`app-header.tsx`): a light sidebar with t
 
 Costs are shown before work starts: step 4 of the «Новый проект» wizard asks `GET /journey/estimate` for the AI requests and tenge of the chosen route from the chosen start, next to what is left on the plan this month; the stage screen has «Стоимость этапа» (`stage-cost.tsx`: AI estimate and spend, specialists' terms, due and paid for those who decide); the «Деньги» tab has «План и факт по этапам».
 
+### Stage requests
+
+An owner or manager can post a request from the stage screen («Найти исполнителя», `stage-requests.tsx`): what needs to be done, lead or consultant, how to pay, an optional budget and a term. Specialists see open requests at `/specialists/requests` (project type, stage and the owner's text — never the project's name or data) and respond with a price or an hourly rate with an hour limit, a term and a message; only a published catalog card can respond. The owner compares responses beside the stage and chooses one: that specialist joins the stage at once on the offered terms, the others are told. New responses appear in «Входящие»; the specialist's responses and their outcome are in «Моя работа».
+
 ### Step-by-step builder (`/projects`)
 
 After login the owner lands on `/projects`: a summary (projects in progress, decisions waiting for the owner, published, AI requests this month), a «Требует решения» list and a projects table (current stage and its status, stage progress, waiting decisions, people, last change) built from the `overview` the API returns with each project. «Новый проект» (or `/projects?new=1`, also reachable from ⌘K search) opens a three-step wizard (site type → project name → where to start: from scratch or from ready material) creates a project with its stage route. `/projects/[projectId]` shows progress, the next action, every stage with a plain-language status, and a result package that can be downloaded at any stage (`project.md`, `project.json`, and `site.html` after the build is accepted).

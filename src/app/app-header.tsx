@@ -186,6 +186,7 @@ function CommandPalette({ projects, onClose }: { projects: ProjectRow[]; onClose
       { group: t("Разделы"), label: t("Моя работа"), hint: "", href: "/work" },
       { group: t("Разделы"), label: t("Проекты"), hint: "", href: "/projects" },
       { group: t("Разделы"), label: t("Специалисты"), hint: "", href: "/specialists" },
+      { group: t("Разделы"), label: t("Заявки на этапы"), hint: "", href: "/specialists/requests" },
       { group: t("Разделы"), label: t("Сверка сайта"), hint: "", href: "/review" },
       { group: t("Разделы"), label: t("Тариф и лимиты"), hint: "", href: "/account/plan" },
       { group: t("Разделы"), label: t("Профиль специалиста"), hint: "", href: "/account/specialist" },

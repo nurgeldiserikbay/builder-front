@@ -51,6 +51,12 @@ export default function SpecialistsPage() {
       <main className={styles.container}>
         <p className={styles.kicker}>{t("Каталог")}</p>
         <h1 className={styles.h1}>{t("Специалисты")}</h1>
+        {!target && (
+          <nav className={styles.tabs} style={{ position: "static", padding: 0, background: "transparent", marginBottom: 14 }} aria-label={t("Разделы")}>
+            <a className={styles.tab} aria-selected="true" href="/specialists" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Каталог")}</a>
+            <a className={styles.tab} href="/specialists/requests" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>{t("Заявки на этапы")}</a>
+          </nav>
+        )}
         <p className={styles.muted} style={{ marginTop: 0 }}>{t("Люди, которые направляют ИИ на этапах и доводят результат. Оценки ставят владельцы проектов после того, как приняли работу.")}</p>
         {target && <p className={`${styles.notice} ${styles.info}`}>{t("Выберите специалиста — условия работы вы зададите на странице этапа перед отправкой приглашения.")}</p>}
         <form role="search" className={styles.row} style={{ margin: "0 0 12px", flexWrap: "nowrap" }} onSubmit={(event) => { event.preventDefault(); setQuery(draft); }}>

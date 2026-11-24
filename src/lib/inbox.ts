@@ -1,7 +1,7 @@
 // «Входящие» and the project log («Журнал»): how items and events read on screen.
 import { t } from "@/lib/i18n";
 
-export type InboxKind = "stage_review" | "stage_changes" | "change_notice" | "change_proposal" | "time_entries" | "dispute" | "mention";
+export type InboxKind = "stage_review" | "stage_changes" | "change_notice" | "change_proposal" | "time_entries" | "dispute" | "mention" | "request_responses";
 export type InboxItem = {
   id: string; kind: InboxKind; projectId: string; projectName: string; projectType: string | null; stageKey: string | null;
   since: string; dueAt: string | null; count: number; who: string | null; text: string | null;
@@ -28,6 +28,7 @@ export function inboxLine(item: InboxItem, stageTitle: StageTitle): { title: str
     case "time_entries": return { title: t("Часы специалиста на этапе «{0}» ждут подтверждения: {1}", [stage, item.count]), action: t("Подтвердить"), href: stageHref };
     case "dispute": return { title: t("Открыт спор по этапу «{0}»", [stage]), action: t("Ответить"), href: stageHref };
     case "mention": return { title: t("Вас упомянули в замечании к этапу «{0}»", [stage]), action: t("Ответить"), href: `${stageHref}#comments-title` };
+    case "request_responses": return { title: t("На заявку по этапу «{0}» откликнулись: {1}", [stage, item.count]), action: t("Сравнить"), href: `${stageHref}#requests-title` };
   }
 }
 
@@ -81,6 +82,10 @@ export function activityLine(event: ActivityEvent, stageTitle: (key: string | nu
     case "change_replied": return t("Ответ по изменению этапа «{0}»", [s]);
     case "change_proposed": return t("Предложено изменить этап «{0}»", [s]);
     case "change_notice_escalated": return t("Решение по изменению этапа «{0}» передано владельцу", [s]);
+    case "stage_request_created": return t("Размещена заявка на этап «{0}»", [s]);
+    case "stage_request_response": return t("Новый отклик на заявку по этапу «{0}»", [s]);
+    case "stage_request_filled": return t("По заявке на этап «{0}» выбран исполнитель", [s]);
+    case "stage_request_cancelled": return t("Заявка на этап «{0}» закрыта без выбора", [s]);
     case "specialist_invited": return t("Специалист приглашён на этап «{0}»", [s]);
     case "specialist_joined": return t("Специалист присоединился к этапу «{0}»", [s]);
     case "specialist_revoked": return t("Доступ специалиста к этапу «{0}» закрыт", [s]);

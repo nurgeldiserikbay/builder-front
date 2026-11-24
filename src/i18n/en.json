@@ -3753,5 +3753,15 @@
   "ИИ хотел изменить: {0}. Вы защитили эти части от ИИ, когда правили их сами, поэтому они остались как были — изменения могут быть неполными.": "The AI wanted to change: {0}. You protected these parts from the AI when you edited them yourself, so they stayed as they were — the changes may be incomplete.",
   "Новые замечания проверки после изменений:": "New review remarks after the changes:",
   "Новых замечаний проверки нет.": "No new review remarks.",
-  "Разрешить ИИ менять их и спросить снова": "Let the AI change them and ask again"
+  "Разрешить ИИ менять их и спросить снова": "Let the AI change them and ask again",
+  "Блокирующие замечания не дают принять этап; остальные можно пропустить, объяснив почему.": "Blocking remarks stop the stage from being accepted; others can be skipped with a reason.",
+  "Готово, когда:": "Done when:",
+  "Как принимают этап": "How the stage is accepted",
+  "Как проходит этап": "How the stage goes",
+  "Паспорт этапа: зачем он, как проходит и когда готов": "Stage passport: why it exists, how it goes and when it is done",
+  "Пример": "Example",
+  "Слова этапа": "Terms of the stage",
+  "Что нужно на входе": "What it needs",
+  "Что проверяет платформа": "What the platform checks",
+  " — принят": " — accepted"
 }

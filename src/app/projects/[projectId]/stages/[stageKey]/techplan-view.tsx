@@ -92,7 +92,7 @@ export function TechPlanView({ plan, outdated, notes, onNotes, disabled, onRefre
       {(plan.dataModel?.length ?? 0) > 0 && (
         <section id="review-target-datamodel" className={styles.card} aria-labelledby="datamodel-title">
           <p id="datamodel-title" className={styles.cardTitle}>{t("Схема данных")}</p>
-          <p className={styles.small} style={{ marginTop: 0 }}>{t("Что хранит система и как это связано. Связи — стрелки слева и строки «→» в карточке: сплошная линия — «много», пунктир — «один».")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{t("Что хранит система и как это связано. Каждая таблица — запись с полями; линия идёт от ссылки ↗ к записи, на которую она указывает. Вилка на конце — «много», двойная черта — «один».")}</p>
           <DataDiagram entities={plan.dataModel!} flagged={flaggedPlaces(flags)} />
           <FlagList flags={flags} keys={plan.dataModel!.map((entity) => entity.key)} />
           <ul className={styles.list}>{plan.dataModel!.map((entity) => <li key={entity.key} id={`review-target-${entity.key}`}><strong>{entity.name}.</strong> {entity.plain}</li>)}</ul>
@@ -101,7 +101,7 @@ export function TechPlanView({ plan, outdated, notes, onNotes, disabled, onRefre
       {(plan.sequences ?? []).map((sequence) => (
         <section key={sequence.title} className={styles.card} aria-label={sequence.title}>
           <p className={styles.cardTitle}>{t("Сценарий по шагам: {0}", [sequence.title])}</p>
-          <p className={styles.small} style={{ marginTop: 0 }}>{t("Кто кому что передаёт — сверху вниз. Схема широкая — листайте её вбок.")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{t("Кто кому что передаёт — сверху вниз. Схему можно увеличить, вписать в экран или открыть на весь экран.")}</p>
           <SequenceDiagram sequence={sequence} />
         </section>
       ))}

@@ -104,7 +104,7 @@ export type StageDetail = {
   inputs: Array<{ key: string; title: string; satisfied: boolean; versionNumber: number | null; content: unknown }>;
   /** For a specialist: accepted results the owner opened beyond the inputs, and their access settings. */
   extraReads?: Array<{ key: string; title: string; versionNumber: number; content: unknown }>;
-  access?: { hiddenParts: string[]; allowDownload: boolean; readDays: number } | null;
+  access?: { hiddenParts: string[]; allowDownload: boolean; readDays: number; editMode?: "both" | "ai_only" | "manual_only" } | null;
   current: { id: string; versionNumber: number; origin: string; note: string | null; createdAt: string; content: unknown } | null;
   issues: Array<{ key: string; message: string }>;
   review?: StageReview | null;
@@ -141,6 +141,11 @@ const messages: Record<string, string> = {
   CONSENT_REQUIRED: t("Мы обновили оферту и политику конфиденциальности. Примите новую редакцию, чтобы продолжить."),
   LEGAL_VERSION_OUTDATED: t("Документы успели обновиться. Обновите страницу и прочитайте новую редакцию."),
   INVALID_PASSWORD: t("Пароль не подошёл. Введите пароль от аккаунта."),
+  EDIT_MANUAL_FORBIDDEN: t("Владелец разрешил вам менять этот этап только через ИИ. Опишите изменение в «Изменить через ИИ»."),
+  EDIT_AI_FORBIDDEN: t("Владелец разрешил вам менять этот этап только вручную — ИИ на нём для вас выключен."),
+  ACCESS_EDIT_MODE_INVALID: t("Этот способ работы не подходит для этапа: сборку и пакет делает платформа, вручную их не правят."),
+  PROPOSAL_STALE: t("Пока ИИ готовил изменения, этап сохранили заново. Попросите ИИ ещё раз — он учтёт новую версию."),
+  PROPOSAL_CLOSED: t("Это предложение ИИ уже применено или отменено."),
   CONFIRM_EMAIL_MISMATCH: t("Почта не совпадает с почтой аккаунта. Введите её так, как она указана выше."),
   REAUTH_REQUIRED: t("Для удаления нужен свежий вход. Войдите через Google ещё раз — и сразу повторите удаление."),
   CONFIRMATION_REQUIRED: t("Отметьте, что понимаете последствия удаления."),

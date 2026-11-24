@@ -31,6 +31,8 @@ import { TimesheetPanel } from "./timesheet";
 import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
 import { ProcessEditor, blankProcess, type BusinessProcess } from "./process-editor";
+import ProcessAiChange from "./process-ai";
+import { applyFix, type AutoFix } from "./process-changes";
 import { SitemapEditor, blankSitemap } from "./sitemap-editor";
 import { CatalogEditor } from "./catalog-editor";
 import { FeaturesEditor, HandoffView, PrototypeView, ScreensEditor, blankFeatures, blankScreens, type AppFeatures, type AppScreens } from "./webapp-editors";
@@ -229,7 +231,11 @@ export default function StagePage() {
   const { stage, ai } = detail;
   const tone = statusTone[stage.status];
   const accepted = stage.status === "approved" || stage.status === "imported";
-  const aiUsable = ai.level !== "none" && ai.configured && stage.canEdit && stage.inputsReady;
+  // The owner decides how a lead changes the stage (only by hand, only through the AI, or both); the server checks it too.
+  const editMode = detail.access?.editMode ?? "both";
+  const canType = stage.canEdit && editMode !== "ai_only";
+  const canAi = stage.canEdit && editMode !== "manual_only";
+  const aiUsable = ai.level !== "none" && ai.configured && canAi && stage.inputsReady;
   const issueKeys = detail.issues.map((issue) => issue.key);
   const siteChecks = stage.artifactType === "site" || stage.artifactType === "handoff" ? ((detail.current?.content as { checks?: SiteCheck[] } | undefined)?.checks ?? []) : [];
   const quality = stage.artifactType === "site" ? ((detail.current?.content as { quality?: QualityReport | null } | undefined)?.quality ?? null) : null;
@@ -364,7 +370,7 @@ export default function StagePage() {
       )}
 
       {/* «Разговор»: form stages are filled by talking; on the process and the ТЗ the AI composes the stage from the talk */}
-      {((stage.artifactType === "brief" || stage.artifactType === "offer") && stage.fields || stage.artifactType === "process" || stage.artifactType === "features") && stage.canEdit && (
+      {((stage.artifactType === "brief" || stage.artifactType === "offer") && stage.fields || stage.artifactType === "process" || stage.artifactType === "features") && canAi && (
         <InterviewPanel projectId={projectId} stageKey={stageKey} fields={stage.fields ?? undefined} story={detail.options.brief?.intro ?? null} requestPrice={requestPrice}
           onApplied={async () => { setDirty(false); await load(); loadBudget(); }} />
       )}
@@ -374,13 +380,13 @@ export default function StagePage() {
         <section className={styles.card} aria-label={t("Как начать")}>
           <p className={styles.cardTitle}>{t("Как начнём тексты?")}</p>
           <div style={{ display: "grid", gap: 10 }}>
-            {ai.configured && stage.inputsReady && (
+            {ai.configured && canAi && stage.inputsReady && (
               <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{busy === "ai" ? t("ИИ пишет тексты…") : t("✨ Пусть ИИ напишет тексты")}</button>
             )}
             {!ai.configured && ai.templateAvailable && stage.inputsReady && (
               <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{t("Сделать черновик по шаблону")}</button>
             )}
-            <button className={styles.secondary} onClick={() => edit(blankContent)}>{t("Написать самому с чистого листа")}</button>
+            {canType && <button className={styles.secondary} onClick={() => edit(blankContent)}>{t("Написать самому с чистого листа")}</button>}
           </div>
           {!stage.inputsReady && <p className={styles.small}>{t("Черновик от ИИ или по шаблону станет доступен, когда будет принят паспорт проекта. Свои тексты можно вставить уже сейчас (ниже).")}</p>}
         </section>
@@ -391,13 +397,13 @@ export default function StagePage() {
         <section className={styles.card} aria-label={t("Как начать")}>
           <p className={styles.cardTitle}>{t("Как начнём описывать процесс?")}</p>
           <div style={{ display: "grid", gap: 10 }}>
-            {ai.configured && stage.inputsReady && (
+            {ai.configured && canAi && stage.inputsReady && (
               <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{busy === "ai" ? t("ИИ описывает процесс…") : t("✨ Пусть ИИ опишет процесс")}</button>
             )}
             {!ai.configured && ai.templateAvailable && stage.inputsReady && (
               <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{t("Взять типичный процесс")}</button>
             )}
-            <button className={styles.secondary} onClick={() => edit(blankProcess)}>{t("Описать самому с чистого листа")}</button>
+            {canType && <button className={styles.secondary} onClick={() => edit(blankProcess)}>{t("Описать самому с чистого листа")}</button>}
           </div>
           {!stage.inputsReady && <p className={styles.small}>{t("Черновик от ИИ станет доступен, когда будет принят паспорт проекта. Описать процесс самому можно уже сейчас.")}</p>}
         </section>
@@ -407,11 +413,11 @@ export default function StagePage() {
         <section className={styles.card} aria-label={t("Как начать")}>
           <p className={styles.cardTitle}>{t("Как начнём каталог?")}</p>
           <p className={styles.small} style={{ marginTop: 0 }}>{t("Если список товаров уже есть, вставьте его ниже, в «У меня уже есть готовое». Или заполните каталог по одному товару.")}</p>
-          <button className={styles.button} onClick={() => edit(detail.options.catalog!.template)}>{t("Заполнить вручную")}</button>
+          {canType && <button className={styles.button} onClick={() => edit(detail.options.catalog!.template)}>{t("Заполнить вручную")}</button>}
         </section>
       )}
       {stage.artifactType === "catalog" && stage.status !== "locked" && draft !== null && detail.options.catalog && (
-        <CatalogEditor projectId={projectId} value={draft as Catalog} onChange={edit} options={detail.options.catalog} disabled={!stage.canEdit}
+        <CatalogEditor projectId={projectId} value={draft as Catalog} onChange={edit} options={detail.options.catalog} disabled={!canType}
           issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
       )}
       {/* Web application: functions and roles, screens */}
@@ -419,24 +425,24 @@ export default function StagePage() {
         <section className={styles.card} aria-label={t("Как начать")}>
           <p className={styles.cardTitle}>{stage.artifactType === "features" ? t("Как начнём функции?") : t("Как начнём экраны?")}</p>
           <div style={{ display: "grid", gap: 10 }}>
-            {ai.configured && stage.inputsReady && (
+            {ai.configured && canAi && stage.inputsReady && (
               <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{busy === "ai" ? t("ИИ думает…") : stage.artifactType === "features" ? t("✨ Пусть ИИ предложит роли и функции") : t("✨ Пусть ИИ предложит экраны")}</button>
             )}
             {!ai.configured && ai.templateAvailable && stage.inputsReady && (
               <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{stage.artifactType === "features" ? t("Взять из бизнес-процесса") : t("Сделать экраны по функциям")}</button>
             )}
-            <button className={styles.secondary} onClick={() => edit(stage.artifactType === "features" ? blankFeatures() : blankScreens())}>{t("Описать самому с чистого листа")}</button>
+            {canType && <button className={styles.secondary} onClick={() => edit(stage.artifactType === "features" ? blankFeatures() : blankScreens())}>{t("Описать самому с чистого листа")}</button>}
           </div>
           {!stage.inputsReady && <p className={styles.small}>{t("Черновик станет доступен, когда будут приняты предыдущие этапы.")}</p>}
         </section>
       )}
       {stage.artifactType === "features" && stage.status !== "locked" && draft !== null && (
-        <FeaturesEditor value={draft as AppFeatures} onChange={edit} disabled={!stage.canEdit} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} spec={detail.options.features}
+        <FeaturesEditor value={draft as AppFeatures} onChange={edit} disabled={!canType} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} spec={detail.options.features}
           dataOptions={[{ key: "user", name: t("Пользователь") }, ...((detail.inputs.find((input) => input.key === "process")?.content as BusinessProcess | null)?.data ?? []).filter((entity) => entity.key !== "user").map((entity) => ({ key: entity.key, name: entity.name }))]} />
       )}
       {stage.artifactType === "screens" && stage.status !== "locked" && draft !== null && (
         <ScreensEditor value={draft as AppScreens} onChange={edit} features={(detail.inputs.find((input) => input.key === "features")?.content as AppFeatures | null) ?? null}
-          disabled={!stage.canEdit} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
+          disabled={!canType} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
       )}
       {stage.artifactType === "screens" && detail.current && !dirty && <PrototypeView projectId={projectId} version={detail.current.versionNumber} />}
       {stage.artifactType === "handoff" && stage.status !== "locked" && (
@@ -452,23 +458,23 @@ export default function StagePage() {
         <section className={styles.card} aria-label={t("Как начать")}>
           <p className={styles.cardTitle}>{t("Как начнём карту сайта?")}</p>
           <div style={{ display: "grid", gap: 10 }}>
-            {ai.configured && stage.inputsReady && (
+            {ai.configured && canAi && stage.inputsReady && (
               <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{busy === "ai" ? t("ИИ подбирает страницы…") : t("✨ Пусть ИИ предложит страницы")}</button>
             )}
-            {detail.options.sitemap?.template && (
+            {detail.options.sitemap?.template && canType && (
               <button className={ai.configured ? styles.secondary : styles.button} onClick={() => edit(detail.options.sitemap!.template)}>{t("Взять типовой набор: главная, услуги, о нас, вопросы, контакты")}</button>
             )}
-            <button className={styles.secondary} onClick={() => edit(blankSitemap())}>{t("Собрать самому, начиная с главной")}</button>
+            {canType && <button className={styles.secondary} onClick={() => edit(blankSitemap())}>{t("Собрать самому, начиная с главной")}</button>}
           </div>
           {!stage.inputsReady && <p className={styles.small}>{t("Предложение от ИИ станет доступно, когда будут приняты паспорт проекта и услуги.")}</p>}
         </section>
       )}
       {stage.artifactType === "sitemap" && stage.status !== "locked" && draft !== null && detail.options.sitemap && (
-        <SitemapEditor value={draft as Sitemap} onChange={edit} options={detail.options.sitemap} sectionTypes={detail.options.sectionTypes} disabled={!stage.canEdit}
+        <SitemapEditor value={draft as Sitemap} onChange={edit} options={detail.options.sitemap} sectionTypes={detail.options.sectionTypes} disabled={!canType}
           issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
       )}
       {stage.artifactType === "process" && stage.status !== "locked" && draft !== null && detail.options.process && (
-        <ProcessEditor value={draft as BusinessProcess} onChange={edit} options={detail.options.process} disabled={!stage.canEdit}
+        <ProcessEditor value={draft as BusinessProcess} onChange={edit} options={detail.options.process} disabled={!canType}
           issues={dirty ? [] : detail.issues.map((issue) => issue.message)} flags={reviewFlags} />
       )}
 
@@ -476,31 +482,31 @@ export default function StagePage() {
       {stage.status !== "locked" && stage.fields && (stage.artifactType === "brief" || stage.artifactType === "offer") && draft !== null && (
         <section className={styles.card}>
           <p className={styles.cardTitle}>{stage.artifactType === "brief" ? t("Паспорт проекта") : t("Услуги")}</p>
-          <FieldsForm fields={stage.fields} value={draft as Record<string, unknown>} onChange={edit} issueKeys={issueKeys} disabled={!stage.canEdit}
-            lockedKeys={stage.lockedKeys} onToggleLock={toggleLock} canLock={stage.canEdit && Boolean(detail.current)} />
+          <FieldsForm fields={stage.fields} value={draft as Record<string, unknown>} onChange={edit} issueKeys={issueKeys} disabled={!canType}
+            lockedKeys={stage.lockedKeys} onToggleLock={toggleLock} canLock={canType && Boolean(detail.current)} />
         </section>
       )}
       {stage.artifactType === "content" && draft !== null && (
-        <ContentEditor projectId={projectId} content={draft as Content} onChange={edit} sectionTypes={detail.options.sectionTypes} disabled={!stage.canEdit} pages={detail.options.pages ?? null}
+        <ContentEditor projectId={projectId} content={draft as Content} onChange={edit} sectionTypes={detail.options.sectionTypes} disabled={!canType} pages={detail.options.pages ?? null}
           aiAvailable={aiUsable && Boolean(detail.current)} issueKeys={issueKeys}
           onAskAi={(targetKey, text) => run("ai", () => askAi({ instruction: text, targetKey }))}
-          lockedKeys={stage.lockedKeys} onToggleLock={toggleLock} canLock={stage.canEdit && Boolean(detail.current)} />
+          lockedKeys={stage.lockedKeys} onToggleLock={toggleLock} canLock={canType && Boolean(detail.current)} />
       )}
       {stage.artifactType === "design" && stage.status !== "locked" && draft !== null && (
         <section className={styles.card}>
-          <DesignPicker design={draft as Design} onChange={edit} options={detail.options} disabled={!stage.canEdit} />
+          <DesignPicker design={draft as Design} onChange={edit} options={detail.options} disabled={!canType} />
         </section>
       )}
 
       {stage.artifactType === "schedule" && stage.status !== "locked" && draft !== null && detail.options.schedule && (
-        <ScheduleEditor value={draft as Schedule} onChange={edit} options={detail.options.schedule} disabled={!stage.canEdit}
+        <ScheduleEditor value={draft as Schedule} onChange={edit} options={detail.options.schedule} disabled={!canType}
           offerServices={((detail.inputs.find((input) => input.key === "offer")?.content as Offer | null)?.services ?? []).map((service) => service.name)}
           issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
       )}
 
       {stage.artifactType === "techplan" && stage.status !== "locked" && detail.options.techplan && (
         <TechPlanView plan={(detail.options.techplan.outdated || !detail.current ? detail.options.techplan.preview : detail.current.content as TechPlan) ?? null}
-          outdated={detail.options.techplan.outdated} notes={((draft as { ownerNotes?: string | null } | null)?.ownerNotes) ?? ""} disabled={!stage.canEdit}
+          outdated={detail.options.techplan.outdated} notes={((draft as { ownerNotes?: string | null } | null)?.ownerNotes) ?? ""} disabled={!canType}
           onNotes={(value) => edit({ ownerNotes: value })} busy={busy === "plan"}
           onRefresh={stage.canEdit ? () => run("plan", async () => { await saveDraft(); setMessage(t("Архитектура обновлена по принятым этапам. Проверьте и примите её.")); }) : null}  flags={reviewFlags} />
       )}
@@ -596,14 +602,25 @@ export default function StagePage() {
       {/* Quality review: findings, AI fix, own remark, override with a reason */}
       {detail.current && detail.review && !dirty && stage.status !== "locked" && (
         <ReviewPanel projectId={projectId} stageKey={stageKey} versionId={detail.current.id} review={detail.review}
-          canFix={stage.canEdit && stage.inputsReady && ai.level !== "none"} aiConfigured={ai.configured}
+          canFix={canAi && stage.inputsReady && ai.level !== "none"} aiConfigured={ai.configured}
           canOverride={Boolean(stage.canOverrideReview) && !accepted}
+          onAutoFix={stage.artifactType === "process" && canType ? async (fix: AutoFix) => {
+            // The platform makes the change itself and saves it; the server checks the new version again.
+            const content = applyFix(detail.current!.content as BusinessProcess, fix);
+            const saved = await api<{ versionNumber: number }>(`/projects/${projectId}/stages/${stageKey}/draft`, { method: "PUT", body: JSON.stringify({ content, baseVersionId: detail.current!.id }) });
+            await load(); setPreview(null);
+            setMessage(t("Исправлено — версия {0}. Проверка запущена заново.", [saved.versionNumber]));
+          } : undefined}
           onChanged={async (text) => { await load(); setPreview(null); setMessage(text); }} />
       )}
       {detail.review && dirty && <p className={styles.small}>{t("Проверка качества обновится после сохранения.")}</p>}
 
       {/* AI instruction panel */}
-      {ai.level !== "none" && stage.artifactType !== "brief" && detail.current && stage.canEdit && (
+      {stage.artifactType === "process" && ai.configured && detail.current && canAi && stage.inputsReady && !dirty && (
+        <ProcessAiChange projectId={projectId} stageKey={stageKey} base={detail.current.content as BusinessProcess} baseFindings={detail.review?.findings.map((finding) => finding.id) ?? []} requestPrice={requestPrice}
+          onApplied={async (text) => { await load(); setMessage(text); loadBudget(); }} />
+      )}
+      {ai.level !== "none" && stage.artifactType !== "brief" && !(stage.artifactType === "process" && ai.configured) && detail.current && canAi && (
         <section className={styles.card} aria-label={t("Инструкция для ИИ")}>
           <p className={styles.cardTitle}>{t("✨ Попросить ИИ")}</p>
           {!ai.configured && <p className={styles.small} style={{ marginTop: 0 }}>{t("ИИ пока не подключён к платформе — правьте вручную.")}</p>}
@@ -645,7 +662,7 @@ export default function StagePage() {
         aiReady={ai.configured && stage.inputsReady} targets={sectionTargets} onChanged={load} onError={setError} onMessage={setMessage} />
 
 
-      {stage.canImport && stage.importHint && (
+      {stage.canImport && canType && stage.importHint && (
         <details className={`${styles.card} ${styles.details}`} open={!detail.current && stage.artifactType !== "brief"}
           onToggle={(event) => { if (stage.artifactType === "features" && (event.target as HTMLDetailsElement).open && importDocs === null) void loadImportDocs(); }}>
           <summary>{stage.artifactType === "features" ? t("У меня уже есть ТЗ") : t("У меня уже есть готовое")}</summary>
@@ -691,7 +708,7 @@ export default function StagePage() {
             <ul className={styles.list} style={{ margin: 0 }}>{importReport.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
           </>}
           <div className={styles.row} style={{ marginTop: 12 }}>
-            {ai.configured && importReport.issues.length > 0 && stage.canEdit && (
+            {ai.configured && importReport.issues.length > 0 && canAi && (
               <button type="button" className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", async () => {
                 await askAi({ instruction: t("Дополни ТЗ: допиши недостающие условия «готово», распредели функции по ролям, проверь приоритеты первой версии. Ничего не выдумывай сверх того, что уже есть в ТЗ, цели и процессе; чего не хватает — добавь в открытые вопросы."), saveAs: "one_off" });
                 setImportReport(null);
@@ -720,6 +737,11 @@ export default function StagePage() {
           </ul>
           <p className={styles.small} style={{ margin: 0 }}>{t("Только принятая версия, для чтения. ИИ этапа тоже видит эти материалы.")}</p>
         </details>
+      )}
+      {detail.access && editMode !== "both" && stage.canEdit && (
+        <p className={`${styles.notice} ${styles.info}`}>{editMode === "ai_only"
+          ? t("Владелец выбрал для вас работу через ИИ: давайте задания ИИ и принимайте его предложения. Править текст и схемы вручную нельзя.")
+          : t("Владелец выбрал для вас работу вручную: ИИ на этом этапе для вас выключен.")}</p>
       )}
       {detail.access && detail.access.hiddenParts.length > 0 && (
         <p className={`${styles.notice} ${styles.info}`}>{t("Владелец скрыл часть данных — вместо них вы и ИИ видите «скрыто владельцем».")}</p>
@@ -786,7 +808,7 @@ export default function StagePage() {
                 <div className={styles.small}>{originLabels[version.origin] ?? version.origin} · {new Date(version.createdAt).toLocaleString(dateLocale())}</div>
                 {version.provenance?.instruction && <div className={styles.small}>{t("Просьба: «")}{version.provenance.instruction}»{version.provenance.targetKey ? t(" (один блок)") : ""}</div>}
                 {version.provenance && version.provenance.rulesApplied > 0 && <div className={styles.small}>{t("Учтено правил:")}{" "}{version.provenance.rulesApplied}</div>}
-                {stage.canEdit && detail.current?.id !== version.id && stage.artifactType !== "site" && (
+                {canType && detail.current?.id !== version.id && stage.artifactType !== "site" && (
                   <button className={styles.ghost} style={{ minHeight: 40, marginTop: 6 }} disabled={Boolean(busy)}
                     onClick={() => run("restore", async () => { await api(`/projects/${projectId}/stages/${stageKey}/versions/${version.id}/restore`, { method: "POST" }); await load(); setMessage(t("Вернули версию {0} — она сохранена как новая.", [version.versionNumber])); })}>{t("Вернуть эту версию")}</button>
                 )}

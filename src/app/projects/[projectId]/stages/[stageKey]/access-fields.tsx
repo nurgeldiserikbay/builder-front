@@ -3,12 +3,21 @@
 import { t } from "@/lib/i18n";
 import styles from "../../../journey.module.css";
 
-export type Access = { extraReadStages: string[]; hiddenParts: string[]; allowDownload: boolean; readDays: number };
+export type EditMode = "both" | "ai_only" | "manual_only";
+export type Access = { extraReadStages: string[]; hiddenParts: string[]; allowDownload: boolean; readDays: number; editMode?: EditMode };
 export type AccessOptions = {
   inputs: Array<{ key: string; title: string }>;
   extraStages: Array<{ key: string; title: string }>;
   hideable: Array<{ key: string; title: string; stageKey: string }>;
   readDaysMax: number;
+  editModes?: EditMode[];
+};
+
+/** How the lead changes the stage; the server checks it on every change (access-scope.ts editAllowed). */
+export const editModeText: Record<EditMode, { title: string; text: string }> = {
+  both: { title: t("Вручную и через ИИ"), text: t("Специалист правит этап сам и даёт задания ИИ.") },
+  ai_only: { title: t("Только через ИИ"), text: t("Специалист даёт задания ИИ и принимает его предложения, но не правит текст и схемы сам.") },
+  manual_only: { title: t("Только вручную"), text: t("Специалист правит этап сам, ИИ на этапе для него выключен — расходы на ИИ не растут.") },
 };
 
 const READ_DAYS = [0, 3, 7, 14, 30];
@@ -24,6 +33,8 @@ export function accessLines(access: Access, options: AccessOptions) {
     if (item) cannot.push(t("Видеть: {0} — вместо них «{1}»", [t(item.title).toLowerCase(), t("скрыто владельцем")]));
   }
   (access.allowDownload ? can : cannot).push(t("Скачивать файлы этапа, загруженные другими"));
+  if (access.editMode === "ai_only") { can.push(t("Менять этап через ИИ: давать задания и принимать предложения")); cannot.push(t("Править этап вручную")); }
+  if (access.editMode === "manual_only") { can.push(t("Править этап вручную")); cannot.push(t("Запускать ИИ на этапе")); }
   const after = access.readDays === 0 ? t("Когда этап примут, доступ закроется сразу.") : t("Когда этап примут, менять его будет нельзя; смотреть можно ещё {0} дн.", [access.readDays]);
   return { can, cannot, after };
 }
@@ -62,6 +73,16 @@ export default function AccessFields({ value, options, onChange, disabled }: { v
             <span>{t(item.title)}</span>
           </label>
         ))}
+      </>}
+      {options.editModes && options.editModes.length > 1 && <>
+        <p className={styles.label}>{t("Как специалист меняет этап")}</p>
+        {options.editModes.map((mode) => (
+          <label key={mode} className={styles.checkRow}>
+            <input type="radio" name="edit-mode" checked={(value.editMode ?? "both") === mode} onChange={() => onChange({ ...value, editMode: mode })} />
+            <span><b>{editModeText[mode].title}</b><br /><small className={styles.muted}>{editModeText[mode].text}</small></span>
+          </label>
+        ))}
+        <p className={styles.small} style={{ marginTop: 4 }}>{t("Комментарии и предложения изменений доступны в любом режиме. Для консультанта не важно — он этап не меняет.")}</p>
       </>}
       <p className={styles.label}>{t("Файлы этапа")}</p>
       <label className={styles.checkRow}>

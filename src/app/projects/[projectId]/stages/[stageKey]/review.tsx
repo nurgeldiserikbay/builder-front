@@ -9,12 +9,15 @@ import { api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import styles from "../../../journey.module.css";
 import { showReviewTarget } from "./diagrams";
+import type { AutoFix } from "./process-changes";
 
 export type ReviewFinding = {
   id: string; code: string; severity: "blocking" | "important" | "minor"; category: "logic" | "security" | "clarity";
   target: string | null; where: string; message: string; fix: string; overridden: boolean;
   /** A decision about the business: the owner answers it, the AI does not. */
   ownerDecides?: boolean;
+  /** A change the platform can make at once («Исправить»), without the AI. */
+  autoFix?: AutoFix;
 };
 export type StageReview = {
   rulesVersion: string; score: number; blocking: number; findings: ReviewFinding[]; uncoveredBlocking: string[];
@@ -26,9 +29,11 @@ const severityText = () => ({ blocking: t("Блокирует переход"), 
 const severityTone = { blocking: "attention", important: "active", minor: "closed" } as const;
 const categoryText = () => ({ logic: t("логика"), security: t("безопасность"), clarity: t("понятность") });
 
-export default function ReviewPanel({ projectId, stageKey, versionId, review, canFix, aiConfigured, canOverride, onChanged }: {
+export default function ReviewPanel({ projectId, stageKey, versionId, review, canFix, aiConfigured, canOverride, onChanged, onAutoFix }: {
   projectId: string; stageKey: string; versionId: string; review: StageReview;
   canFix: boolean; aiConfigured: boolean; canOverride: boolean; onChanged: (message: string) => Promise<void> | void;
+  /** Applies a one-tap fix and saves it; absent when the person cannot edit by hand. */
+  onAutoFix?: (fix: AutoFix) => Promise<void>;
 }) {
   const [chosen, setChosen] = useState<string[]>([]);
   const [reason, setReason] = useState("");
@@ -70,7 +75,7 @@ export default function ReviewPanel({ projectId, stageKey, versionId, review, ca
     field?.focus();
   };
 
-  type Item = { id: string; severity: ReviewFinding["severity"]; category: ReviewFinding["category"]; target?: string | null; where: string; message: string; fix: string; overridden?: boolean; ownerDecides?: boolean };
+  type Item = { id: string; severity: ReviewFinding["severity"]; category: ReviewFinding["category"]; target?: string | null; where: string; message: string; fix: string; overridden?: boolean; ownerDecides?: boolean; autoFix?: AutoFix };
   const renderItem = (finding: Item, advice: boolean) => (
             <li key={finding.id} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "10px 12px" }}>
               <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: pickable && !finding.overridden && !finding.ownerDecides ? "pointer" : "default" }}>
@@ -87,6 +92,12 @@ export default function ReviewPanel({ projectId, stageKey, versionId, review, ca
                   </span>
                   <span style={{ display: "block", marginTop: 6 }}>{finding.message}</span>
                   <span className={styles.small} style={{ display: "block", margin: "4px 0 0" }}><b>{t("Что сделать.")}</b> {finding.fix}</span>
+                  {finding.autoFix && onAutoFix && !finding.overridden && (
+                    <button type="button" className={styles.secondary} style={{ minHeight: 36, padding: "4px 12px", marginTop: 8, marginRight: 8 }} disabled={Boolean(busy)}
+                      onClick={(event) => { event.preventDefault(); void act(`auto-${finding.id}`, () => onAutoFix(finding.autoFix!)); }}>
+                      {busy === `auto-${finding.id}` ? t("Исправляем…") : t("Исправить")}
+                    </button>
+                  )}
                   {finding.target && shown.includes(finding.target) && (
                     <button type="button" className={styles.ghost} style={{ minHeight: 36, padding: "2px 0", marginTop: 4 }} onClick={(event) => { event.preventDefault(); showReviewTarget(finding.target!); }}>{finding.ownerDecides ? t("Ответить на вопрос") : t("Показать на схеме")}</button>
                   )}

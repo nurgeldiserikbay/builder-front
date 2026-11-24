@@ -20,11 +20,27 @@ export const blankProcess: BusinessProcess = { actors: [{ key: "client", name: "
 export function ProcessEditor({ value, onChange, options, disabled, issues, flags }: { value: BusinessProcess; onChange: (next: BusinessProcess) => void; options: ProcessOptions; disabled: boolean; issues: string[]; flags?: ReviewFlags }) {
   const [scenarioIndex, setScenarioIndex] = useState(0);
   const [openEntity, setOpenEntity] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  // A block tapped on a diagram: open its place in the editor, scroll there and put the cursor in it.
+  const pick = (key: string) => {
+    const index = value.scenarios.findIndex((item) => item.steps.some((step) => step.key === key));
+    if (index >= 0) setScenarioIndex(index);
+    if (value.data.some((entity) => entity.key === key)) setOpenEntity(key);
+    setPicked(key);
+    window.setTimeout(() => {
+      const place = document.getElementById(`edit-${key}`);
+      place?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const field = document.getElementById(`en-name-${key}`) ?? place?.querySelector("input, select, textarea") ?? null;
+      (field as HTMLElement | null)?.focus({ preventScroll: true });
+    }, 60);
+    window.setTimeout(() => setPicked((current) => (current === key ? null : current)), 2400);
+  };
+  const pickedStyle = (key: string) => (picked === key ? { outline: "2px solid var(--brand, #2445d4)", outlineOffset: 3, borderRadius: 8 } : {});
   // «Show» in the quality review: switch to the scenario or open the record it is about.
   useEffect(() => {
     const show = (event: Event) => {
       const target = (event as CustomEvent<string>).detail;
-      const index = value.scenarios.findIndex((item) => item.key === target);
+      const index = value.scenarios.findIndex((item) => item.key === target || item.steps.some((step) => step.key === target));
       if (index >= 0) setScenarioIndex(index);
       if (value.data.some((entity) => entity.key === target)) setOpenEntity(target);
     };
@@ -56,7 +72,7 @@ export function ProcessEditor({ value, onChange, options, disabled, issues, flag
 
       <section className={styles.card} aria-labelledby="process-diagram">
         <p id="process-diagram" className={styles.cardTitle}>{t("Схема процесса по ролям")}</p>
-        <p className={styles.small} style={{ marginTop: 0 }}>{t("Каждая колонка — участник, каждый блок — шаг. Стрелки показывают, кто за кем действует. Схема широкая — листайте её вбок.")}</p>
+        <p className={styles.small} style={{ marginTop: 0 }}>{t("Каждая колонка — участник, каждый блок — шаг. Стрелки показывают, кто за кем действует. Схема широкая — листайте её вбок.")}{" "}{disabled ? t("Нажмите на блок, чтобы открыть его подробности.") : t("Нажмите на блок, чтобы изменить его.")}</p>
         {value.scenarios.length > 1 && (
           <div className={styles.row} style={{ flexWrap: "wrap", gap: 6 }} role="tablist">
             {value.scenarios.map((item, i) => (
@@ -68,7 +84,7 @@ export function ProcessEditor({ value, onChange, options, disabled, issues, flag
           <>
             {scenario.goal && <p className={styles.small} style={{ margin: "6px 0 0" }}>{scenario.goal}</p>}
             <div id={value.scenarios.length > 1 ? undefined : `review-target-${scenario.key}`}>
-              <SwimlaneDiagram actors={value.actors} scenario={scenario} flagged={flaggedKeys} />
+              <SwimlaneDiagram actors={value.actors} scenario={scenario} flagged={flaggedKeys} onPick={pick} />
             </div>
             <KindLegend />
             <FlagList flags={flags} keys={[scenario.key, ...value.actors.filter((actor) => scenario.steps.some((step) => step.actor === actor.key)).map((actor) => actor.key)]} />
@@ -80,13 +96,15 @@ export function ProcessEditor({ value, onChange, options, disabled, issues, flag
         <p id="process-actors" className={styles.cardTitle}>{t("Участники")}</p>
         <p className={styles.small} style={{ marginTop: 0 }}>{t("Кто участвует в процессе: клиент, вы, сотрудники, сам сайт и внешние сервисы.")}</p>
         {value.actors.map((actor, i) => (
-          <div key={actor.key} id={`review-target-${actor.key}`} className={styles.row} style={{ gap: 6, marginBottom: 6, ...(flaggedKeys.has(actor.key) ? { outline: "2px solid #b3261e", outlineOffset: 3, borderRadius: 8 } : {}) }}>
+          <div key={actor.key} id={`review-target-${actor.key}`} className={styles.row} style={{ gap: 6, marginBottom: 6, ...(flaggedKeys.has(actor.key) ? { outline: "2px solid #b3261e", outlineOffset: 3, borderRadius: 8 } : {}), ...pickedStyle(actor.key) }}>
+            <span id={`edit-${actor.key}`} style={{ display: "contents" }}>
             <input className={styles.input} style={{ flex: 2 }} aria-label={t("Участник {0}", [i + 1])} value={actor.name} maxLength={40} disabled={disabled} placeholder={t("Например: Администратор")}
               onChange={(event) => set({ actors: value.actors.map((item, k) => (k === i ? { ...item, name: event.target.value } : item)) })} />
             <select className={styles.input} style={{ flex: 1.4 }} aria-label={t("Кто это")} value={actor.kind} disabled={disabled}
               onChange={(event) => set({ actors: value.actors.map((item, k) => (k === i ? { ...item, kind: event.target.value as ActorKind } : item)) })}>
               {(Object.keys(options.actorKinds) as ActorKind[]).map((kind) => <option key={kind} value={kind}>{options.actorKinds[kind]}</option>)}
             </select>
+            </span>
             {!disabled && value.actors.length > 1 && (
               <button className={styles.ghost} aria-label={t("Убрать участника {0}", [actor.name || i + 1])} style={{ minHeight: 40, padding: "4px 10px" }}
                 onClick={() => {
@@ -111,7 +129,8 @@ export function ProcessEditor({ value, onChange, options, disabled, issues, flag
             <input id={`sc-goal-${item.key}`} className={styles.input} value={item.goal} maxLength={200} disabled={disabled} onChange={(event) => setScenario(index, { goal: event.target.value })} />
             <ol style={{ paddingLeft: 18, margin: "10px 0" }}>
               {item.steps.map((step, s) => (
-                <li key={step.key} style={{ marginBottom: 10 }}>
+                <li key={step.key} id={`edit-${step.key}`} style={{ marginBottom: 10, ...(flaggedKeys.has(step.key) ? { outline: "2px solid #b3261e", outlineOffset: 3, borderRadius: 8 } : {}), ...pickedStyle(step.key) }}>
+                  <span id={`review-target-${step.key}`} aria-hidden="true" />
                   <div className={styles.row} style={{ gap: 6 }}>
                     <select className={styles.input} style={{ flex: 1 }} aria-label={t("Кто делает шаг {0}", [s + 1])} value={step.actor} disabled={disabled}
                       onChange={(event) => setScenario(index, { steps: item.steps.map((x, k) => (k === s ? { ...x, actor: event.target.value } : x)) })}>
@@ -164,12 +183,12 @@ export function ProcessEditor({ value, onChange, options, disabled, issues, flag
       <section className={styles.card} aria-labelledby="process-data">
         <p id="process-data" className={styles.cardTitle}>{t("Схема данных")}</p>
         <p className={styles.small} style={{ marginTop: 0 }}>{t("Какую информацию вы храните и как она связана: например, у клиента много записей, у записи одна услуга. Сплошная линия — «много», пунктир — «один».")}</p>
-        <DataDiagram entities={value.data} flagged={flaggedKeys} />
+        <DataDiagram entities={value.data} flagged={flaggedKeys} onPick={pick} />
         <FlagList flags={flags} keys={value.data.map((entity) => entity.key)} />
         {value.data.map((entity, i) => (
-          <details key={entity.key} id={`review-target-${entity.key}`} open={openEntity === entity.key || undefined} style={{ borderTop: "1px solid var(--line)", padding: "8px 0" }}>
+          <details key={entity.key} id={`review-target-${entity.key}`} open={openEntity === entity.key || undefined} style={{ borderTop: "1px solid var(--line)", padding: "8px 0", ...pickedStyle(entity.key) }}>
             <summary style={{ fontWeight: 700, color: flaggedKeys.has(entity.key) ? "#b3261e" : undefined }}>{flaggedKeys.has(entity.key) ? "! " : ""}{entity.name || t("Без названия")}</summary>
-            <label className={styles.label} htmlFor={`en-name-${entity.key}`}>{t("Название")}</label>
+            <label id={`edit-${entity.key}`} className={styles.label} htmlFor={`en-name-${entity.key}`}>{t("Название")}</label>
             <input id={`en-name-${entity.key}`} className={styles.input} value={entity.name} maxLength={40} disabled={disabled} placeholder={t("Например: Заказ")}
               onChange={(event) => set({ data: value.data.map((x, k) => (k === i ? { ...x, name: event.target.value } : x)) })} />
             <label className={styles.label} htmlFor={`en-fields-${entity.key}`}>{t("Что о нём храните — через запятую")}</label>

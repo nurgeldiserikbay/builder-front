@@ -10,21 +10,22 @@ type Me = { id: string; email: string; name: string | null };
 type Workspace = { id: string; name: string; role: string };
 type PlanOverview = { plan: { title: string }; usage: Array<{ key: string; title: string; used: number; limit: number }> };
 type ProjectRow = { id: string; name: string; projectType: string | null; startMode?: string; status: string; overview?: { waiting: number } };
-type Frame = { me: Me | null; workspace: Workspace | null; plan: PlanOverview | null; projects: ProjectRow[]; waiting: number; unread: number };
+type Frame = { me: Me | null; workspace: Workspace | null; plan: PlanOverview | null; projects: ProjectRow[]; waiting: number; unread: number; specialist: boolean };
 
 /** The frame data is the same on every screen: asked once per page load, shared by every header on it. */
 let frameRequest: Promise<Frame> | null = null;
 function loadFrame(): Promise<Frame> {
   frameRequest ??= (async () => {
-    const [me, workspaces, plan, inbox] = await Promise.all([
+    const [me, workspaces, plan, inbox, assignments] = await Promise.all([
       api<Me>("/me").catch(() => null),
       api<Workspace[]>("/workspaces").catch(() => [] as Workspace[]),
       api<PlanOverview>("/me/plan").catch(() => null),
       api<{ waiting: unknown[]; unreadUpdates: number }>("/me/inbox").catch(() => null),
+      api<unknown[]>("/me/assignments").catch(() => [] as unknown[]),
     ]);
     const workspace = workspaces[0] ?? null;
     const projects = workspace ? await api<ProjectRow[]>(`/projects?workspaceId=${encodeURIComponent(workspace.id)}&limit=100`).catch(() => [] as ProjectRow[]) : [];
-    return { me, workspace, plan, projects: projects.filter((project) => project.projectType || project.startMode === "analysis_only"), waiting: inbox?.waiting.length ?? 0, unread: inbox?.unreadUpdates ?? 0 };
+    return { me, workspace, plan, projects: projects.filter((project) => project.projectType || project.startMode === "analysis_only"), waiting: inbox?.waiting.length ?? 0, unread: inbox?.unreadUpdates ?? 0, specialist: assignments.length > 0 };
   })();
   return frameRequest;
 }
@@ -37,6 +38,7 @@ const icons = {
   account: <><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></>,
   plan: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18" /></>,
   specialist: <><path d="M12 3 4 7v5c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V7z" /><path d="m9 12 2 2 4-4" /></>,
+  work: <><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M3 13h18" /></>,
   search: <><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4-4" /></>,
 };
 function Icon({ name }: { name: keyof typeof icons }) {
@@ -83,6 +85,8 @@ export default function AppHeader({ back, title, minimal = false, extra }: {
   const work = [
     { href: "/projects", label: t("Проекты"), active: path === "/projects" || path.startsWith("/projects/"), icon: "projects" as const },
     { href: "/inbox", label: t("Входящие"), active: path.startsWith("/inbox"), icon: "inbox" as const, count: frame?.waiting ?? 0, dot: Boolean(frame?.unread) },
+    // «Моя работа» — for those who work on other people's stages (or opened it from the profile).
+    ...(frame?.specialist || path.startsWith("/work") ? [{ href: "/work", label: t("Моя работа"), active: path.startsWith("/work"), icon: "work" as const, mobileHide: !path.startsWith("/work") }] : []),
     { href: "/specialists", label: t("Специалисты"), active: path.startsWith("/specialists"), icon: "people" as const },
   ];
   const tools = [
@@ -179,6 +183,7 @@ function CommandPalette({ projects, onClose }: { projects: ProjectRow[]; onClose
       })),
       { group: t("Действия"), label: t("Новый проект"), hint: "", href: "/projects?new=1" },
       { group: t("Разделы"), label: t("Входящие"), hint: "", href: "/inbox" },
+      { group: t("Разделы"), label: t("Моя работа"), hint: "", href: "/work" },
       { group: t("Разделы"), label: t("Проекты"), hint: "", href: "/projects" },
       { group: t("Разделы"), label: t("Специалисты"), hint: "", href: "/specialists" },
       { group: t("Разделы"), label: t("Сверка сайта"), hint: "", href: "/review" },

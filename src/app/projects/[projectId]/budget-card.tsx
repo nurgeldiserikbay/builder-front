@@ -13,9 +13,9 @@ type Budget = {
   spent: { total: number; requests: number; unpricedRequests: number };
   limit: { amount: number; left: number; percent: number; warn: boolean; blocked: boolean } | null;
   canSetLimit: boolean;
-  stages: Array<{ key: string; title: string; done: boolean; aiUsed: boolean; spent: number; requests: number; planned: { requestsMin: number; requestsMax: number; min: number; max: number } | null }>;
+  stages: Array<{ key: string; title: string; done: boolean; aiUsed: boolean; spent: number; requests: number; planned: { requestsMin: number; requestsMax: number; min: number; max: number } | null; specialists?: { count: number; planned: number; openEnded?: number; due: number; paid: number } | null }>;
   participants: Array<{ id: string; name: string; spent: number; requests: number }>;
-  specialists: { specialists: number; planned: number; due: number; paid: number } | null;
+  specialists: { specialists: number; planned: number; openEnded?: number; due: number; paid: number } | null;
 };
 
 /** Estimate of AI spending for the project and what has been spent, by stage and by participant. */
@@ -47,7 +47,9 @@ export default function BudgetCard({ projectId }: { projectId: string }) {
       <h2 id="budget-title" className={styles.h2}>{t("Смета и расход")}</h2>
       {budget.specialists && budget.specialists.specialists > 0 && (
         <p style={{ margin: "0 0 10px" }}>
-          {t("Специалисты (")}{budget.specialists.specialists}{t("): по условиям — до")}{" "}<strong>{formatTenge(budget.specialists.planned)}</strong>.
+          {t("Специалисты (")}{budget.specialists.specialists}{"): "}{budget.specialists.openEnded && budget.specialists.planned === 0
+            ? t("почасово, без лимита часов")
+            : <>{t("по условиям — до")}{" "}<strong>{formatTenge(budget.specialists.planned)}</strong>{budget.specialists.openEnded ? t(" и почасовая работа без лимита") : ""}</>}.
           {budget.specialists.due > 0 ? <>{" "}{t("К оплате за принятые этапы:")}{" "}<strong>{formatTenge(budget.specialists.due)}</strong>.</> : null}
           {budget.specialists.paid > 0 ? t(" Оплачено: {0}.", [formatTenge(budget.specialists.paid)]) : ""}
           <span className={styles.small} style={{ display: "block" }}>{t("Начисляется только когда вы принимаете этап; время и оплату смотрите на странице этапа.")}</span>
@@ -93,16 +95,36 @@ export default function BudgetCard({ projectId }: { projectId: string }) {
               </form>
             )}
           </div>
-          <details className={styles.details}>
-            <summary>{t("По этапам и участникам")}</summary>
-            <ul className={styles.list}>
-              {budget.stages.filter((stage) => stage.aiUsed).map((stage) => (
-                <li key={stage.key}>
-                  <strong>{stage.title}</strong>{stage.done ? t(" (принят)") : ""}{t(": потрачено")}{" "}{formatTenge(stage.spent)} ({stage.requests}{" "}{t("запр.)")}
-                  {stage.planned ? t(" · по смете {0} – {1}", [formatTenge(stage.planned.min), formatTenge(stage.planned.max)]) : ""}
-                </li>
-              ))}
-            </ul>
+          <details className={styles.details} open>
+            <summary>{t("План и факт по этапам")}</summary>
+            <div style={{ overflowX: "auto", margin: "6px 0 10px" }}>
+              <table className={styles.table} style={{ minWidth: 520 }}>
+                <thead>
+                  <tr>
+                    <th>{t("Этап")}</th>
+                    <th style={{ textAlign: "right" }}>{t("ИИ: смета")}</th>
+                    <th style={{ textAlign: "right" }}>{t("ИИ: потрачено")}</th>
+                    {budget.specialists && <th style={{ textAlign: "right" }}>{t("Специалисты: до")}</th>}
+                    {budget.specialists && <th style={{ textAlign: "right" }}>{t("Начислено / оплачено")}</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {budget.stages.map((stage) => {
+                    const over = stage.planned && stage.spent > stage.planned.max;
+                    const people = stage.specialists;
+                    return (
+                      <tr key={stage.key}>
+                        <td>{stage.title}{stage.done && <span className={styles.cellSub}>{t("принят")}</span>}</td>
+                        <td className={styles.num} style={{ textAlign: "right", whiteSpace: "nowrap" }}>{stage.aiUsed && stage.planned ? `${formatTenge(stage.planned.min)} – ${formatTenge(stage.planned.max)}` : "—"}</td>
+                        <td className={styles.num} style={{ textAlign: "right", whiteSpace: "nowrap", color: over ? "var(--attention)" : undefined }}>{stage.aiUsed ? formatTenge(stage.spent) : "—"}{stage.requests > 0 && <span className={styles.cellSub}>{t("запросов: {0}", [stage.requests])}</span>}</td>
+                        {budget.specialists && <td className={styles.num} style={{ textAlign: "right", whiteSpace: "nowrap" }}>{people && people.count > 0 ? (people.openEnded ? (people.planned > 0 ? `${formatTenge(people.planned)} +` : t("почасово")) : formatTenge(people.planned)) : "—"}</td>}
+                        {budget.specialists && <td className={styles.num} style={{ textAlign: "right", whiteSpace: "nowrap" }}>{people && people.count > 0 ? `${formatTenge(people.due)} / ${formatTenge(people.paid)}` : "—"}</td>}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
             {budget.participants.length > 0 && <ul className={styles.list}>{budget.participants.map((person) => <li key={person.id}>{person.name}: {formatTenge(person.spent)} ({person.requests}{" "}{t("запр.)")}</li>)}</ul>}
             <p className={styles.small} style={{ margin: 0 }}>{t("Смета — оценка: сколько обычно нужно запросов на этап, умноженное на цену запроса.")}{" "}<a href={`/projects/${projectId}/history`}>{t("Все запросы →")}</a></p>
           </details>

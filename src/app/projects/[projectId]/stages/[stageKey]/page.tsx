@@ -35,6 +35,7 @@ import ProcessAiChange from "./process-ai";
 import StagePassport from "./passport";
 import { applyFix, type AutoFix } from "./process-changes";
 import { SitemapEditor, blankSitemap } from "./sitemap-editor";
+import { IdeaEditor, blankIdea, type IdeaReview } from "./idea-editor";
 import { CatalogEditor } from "./catalog-editor";
 import { FeaturesEditor, HandoffView, PrototypeView, ScreensEditor, blankFeatures, blankScreens, type AppFeatures, type AppScreens } from "./webapp-editors";
 import { formatTenge } from "@/lib/money";
@@ -217,7 +218,28 @@ export default function StagePage() {
     });
   }
 
+  const [skipReason, setSkipReason] = useState<string | null>(null);
+  async function skip() {
+    const reason = (skipReason ?? "").trim();
+    if (reason.length < 10) { setError(t("Напишите причину — хотя бы 10 символов.")); return; }
+    await run("skip", async () => {
+      const journey = await api<Journey>(`/projects/${projectId}/stages/${stageKey}/skip`, { method: "POST", body: JSON.stringify({ reason }) });
+      setSkipReason(null);
+      await load();
+      setNextStageKey(journey.nextAction.stageKey);
+      setMessage(t("Этап пропущен. Следующие этапы открыты, к этому можно вернуться в любой момент."));
+    });
+  }
+
   async function reopen() {
+    if (detail?.stage.status === "skipped") {
+      await run("reopen", async () => {
+        await api(`/projects/${projectId}/stages/${stageKey}/reopen`, { method: "POST" });
+        await load();
+        setMessage(t("Этап снова открыт — можно заполнить его."));
+      });
+      return;
+    }
     if (!window.confirm(t("Изменить принятый этап? Этапы, которые построены на нём, нужно будет проверить ещё раз."))) return;
     await run("reopen", async () => {
       await api(`/projects/${projectId}/stages/${stageKey}/reopen`, { method: "POST" });
@@ -434,6 +456,53 @@ export default function StagePage() {
       {stage.artifactType === "handoff" && stage.status !== "locked" && <StarterCodePanel projectId={projectId} packageBuilt={Boolean(detail.current)} key={detail.current?.versionNumber ?? 0} />}
       {stage.artifactType === "handoff" && stage.status !== "locked" && <AgentPanel projectId={projectId} packageBuilt={Boolean(detail.current)} canEdit={stage.canEdit} key={`agent-${detail.current?.versionNumber ?? 0}`} />}
       {stage.artifactType === "handoff" && stage.status !== "locked" && <AppCodePanel projectId={projectId} packageBuilt={Boolean(detail.current)} key={`ai-${detail.current?.versionNumber ?? 0}`} />}
+
+      {/* Optional stage: why it can be skipped, and the skip with a written reason */}
+      {stage.status === "skipped" && (
+        <div className={`${styles.notice} ${styles.info}`}>
+          <strong>{t("Этап пропущен.")}</strong>{stage.reviewNote ? <> {t("Причина: {0}", [stage.reviewNote])}</> : null}
+          <br />{t("Следующие этапы идут без него. Если понадобится — вернитесь и заполните.")}
+        </div>
+      )}
+      {stage.optional && stage.canSkip && !detail.current && draft === null && (
+        <section className={styles.card} aria-label={t("Этап необязательный")}>
+          <p className={styles.cardTitle}>{t("Этот этап необязательный")}</p>
+          <p className={styles.small}>{stage.optional}</p>
+          {skipReason === null ? (
+            <button type="button" className={styles.ghost} onClick={() => setSkipReason("")}>{t("Пропустить этап")}</button>
+          ) : (
+            <div style={{ display: "grid", gap: 10 }}>
+              <label className={styles.field}><span className={styles.label}>{t("Почему пропускаете")}</span>
+                <span className={styles.why}>{t("Причина сохранится в проекте — команда увидит, почему этап пропущен.")}</span>
+                <textarea className={styles.textarea} style={{ minHeight: 64 }} value={skipReason} maxLength={500} autoFocus placeholder={t("Например: бизнес работает пять лет, идея проверена")} onChange={(event) => setSkipReason(event.target.value)} /></label>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button type="button" className={styles.button} disabled={Boolean(busy) || skipReason.trim().length < 10} onClick={skip}>{busy === "skip" ? t("Пропускаем…") : t("Пропустить")}</button>
+                <button type="button" className={styles.ghost} onClick={() => setSkipReason(null)}>{t("Отмена")}</button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Starting point for an empty idea review */}
+      {stage.artifactType === "idea" && !detail.current && draft === null && stage.canEdit && (
+        <section className={styles.card} aria-label={t("Как начать")}>
+          <p className={styles.cardTitle}>{t("Как начнём разбор идеи?")}</p>
+          <div style={{ display: "grid", gap: 10 }}>
+            {ai.configured && canAi && stage.inputsReady && (
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{busy === "ai" ? t("ИИ разбирает идею…") : t("✨ Пусть ИИ разберёт идею и найдёт дыры")}</button>
+            )}
+            {!ai.configured && ai.templateAvailable && stage.inputsReady && (
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{t("Начать с паспорта проекта")}</button>
+            )}
+            {canType && <button className={styles.secondary} onClick={() => edit(blankIdea())}>{t("Заполнить самому")}</button>}
+          </div>
+          <p className={styles.small}>{t("ИИ не придумывает за вас: чего вы не говорили, останется пустым и станет вопросом.")}</p>
+        </section>
+      )}
+      {stage.artifactType === "idea" && stage.status !== "locked" && draft !== null && (
+        <IdeaEditor value={draft as IdeaReview} onChange={edit} disabled={!canType} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
+      )}
 
       {/* Starting point for an empty sitemap */}
       {stage.artifactType === "sitemap" && !detail.current && draft === null && stage.canEdit && (
@@ -811,7 +880,13 @@ export default function StagePage() {
 
       {stage.status !== "locked" && (
         <div className={styles.bottomBar}><div className={styles.bottomInner}>
-          {accepted ? (
+          {stage.status === "skipped" ? (
+            <>
+              <span className={styles.bottomText}>{t("Этап пропущен.")}</span>
+              {nextStageKey && <a className={styles.button} href={`/projects/${projectId}/stages/${nextStageKey}`}>{t("Дальше →")}</a>}
+              {stage.canReopen && <button className={styles.ghost} disabled={Boolean(busy)} onClick={reopen}>{t("Вернуться к этапу")}</button>}
+            </>
+          ) : accepted ? (
             <>
               <span className={styles.bottomText}>{t("Этап принят")}{detail.versions.find((version) => version.accepted) ? t(" (версия {0})", [detail.versions.find((version) => version.accepted)!.versionNumber]) : ""}.</span>
               {nextStageKey && <a className={styles.button} href={`/projects/${projectId}/stages/${nextStageKey}`}>{t("Дальше →")}</a>}

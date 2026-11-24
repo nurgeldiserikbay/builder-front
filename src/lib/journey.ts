@@ -25,7 +25,11 @@ export type PhaseKey = "idea" | "spec" | "experience" | "tech" | "content" | "bu
 /** A phase of the common path from an idea to a working product; launch and after-launch follow the publication. */
 export type Phase = { key: PhaseKey; title: string; short: string; status: "done" | "current" | "upcoming"; stageKeys: string[]; done: number; total: number; kind: "stages" | "publish" };
 /** A stage in plain words: why it matters, what comes next, an example and the terms it uses. */
-export type StageGuide = { why: string; next: string; example: string; terms: Array<{ term: string; meaning: string }> };
+export type StageGuide = {
+  why: string; next: string; example: string; terms: Array<{ term: string; meaning: string }>;
+  /** How the stage goes, what the platform checks and one «done when» — the same for every stage. */
+  passport?: { steps: string[]; checks: string[]; doneWhen: string };
+};
 
 export type ViewerInfo = {
   kind: "member" | "specialist"; role: string;

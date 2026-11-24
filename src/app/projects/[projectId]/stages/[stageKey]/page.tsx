@@ -32,6 +32,7 @@ import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
 import { ProcessEditor, blankProcess, type BusinessProcess } from "./process-editor";
 import ProcessAiChange from "./process-ai";
+import StagePassport from "./passport";
 import { applyFix, type AutoFix } from "./process-changes";
 import { SitemapEditor, blankSitemap } from "./sitemap-editor";
 import { CatalogEditor } from "./catalog-editor";
@@ -275,27 +276,8 @@ export default function StagePage() {
         <span className={`${styles.chip} ${styles[tone]}`} title={stage.statusExplanation}>{stage.statusLabel}</span>
       </div>
       {stage.statusExplanation && <p className={styles.small} style={{ margin: "0 0 16px" }}>{stage.statusExplanation}</p>}
-      {/* The stage in plain words: open while the stage is new, folded once there is a result. */}
-      <details className={`${styles.card} ${styles.details}`} open={!detail.current} style={{ marginBottom: 16 }}>
-        <summary>{t("Что это за этап и зачем он вам")}</summary>
-        <p style={{ margin: "10px 0 8px" }}>{stage.purpose}</p>
-        {stage.guide && <p style={{ margin: "0 0 8px" }}>{stage.guide.why}</p>}
-        <p className={styles.small} style={{ margin: "0 0 6px" }}><strong>{t("Результат:")}</strong> {stage.outcome}</p>
-        {stage.guide && <>
-          <p className={styles.small} style={{ margin: "0 0 6px" }}><strong>{t("Что дальше:")}</strong> {stage.guide.next}</p>
-          <p className={styles.small} style={{ margin: "0 0 6px" }}><strong>{t("Пример:")}</strong> {stage.guide.example}</p>
-          {stage.guide.terms.length > 0 && (
-            <dl style={{ margin: "10px 0 0" }}>
-              {stage.guide.terms.map((item) => (
-                <div key={item.term} style={{ marginBottom: 6 }}>
-                  <dt style={{ fontWeight: 600, display: "inline" }}>{item.term}</dt>
-                  <dd className={styles.small} style={{ display: "inline", margin: 0 }}>{" — "}{item.meaning}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </>}
-      </details>
+      {/* The stage passport: open while the stage is new, folded once there is a result. */}
+      <StagePassport purpose={stage.purpose} outcome={stage.outcome} guide={stage.guide} inputs={detail.inputs} acceptance={stage.acceptance} open={!detail.current} />
       {stage.artifactType === "site" && detail.options.technology === "developer" && (
         <p className={`${styles.notice} ${styles.info}`}>{t("Выбран свой стек у разработчика: сайт он делает и размещает сам, проверки и публикация BuildPath к нему не применяются. Сборка с ИИ ниже сделает сайт на технологиях BuildPath — это удобно как образец для разработчика.")}{" "}<a href={`/projects/${projectId}/choices/technologies`}>{t("Изменить решение →")}</a></p>
       )}

@@ -1,5 +1,6 @@
 "use client";
 import StageCost from "./stage-cost";
+import StageRequests from "./stage-requests";
 
 import ApprovalPanel from "./approval";
 import StageRoute from "./stage-route";
@@ -98,6 +99,7 @@ export default function StagePage() {
   useEffect(() => { loadBudget(); }, [loadBudget]);
 
   const [proposalsVersion, setProposalsVersion] = useState(0);
+  const [teamVersion, setTeamVersion] = useState(0);
   const load = useCallback(async () => {
     try {
       const next = await api<StageDetail>(`/projects/${projectId}/stages/${stageKey}`);
@@ -740,7 +742,10 @@ export default function StagePage() {
         filter={specialist ? { fromStageKey: stageKey } : { targetStageKey: stageKey }} />}
       {detail.ai.level !== "none" && <PlaybookCard projectId={projectId} stageKey={stageKey} />}
       {stage.canInvite && stage.status !== "locked" && (
-        <SpecialistsPanel projectId={projectId} stageKey={stageKey} editable={!accepted} />
+        <SpecialistsPanel key={`team-${teamVersion}`} projectId={projectId} stageKey={stageKey} editable={!accepted} />
+      )}
+      {stage.canInvite && stage.status !== "locked" && (
+        <StageRequests projectId={projectId} stageKey={stageKey} editable={!accepted} onChosen={() => { setTeamVersion((value) => value + 1); void load(); }} />
       )}
 
       {(stage.canInvite || specialist) && (

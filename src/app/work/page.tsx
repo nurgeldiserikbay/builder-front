@@ -8,6 +8,9 @@ import { t, dateLocale } from "@/lib/i18n";
 import { formatTenge } from "@/lib/money";
 import { statusTone, type StageStatus } from "@/lib/journey";
 import { PayoutAccount } from "../projects/[projectId]/stages/[stageKey]/timesheet";
+import { responseStatusText, termsLine, type ResponseTerms } from "@/lib/requests";
+
+type MyResponse = { id: string; requestId: string; status: string; requestStatus: string; stageKey: string; stageTitle: string; projectTypeTitle: string | null; role: string; days: number; terms: ResponseTerms; createdAt: string; projectId: string | null };
 
 type Assignment = {
   id: string; role: "lead" | "consultant"; status: "active" | "completed";
@@ -54,7 +57,9 @@ export default function WorkPage() {
   const [work, setWork] = useState<Work | null>(null);
   const [error, setError] = useState("");
   const [show, setShow] = useState<"active" | "completed">("active");
+  const [responses, setResponses] = useState<MyResponse[]>([]);
 
+  useEffect(() => { api<MyResponse[]>("/me/stage-responses").then(setResponses).catch(() => undefined); }, []);
   useEffect(() => {
     api<Work>("/me/work").then(setWork).catch((caught) => {
       if (caught instanceof ApiError && caught.status === 401) { window.location.href = "/login?next=/work"; return; }
@@ -83,6 +88,7 @@ export default function WorkPage() {
             <h1 className={styles.h1}>{t("Моя работа")}</h1>
           </div>
           <div className={styles.row}>
+            <a className={styles.button} href="/specialists/requests">{t("Заявки на этапы")}</a>
             <a className={styles.secondary} href="/account/specialist">{t("Профиль в каталоге")}</a>
           </div>
         </div>
@@ -153,6 +159,29 @@ export default function WorkPage() {
                               <b style={{ fontWeight: 600 }}>{formatTenge(item.earnedSoFar)}</b>
                               {item.planned > 0 && <span className={styles.cellSub}>{t("из {0}", [formatTenge(item.planned)])}</span>}
                             </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className={styles.sectionHeader}>
+                  <h2 className={styles.h2}>{t("Мои отклики")}</h2>
+                  <a className={styles.small} href="/specialists/requests" style={{ marginLeft: "auto", color: "var(--brand)", fontWeight: 600, textDecoration: "none" }}>{t("Открытые заявки")} →</a>
+                </div>
+                {responses.length === 0 ? (
+                  <div className={styles.empty}>{t("Вы ещё не откликались на заявки. Владельцы размещают их, когда ищут исполнителя этапа.")}</div>
+                ) : (
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead><tr><th>{t("Заявка")}</th><th>{t("Ваши условия")}</th><th>{t("Статус")}</th></tr></thead>
+                      <tbody>
+                        {responses.map((response) => (
+                          <tr key={response.id}>
+                            <td>{response.projectId ? <a className={styles.tableLink} href={`/projects/${response.projectId}/stages/${response.stageKey}`}>{t(response.stageTitle)}</a> : t(response.stageTitle)}<span className={styles.cellSub}>{response.projectTypeTitle ?? ""}</span></td>
+                            <td className={styles.small}>{termsLine(response.terms)}, {t("срок {0} дн.", [response.days])}</td>
+                            <td><span className={`${styles.chip} ${styles[response.status === "chosen" ? "done" : response.status === "sent" ? (response.requestStatus === "open" ? "active" : "closed") : "closed"]}`} style={{ marginTop: 0 }}>{response.status === "sent" && response.requestStatus !== "open" ? t("Заявка закрыта") : responseStatusText(response.status)}</span></td>
                           </tr>
                         ))}
                       </tbody>

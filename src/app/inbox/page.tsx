@@ -9,11 +9,11 @@ import { activityLine, dayHeading, dueText, inboxLine, inboxQuote, type Inbox, t
 import { useStageTitles } from "@/lib/use-catalog";
 
 const kindTone: Record<InboxKind, string> = {
-  dispute: "alert", change_notice: "attention", stage_review: "active", stage_changes: "attention", change_proposal: "active", time_entries: "active", mention: "closed",
+  dispute: "alert", change_notice: "attention", stage_review: "active", stage_changes: "attention", change_proposal: "active", time_entries: "active", mention: "closed", request_responses: "done",
 };
 const kindLabel = (kind: InboxKind) => ({
   stage_review: t("Приёмка"), stage_changes: t("Доработка"), change_notice: t("Изменение"), change_proposal: t("Предложение"),
-  time_entries: t("Часы"), dispute: t("Спор"), mention: t("Упоминание"),
+  time_entries: t("Часы"), dispute: t("Спор"), mention: t("Упоминание"), request_responses: t("Отклики"),
 })[kind];
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString(dateLocale(), { hour: "2-digit", minute: "2-digit" });

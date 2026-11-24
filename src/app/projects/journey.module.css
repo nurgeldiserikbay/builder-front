@@ -554,3 +554,20 @@ button.chip:disabled{opacity:.5;cursor:not-allowed}
 .review p{margin:4px 0 2px;font-size:14px}
 @media(max-width:1100px){.stats5{grid-template-columns:repeat(3,minmax(0,1fr))}.stats5 .stat:nth-child(4){border-left:0}.stats5 .stat:nth-child(n+4){border-top:1px solid var(--line)}}
 @media(max-width:720px){.stats5{grid-template-columns:1fr 1fr}.stats5 .stat:nth-child(5){grid-column:1 / -1}.stats5 .stat:nth-child(4){border-left:1px solid var(--line)}.stats5 .stat:nth-child(odd){border-left:0}.stats5 .stat:nth-child(n+3){border-top:1px solid var(--line)}}
+
+/* ---------- «Заявки на этап» ---------- */
+.requestList{display:grid;gap:12px}
+.requestCard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:16px 18px;display:grid;gap:8px}
+.requestHead{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.requestMeta{display:grid;text-align:right;font-size:13.5px;color:var(--muted)}
+.requestMeta b{color:var(--ink);font-size:15px;font-variant-numeric:tabular-nums}
+.requestText{margin:0;white-space:pre-line;font-size:14.5px;color:var(--ink-2)}
+.myResponse{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--brand-wash);border:1px solid #d7def8;border-radius:var(--r-control);padding:8px 12px;font-size:14px}
+.responseForm{border:1px solid var(--line);border-radius:var(--r-control);background:var(--surface-2);padding:14px 16px}
+.formGrid{display:grid;gap:0 12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.requestBlock{border-top:1px solid var(--line-soft);padding-top:12px;margin-top:12px}
+.requestBlock:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.responseList{list-style:none;margin:0 0 8px;padding:0;border:1px solid var(--line);border-radius:var(--r-control);overflow:hidden}
+.responseList li{padding:12px 14px;background:var(--surface)}
+.responseList li + li{border-top:1px solid var(--line-soft)}
+@media(max-width:720px){.requestCard{border-radius:0;border-left:0;border-right:0;margin:0 -16px}.requestMeta{text-align:left}}

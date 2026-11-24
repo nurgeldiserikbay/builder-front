@@ -72,7 +72,7 @@ export function ProcessEditor({ value, onChange, options, disabled, issues, flag
 
       <section className={styles.card} aria-labelledby="process-diagram">
         <p id="process-diagram" className={styles.cardTitle}>{t("Схема процесса по ролям")}</p>
-        <p className={styles.small} style={{ marginTop: 0 }}>{t("Каждая колонка — участник, каждый блок — шаг. Стрелки показывают, кто за кем действует. Схема широкая — листайте её вбок.")}{" "}{disabled ? t("Нажмите на блок, чтобы открыть его подробности.") : t("Нажмите на блок, чтобы изменить его.")}</p>
+        <p className={styles.small} style={{ marginTop: 0 }}>{t("Каждая колонка — участник, каждый блок — шаг. Стрелки показывают, кто за кем действует. Схему можно увеличить, вписать в экран или открыть на весь экран.")}{" "}{disabled ? t("Нажмите на блок, чтобы открыть его подробности.") : t("Нажмите на блок, чтобы изменить его.")}</p>
         {value.scenarios.length > 1 && (
           <div className={styles.row} style={{ flexWrap: "wrap", gap: 6 }} role="tablist">
             {value.scenarios.map((item, i) => (
@@ -182,7 +182,7 @@ export function ProcessEditor({ value, onChange, options, disabled, issues, flag
 
       <section className={styles.card} aria-labelledby="process-data">
         <p id="process-data" className={styles.cardTitle}>{t("Схема данных")}</p>
-        <p className={styles.small} style={{ marginTop: 0 }}>{t("Какую информацию вы храните и как она связана: например, у клиента много записей, у записи одна услуга. Сплошная линия — «много», пунктир — «один».")}</p>
+        <p className={styles.small} style={{ marginTop: 0 }}>{t("Какую информацию вы храните и как она связана: например, у клиента много записей, у записи одна услуга. Вилка на конце линии — «много», двойная черта — «один».")}</p>
         <DataDiagram entities={value.data} flagged={flaggedKeys} onPick={pick} />
         <FlagList flags={flags} keys={value.data.map((entity) => entity.key)} />
         {value.data.map((entity, i) => (

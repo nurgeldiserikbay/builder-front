@@ -36,7 +36,11 @@ const loginMessages: Record<string, string> = {
   GOOGLE_CODE_REJECTED: t("Google не принял вход. Попробуйте ещё раз."),
   GOOGLE_RETRY: t("Не получилось с первого раза. Нажмите «Продолжить с Google» ещё раз."),
   GOOGLE_FAILED: t("Не получилось войти через Google. Попробуйте ещё раз или войдите по паролю."),
+  TWO_STEP_CODE_INVALID: t("Код не подошёл. Введите шесть цифр, которые сейчас показывает приложение, или резервный код."),
+  TWO_STEP_EXPIRED: t("Время на ввод кода вышло или было слишком много попыток. Войдите заново."),
 };
+
+type TwoStep = { twoStepRequired: true; challenge: string; expiresAt: string };
 
 /** Google refuses sign-in inside in-app browsers such as Telegram's; there the button is not offered. */
 const inTelegram = () => typeof window !== "undefined" && Boolean((window as unknown as { Telegram?: { WebApp?: { initData?: string } } }).Telegram?.WebApp?.initData);
@@ -53,6 +57,9 @@ export default function LoginPage() {
   const [accepted, setAccepted] = useState(false);
   const [consentText, setConsentText] = useState("");
   const [google, setGoogle] = useState(false);
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [useRecovery, setUseRecovery] = useState(false);
 
   const next = typeof window === "undefined" ? "/projects" : safeNext(new URLSearchParams(window.location.search).get("next"));
   useEffect(() => {
@@ -83,10 +90,11 @@ export default function LoginPage() {
         setMessage(t("Письмо отправлено. Откройте его и подтвердите адрес, затем войдите."));
         setMode("login");
       } else {
-        await api<User>("/auth/login", {
+        const result = await api<User | TwoStep>("/auth/login", {
           method: "POST",
           body: JSON.stringify({ email, password }),
         });
+        if ("twoStepRequired" in result) { setChallenge(result.challenge); setPassword(""); return; }
         router.replace(next);
       }
     } catch (error) {
@@ -95,6 +103,23 @@ export default function LoginPage() {
         ? loginMessages[error.message] ?? t("Что-то пошло не так ({0}). Попробуйте ещё раз.", [error.message])
         : t("Не удалось связаться с сервером. Проверьте интернет и попробуйте ещё раз.");
       setMessage(text);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitCode(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!challenge) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await api<User & { recoveryCodesLeft?: number }>("/auth/login/two-step", { method: "POST", body: JSON.stringify({ challenge, code }) });
+      // A recovery code was used: send the person to make new ones while they still remember why.
+      router.replace(useRecovery && (result.recoveryCodesLeft ?? 10) <= 3 ? "/account/security" : next);
+    } catch (error) {
+      if (error instanceof ApiError && error.message === "TWO_STEP_EXPIRED") { setChallenge(null); setCode(""); }
+      setMessage(error instanceof ApiError ? loginMessages[error.message] ?? t("Что-то пошло не так ({0}). Попробуйте ещё раз.", [error.message]) : t("Не удалось связаться с сервером. Проверьте интернет и попробуйте ещё раз."));
     } finally {
       setBusy(false);
     }
@@ -134,6 +159,21 @@ export default function LoginPage() {
     <a href="/" className={`${styles.brand} ${styles.brandMobile}`}><span>B</span> BuildPath</a>
     <section className={styles.card}>
       <LanguageSwitch style={{ marginBottom: 16 }} />
+      {challenge ? <>
+        <h1>{t("Код из приложения")}</h1>
+        <p className={styles.sub}>{useRecovery ? t("Введите один из резервных кодов, которые вы сохранили при включении входа с кодом. Каждый работает один раз.") : t("Откройте приложение-аутентификатор и введите шестизначный код для BuildPath.")}</p>
+        <form onSubmit={submitCode}>
+          <label>{useRecovery ? t("Резервный код") : t("Код")}
+            <input key={useRecovery ? "recovery" : "totp"} autoFocus required autoComplete="one-time-code" inputMode={useRecovery ? "text" : "numeric"} maxLength={useRecovery ? 12 : 7} value={code} onChange={(event) => setCode(event.target.value)} style={{ fontSize: 20, letterSpacing: ".2em" }} />
+          </label>
+          {message && <p className={styles.message} role="status">{message}</p>}
+          <button className={styles.primary} disabled={busy || code.trim().length < 6}>{busy ? t("Проверяем…") : t("Войти")}</button>
+        </form>
+        <button className={styles.switch} onClick={() => { setUseRecovery(!useRecovery); setCode(""); setMessage(""); }}>
+          {useRecovery ? t("Ввести код из приложения") : t("Нет доступа к приложению? Резервный код")}
+        </button>
+        <button className={styles.back} style={{ background: "none", border: 0, cursor: "pointer", font: "inherit" }} onClick={() => { setChallenge(null); setCode(""); setMessage(""); }}>{t("← Другой аккаунт")}</button>
+      </> : <>
       <h1>{titles[mode]}</h1>
       <p className={styles.sub}>{subtitles[mode]}</p>
       {google && mode !== "forgot" && <>
@@ -162,6 +202,7 @@ export default function LoginPage() {
         {mode === "login" ? t("Нет аккаунта? Зарегистрироваться") : t("Уже есть аккаунт? Войти")}
       </button>
       <a className={styles.back} href="/">{t("← На главную")}</a>
+      </>}
     </section>
   </main>;
 }

@@ -101,6 +101,14 @@ export default function AccountPage() {
             <InstallApp className={styles.small} buttonClassName={styles.secondary} />
 
             <section className={styles.card}>
+              <p className={styles.cardTitle}>{t("Защита и уведомления")}</p>
+              <nav className={styles.settingsList}>
+                <a href="/account/security"><b>{t("Безопасность")}</b><small>{t("Вход с кодом из приложения, активные сеансы и история входов")}</small></a>
+                <a href="/account/notifications"><b>{t("Уведомления")}</b><small>{t("Что присылать в Telegram и на почту")}</small></a>
+              </nav>
+            </section>
+
+            <section className={styles.card}>
               <p className={styles.cardTitle}>{t("Тариф и документы")}</p>
               <nav className={styles.settingsList}>
                 <a href="/account/plan"><b>{t("Тариф и лимиты")}</b><small>{t("Сколько проектов и запросов к ИИ доступно")}</small></a>

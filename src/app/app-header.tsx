@@ -191,6 +191,8 @@ function CommandPalette({ projects, onClose }: { projects: ProjectRow[]; onClose
       { group: t("Разделы"), label: t("Тариф и лимиты"), hint: "", href: "/account/plan" },
       { group: t("Разделы"), label: t("Профиль специалиста"), hint: "", href: "/account/specialist" },
       { group: t("Разделы"), label: t("Аккаунт"), hint: "", href: "/account" },
+      { group: t("Разделы"), label: t("Безопасность"), hint: t("сеансы, вход с кодом"), href: "/account/security" },
+      { group: t("Разделы"), label: t("Уведомления"), hint: t("Telegram и почта"), href: "/account/notifications" },
     ];
     const needle = query.trim().toLowerCase();
     return needle ? all.filter((item) => item.label.toLowerCase().includes(needle)) : all;

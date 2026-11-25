@@ -11,6 +11,8 @@ export type TechPlan = {
   components?: Item[]; dataModel?: Array<DataEntity & { fields: Array<{ name: string; type: string }> }>; sequences?: Sequence[]; coverage?: Coverage[] | null;
   pages: Array<{ path: string; title: string; plain: string }>; notifications: string[]; hosting: Array<{ option: string; plain: string }>;
   limits: string[]; api: string; ownerNotes: string | null;
+  /** An application's design, edited in the architecture tabs. */
+  design?: import("./architecture-editor").ArchitectureDesign | null;
 };
 export type TechPlanOptions = { preview: TechPlan | null; outdated: boolean };
 

@@ -229,6 +229,7 @@ function ResultsView({ projectId, value, options }: { projectId: string; value: 
   return (
     <>
       <OwnerAcceptance projectId={projectId} value={value} />
+      <BrowserRun projectId={projectId} value={value} onRecorded={(next) => setResults((current) => ({ ...current, ...next }))} />
       <section className={styles.card} aria-labelledby="results-title">
         <p id="results-title" className={styles.cardTitle}>{t("Результаты")}</p>
         <p style={{ margin: "0 0 6px" }}>{t("Пройдено {0} из {1}, не пройдено {2}.", [passed, value.cases.length, failed])}</p>
@@ -252,6 +253,7 @@ function ResultsView({ projectId, value, options }: { projectId: string; value: 
                     <ol style={{ margin: "0 0 4px", paddingLeft: 22 }}>{item.steps.map((step, index) => <li key={index}>{step}</li>)}</ol>
                     <p style={{ margin: "0 0 4px" }}><strong>{t("Тогда")}:</strong> {item.expected}</p>
                     {item.mustNot && <p style={{ margin: "0 0 8px" }}><strong>{t("Не должно")}:</strong> {item.mustNot}</p>}
+                    {result?.source === "browser" && result.note && <p className={styles.small} style={{ margin: "0 0 8px" }}>{t("ИИ-агент в браузере увидел")}: {result.note}</p>}
                     <label className={styles.field}><span className={styles.label}>{t("Что увидели (обязательно, если не работает)")}</span>
                       <input className={styles.input} value={note} maxLength={500} onChange={(event) => setNote(event.target.value)} /></label>
                     <div className={styles.row}>
@@ -271,7 +273,7 @@ function ResultsView({ projectId, value, options }: { projectId: string; value: 
         <p className={styles.cardTitle}>{t("Автотесты")}</p>
         <p className={styles.small} style={{ marginTop: 0 }}>{t("Результат приходит из прогона: платформа сама запускает тесты, которые написал ИИ-агент, и отмечает кейсы по названиям тестов. Тесты пишет ИИ — прочитайте их или попросите специалиста проверить.")}</p>
         <ul style={{ margin: 0, paddingLeft: 20 }}>
-          {value.cases.filter((item) => item.method === "auto").map((item) => <li key={item.key}>{item.title} — <ResultLabel result={results[item.key] ?? null} /></li>)}
+          {value.cases.filter((item) => item.method === "auto").map((item) => <li key={item.key} style={{ marginBottom: 6 }}>{item.title} — <ResultLabel result={results[item.key] ?? null} /><CaseTest projectId={projectId} caseKey={item.key} /></li>)}
         </ul>
       </section>
     </>
@@ -281,7 +283,7 @@ function ResultsView({ projectId, value, options }: { projectId: string; value: 
 function ResultLabel({ result }: { result: Result }) {
   if (!result) return <span>{t("не проверен")}</span>;
   if (result.stale) return <span style={{ color: "#7a4500" }}>{t("проверен по старой версии — проверьте снова")}</span>;
-  const by = result.source === "run" ? ` (${t("по прогону тестов")})` : "";
+  const by = result.source === "run" ? ` (${t("по прогону тестов")})` : result.source === "browser" ? ` (${t("ИИ-агент в браузере, на предпросмотре")})` : "";
   return result.status === "passed" ? <span style={{ color: "#1d7a46", fontWeight: 600 }}>{t("работает")}{by}</span>
     : <span style={{ color: "#b3261e", fontWeight: 600 }}>{t("не работает")}{by}{result.note ? `: ${result.note}` : ""}</span>;
 }
@@ -373,5 +375,107 @@ function OwnerAcceptance({ projectId, value }: { projectId: string; value: TestP
         })}
       </section>
     </>
+  );
+}
+
+type BrowserRunState = {
+  run: { id: string; status: string; caseKeys: string[]; results: Array<{ key: string; status: "passed" | "failed" | "cannot_check"; observed: string }>; errorCode: string | null; createdAt: string; finishedAt: string | null } | null;
+  preview: { id: string; createdAt: string } | null; configured: boolean; canStart: boolean;
+};
+const browserErrors = (): Record<string, string> => ({
+  BROWSER_CASES_NOT_CONFIGURED: t("ИИ-агент в браузере не подключён на этом сервере."),
+  PREVIEW_NOT_BUILT: t("Нет предпросмотра: сначала ИИ-агент должен собрать приложение или модуль."),
+  NO_BROWSER_CASES: t("В плане проверки нет кейсов «ИИ-агент в браузере»."),
+  BROWSER_CASES_RUNNING: t("Проверка в браузере уже идёт."),
+  AI_DAILY_LIMIT_REACHED: t("Лимит запросов к ИИ на сегодня исчерпан."),
+  BROWSER_CASES_BUDGET: t("Закончились деньги, выделенные на проверку: часть кейсов не проверена."),
+  AGENT_MODEL_UNAVAILABLE: t("Модель ИИ перестала отвечать: часть кейсов не проверена."),
+  BROWSER_CASES_INPUT_CHANGED: t("План проверки или предпросмотр изменились во время проверки. Запустите её снова."),
+  BROWSER_CASES_INTERRUPTED: t("Проверка прервалась: сервер перезапустился. Запустите её снова."),
+  BROWSER_CASES_FAILED: t("Проверка прервалась из-за внутренней ошибки."),
+});
+
+/**
+ * The cases marked «ИИ-агент в браузере», checked by the agent in the newest preview: it looks at the screen, presses and
+ * types, and says what it saw. The verdict is about the preview, not the production server.
+ */
+function BrowserRun({ projectId, value, onRecorded }: { projectId: string; value: TestPlan; onRecorded: (next: Record<string, Result>) => void }) {
+  const [state, setState] = useState<BrowserRunState | null>(null);
+  const [problem, setProblem] = useState("");
+  const load = useCallback(async () => { try { setState(await api<BrowserRunState>(`/projects/${projectId}/testplan/browser-runs/latest`)); } catch { setState(null); } }, [projectId]);
+  useEffect(() => { void load(); }, [load]);
+  const active = Boolean(state?.run && ["queued", "running"].includes(state.run.status));
+  useEffect(() => {
+    if (!active) return;
+    const timer = setInterval(() => void load(), 5000);
+    return () => clearInterval(timer);
+  }, [active, load]);
+  useEffect(() => {
+    if (!state?.run || active) return;
+    const decided = state.run.results.filter((item) => item.status !== "cannot_check");
+    if (decided.length) onRecorded(Object.fromEntries(decided.map((item) => [item.key, { status: item.status as "passed" | "failed", note: item.observed, source: "browser", stale: false }])));
+    // Only when a run finishes; the parent keeps a person's own result when it was recorded later.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.run?.id, active]);
+  const browserCases = value.cases.filter((item) => item.method === "ai_browser");
+  if (!state || !browserCases.length) return null;
+  const start = async () => {
+    setProblem("");
+    try { await api(`/projects/${projectId}/testplan/browser-runs`, { method: "POST" }); await load(); } catch (caught) {
+      const code = caught instanceof Error ? caught.message : "";
+      setProblem(browserErrors()[code] ?? explainError(caught));
+    }
+  };
+  const title = (key: string) => value.cases.find((item) => item.key === key)?.title ?? key;
+  const label = (status: string) => status === "passed" ? <span style={{ color: "#1d7a46", fontWeight: 600 }}>{t("работает")}</span> : status === "failed" ? <span style={{ color: "#b3261e", fontWeight: 600 }}>{t("не работает")}</span> : <span style={{ color: "#7a4500" }}>{t("не удалось проверить")}</span>;
+  return (
+    <section className={styles.card} aria-labelledby="browser-title">
+      <p id="browser-title" className={styles.cardTitle}>{t("ИИ-агент в браузере")}</p>
+      <p className={styles.small} style={{ marginTop: 0 }}>{t("Агент открывает предпросмотр приложения на экране телефона, проходит кейсы как человек — смотрит, нажимает, вводит — и пишет, что увидел. Предпросмотр работает без сервера и без интернета, поэтому это проверка интерфейса и правил, а не рабочего сервера. Любой кейс можно перепроверить самому: ваш результат главнее.")}</p>
+      <p style={{ margin: "0 0 8px" }}>{t("Кейсов для проверки в браузере: {0}.", [browserCases.length])}{state.preview ? "" : ` ${t("Предпросмотра пока нет.")}`}</p>
+      {state.run && (
+        <div style={{ margin: "0 0 10px" }}>
+          <p className={styles.small} style={{ margin: "0 0 6px" }}>
+            {active ? t("Агент проверяет кейсы в браузере…") : state.run.status === "succeeded" ? t("Последняя проверка закончена.") : t("Последняя проверка закончилась с ошибкой.")}
+            {state.run.errorCode ? ` ${browserErrors()[state.run.errorCode] ?? ""}` : ""}
+          </p>
+          {state.run.results.length > 0 && (
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {state.run.results.map((item) => <li key={item.key} style={{ marginBottom: 4 }}>{title(item.key)} — {label(item.status)}{item.observed ? <span className={styles.small}>: {item.observed}</span> : null}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
+      {state.canStart && (
+        <button type="button" className={styles.secondary} disabled={active || !state.configured || !state.preview} onClick={() => void start()}>
+          {state.run ? t("Проверить в браузере ещё раз") : t("Проверить в браузере")}
+        </button>
+      )}
+      {!state.configured && <p className={styles.small} style={{ margin: "6px 0 0" }}>{t("ИИ-агент в браузере не подключён на этом сервере.")}</p>}
+      {problem && <p role="alert" style={{ color: "#b3261e", margin: "6px 0 0" }}>{problem}</p>}
+    </section>
+  );
+}
+
+/** «Код теста»: the agent's test whose name holds the case key, read on demand. */
+function CaseTest({ projectId, caseKey }: { projectId: string; caseKey: string }) {
+  const [tests, setTests] = useState<Array<{ path: string; line: number; code: string }> | null>(null);
+  const [open, setOpen] = useState(false);
+  const toggle = async () => {
+    if (!open && tests === null) {
+      try { setTests((await api<{ tests: Array<{ path: string; line: number; code: string }> }>(`/projects/${projectId}/testplan/cases/${caseKey}/test`)).tests); } catch { setTests([]); }
+    }
+    setOpen(!open);
+  };
+  return (
+    <div>
+      <button type="button" className={styles.ghost} style={{ minHeight: 36, padding: "0 6px" }} aria-expanded={open} onClick={() => void toggle()}>{open ? t("Скрыть код теста") : t("Код теста")}</button>
+      {open && tests !== null && (tests.length ? tests.map((test) => (
+        <div key={`${test.path}:${test.line}`} style={{ marginTop: 4 }}>
+          <p className={styles.small} style={{ margin: "0 0 2px" }}>{test.path}, {t("строка {0}", [test.line])}</p>
+          <pre style={{ maxWidth: "100%", overflow: "auto", background: "var(--sunken, #f1f2f0)", padding: 10, borderRadius: 8, fontSize: 14, lineHeight: 1.45, margin: 0 }}>{test.code}</pre>
+        </div>
+      )) : <p className={styles.small} style={{ margin: "4px 0 0" }}>{t("Теста с этим кейсом в названии нет: агент его ещё не написал или назвал иначе.")}</p>)}
+    </div>
   );
 }

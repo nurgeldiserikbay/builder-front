@@ -100,7 +100,9 @@ export type StageDetail = {
     canSubmit: boolean; canRequestChanges: boolean; canInvite: boolean; canSuggest: boolean; reviewNote: string | null; approval: Approval; blockingComments?: number;
     key: string; title: string; purpose: string; outcome: string; phase?: PhaseKey; guide?: StageGuide; artifactType: ArtifactType; status: StageStatus; statusLabel: string; statusExplanation: string;
     acceptance: string[]; acceptExplanation: string; importHint: string | null; fields: FieldDefinition[] | null; lockedKeys: string[]; acceptedVersionId: string | null;
-    canEdit: boolean; canAccept: boolean; canReopen: boolean; canImport: boolean; optional?: string | null; canSkip?: boolean; inputsReady: boolean; changesPending?: boolean; canOverrideReview?: boolean;
+    canEdit: boolean; canAccept: boolean; canReopen: boolean; canImport: boolean; optional?: string | null; canSkip?: boolean;
+    /** Unsettled requests from this stage to earlier ones and to it from later ones. */
+    requests?: { outgoing: StageRequestRef[]; incoming: StageRequestRef[] }; inputsReady: boolean; changesPending?: boolean; canOverrideReview?: boolean;
     contract?: { explanation: string } | null;
     waitingBranches?: Array<{ stageKey: string; title: string; sourceKey: string; sourceTitle: string }>;
     impact?: { opens: Array<{ key: string; title: string }>; willNotify: Array<{ key: string; title: string; status: string }> };
@@ -209,7 +211,7 @@ const messages: Record<string, string> = {
   ASSIGNMENT_NOT_FOUND: t("Приглашение уже отозвано."),
   PREVIEW_NOT_AVAILABLE: t("Предпросмотр недоступен для этого этапа."),
   PROPOSAL_TEXT_INVALID: t("Опишите, что изменить и почему, — от 10 до 1000 символов."),
-  PROPOSAL_TARGET_INVALID: t("Предложить изменение можно только для этапов, на которых построен ваш этап."),
+  PROPOSAL_TARGET_INVALID: t("Запрос можно отправить только этапу, на котором построен ваш этап."),
   PROPOSAL_TARGET_NOT_ACCEPTED: t("Этот этап ещё не принят — менять пока нечего."),
   PROPOSAL_ONLY_FOR_SPECIALISTS: t("Предложения изменений отправляют приглашённые специалисты. Вы можете изменить этап сами."),
   PROPOSAL_LIMIT: t("У вас уже 10 предложений ждут решения. Дождитесь ответа владельца или отзовите лишние."),
@@ -352,6 +354,9 @@ const messages: Record<string, string> = {
   QUALITY_PROFILE_NOT_FOUND: t("Такого профиля проверки нет или он сейчас не действует. Выберите другой."),
   IMAGE_ALT_TOO_LONG: t("Описание фото слишком длинное — до 200 символов."),
   BLOCKING_COMMENTS_OPEN: t("Есть открытые блокирующие замечания — их нужно закрыть до приёмки."),
+  STAGE_BLOCKED_BY_REQUEST: t("Этап ждёт ответа на блокер к прошлому этапу. Когда там ответят или исправят, этап можно будет принять."),
+  PROPOSAL_TARGET_LOCKED: t("Этот этап ещё не открыт — задавать ему вопросы рано."),
+  ANSWER_INVALID: t("Напишите ответ."),
   REASON_TOO_SHORT: t("Напишите объяснение хотя бы одним понятным предложением."),
   REASON_TOO_LONG: t("Объяснение слишком длинное — не больше 1000 символов."),
   FINDING_NOT_BLOCKING: t("Проверка уже изменилась: обновите страницу и посмотрите замечания ещё раз."),
@@ -607,3 +612,6 @@ export type ConceptDocumentData = {
   /** The accepted process the diagrams are drawn from; typed by the stage page. */
   inputs: { process: unknown };
 };
+
+/** A request between stages as the stage page shows it (builder-back stage-requests.ts). */
+export type StageRequestRef = { id: string; kind: "change" | "question"; blocking: boolean; status: "open" | "accepted"; text: string; fromStageKey: string; fromTitle: string; targetStageKey: string; targetTitle: string };

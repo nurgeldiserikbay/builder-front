@@ -571,3 +571,4 @@ button.chip:disabled{opacity:.5;cursor:not-allowed}
 .responseList li{padding:12px 14px;background:var(--surface)}
 .responseList li + li{border-top:1px solid var(--line-soft)}
 @media(max-width:720px){.requestCard{border-radius:0;border-left:0;border-right:0;margin:0 -16px}.requestMeta{text-align:left}}
+.code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:13.5px;line-height:1.5;background:var(--sunken);border:1px solid var(--line);border-radius:var(--r-control);padding:8px 10px;overflow-x:auto;color:var(--ink)}

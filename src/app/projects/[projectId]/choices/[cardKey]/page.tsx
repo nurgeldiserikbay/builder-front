@@ -13,7 +13,7 @@ import { DomainConnect } from "./domain-connect";
 import styles from "../../../journey.module.css";
 import AppHeader from "../../../../app-header";
 
-type Step = { key: string; title: string; text: string[]; kind: "manual" | "ssh_key" | "connect" | "download" | "publish" | "push" | "package" | "verify" | "domain" | "hosting_connect" | "hosting_deploy"; link?: { label: string; url: string } };
+type Step = { key: string; title: string; text: string[]; kind: "manual" | "ssh_key" | "connect" | "download" | "publish" | "push" | "package" | "verify" | "domain" | "hosting_connect" | "hosting_deploy" | "network_agent"; link?: { label: string; url: string } };
 type Option = { key: string; requires?: { card: string; option: string | string[]; explanation: string }; title: string; summary: string; pros: string[]; limits: string[]; cost: string; upkeep: string; leaving: string; steps: Step[] };
 type Repository = { provider: string; connectedVia?: string; repoPath: string; webUrl: string; defaultBranch: string; isPrivate: boolean; tokenHint: string; verifiedAt: string; lastPushAt: string | null; lastCommitUrl: string | null; lastError: string | null };
 type CardState = {
@@ -194,6 +194,7 @@ export default function ChoicePage() {
                         return api<CardState>(`/projects/${projectId}/choices/${cardKey}`);
                       })}>{busy === "package" ? t("Готовим…") : t("Скачать пакет (zip)")}</button>
                     )}
+                    {step.kind === "network_agent" && <span className={styles.small}>{stepDone ? t("Агент подключён.") : t("Агент ещё не подключался.")} <a href={`/projects/${projectId}/stages/handoff#network-agent`}>{t("Открыть «Агент в вашей сети» →")}</a></span>}
                     {step.kind === "ssh_key" && <SshKeyStep projectId={projectId} canDecide={state.canDecide} busy={busy} run={(label, action) => void run(label, async () => { await action(); })} />}
                     {step.kind === "hosting_connect" && <HostingConnect provider={chosen.key} title={chosen.title} hosting={state.context?.hosting ?? null} canDecide={state.canDecide} busy={busy}
                       onConnect={(input) => void run("hosting", () => api<CardState>(`/projects/${projectId}/deployment/hosting`, { method: "POST", body: JSON.stringify({ provider: chosen.key, ...input, confirm: true }) }))}

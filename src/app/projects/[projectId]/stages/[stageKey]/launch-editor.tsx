@@ -13,7 +13,7 @@ export type LaunchChecklist = { items: Array<{ key: LaunchItemKey; status: Launc
 export type LaunchOptions = {
   facts: {
     readiness: { blocking: { total: number; passed: number }; scenarios: { total: number; works: number }; openRemarks: number } | null;
-    deployment: { url: string; ok: boolean; database: string | null; checkedAt: string } | null;
+    deployment: { url: string; ok: boolean; database: string | null; checkedAt: string; checkedVia?: string } | null;
   };
   items: Array<{ key: LaunchItemKey; title: string; why: string; required: boolean }>;
   markdown: string | null;
@@ -53,7 +53,7 @@ export function LaunchEditor({ projectId, value, onChange, options, disabled }: 
               <Check ok={readiness.openRemarks === 0} title={t("Замечаний не осталось")} text={t("Открытых замечаний: {0}", [readiness.openRemarks])} link={{ href: `/projects/${projectId}/stages/roadmap`, label: t("Открыть ход работ") }} />
             </>
           ) : <Check ok={false} title={t("План проверки утверждён")} text={t("Без него непонятно, что считать «работает».")} link={{ href: `/projects/${projectId}/stages/testplan`, label: t("Открыть план проверки") }} />}
-          <Check ok={Boolean(deployment?.ok)} title={t("Приложение отвечает")} text={deployment ? `${deployment.url} — ${deployment.ok ? t("отвечает") : t("не отвечает")}, ${t("проверено {0}", [new Date(deployment.checkedAt).toLocaleString()])}` : t("Адрес ещё не проверяли.")} link={{ href: `/projects/${projectId}/stages/handoff`, label: t("Проверить адрес") }} />
+          <Check ok={Boolean(deployment?.ok)} title={t("Приложение отвечает")} text={deployment ? `${deployment.url} — ${deployment.ok ? t("отвечает") : t("не отвечает")}, ${t("проверено {0}", [new Date(deployment.checkedAt).toLocaleString()])}${deployment.checkedVia === "network_agent" ? ` ${t("агентом изнутри вашей сети")}` : ""}` : t("Адрес ещё не проверяли.")} link={{ href: `/projects/${projectId}/stages/handoff`, label: t("Проверить адрес") }} />
           {deployment?.ok && <Check ok={deployment.url.startsWith("https://")} title={t("Работает по HTTPS")} text={deployment.url.startsWith("https://") ? t("Соединение защищено.") : t("Пароли и данные пойдут открытым текстом.")} />}
           {deployment?.ok && <Check ok={deployment.database === "postgres"} title={t("Работает с базой данных")} text={deployment.database === "postgres" ? t("Данные сохраняются в PostgreSQL.") : t("Данные в памяти — пропадут при перезапуске.")} link={{ href: `/projects/${projectId}/stages/handoff`, label: t("Как подключить базу") }} />}
         </ul>

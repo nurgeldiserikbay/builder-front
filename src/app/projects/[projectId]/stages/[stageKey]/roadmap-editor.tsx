@@ -304,7 +304,7 @@ function RisksEditor({ value, onChange, options, disabled }: { value: Roadmap; o
   );
 }
 
-type TaskStatus = "not_started" | "in_progress" | "review" | "done" | "done_with_note" | "blocked";
+export type TaskStatus = "not_started" | "in_progress" | "review" | "done" | "done_with_note" | "blocked";
 type ProgressTask = { key: string; title: string; release: number; hours: number; status: TaskStatus; assigneeUserId: string | null; assignee: string | null; dueDate: string | null; note: string | null; blockedBy: string | null; late: boolean; checks: { total: number; passed: number }; fromCase?: string | null };
 type Progress = {
   progress: number; hoursDone: number; hoursTotal: number; criticalPath: string[]; expectedFinish: string; remainingCriticalHours: number;
@@ -313,8 +313,8 @@ type Progress = {
   next: { key: string; title: string; module: string } | null; canEdit: boolean; people: Array<{ userId: string; name: string }>; testPlanApproved: boolean; agentRunning: boolean;
   modules: Array<{ key: string; name: string; critical: boolean; progress: number; hoursDone: number; hoursTotal: number; tasks: ProgressTask[]; agent: { taskId: string; status: string; startedAt: string; finishedAt: string | null } | null }>;
 };
-const statusLabels = (): Record<TaskStatus, string> => ({ not_started: t("не начата"), in_progress: t("в работе"), review: t("на проверке"), done: t("готова"), done_with_note: t("готова с замечанием"), blocked: t("заблокирована") });
-const statusColor: Record<TaskStatus, string> = { not_started: "#5b6270", in_progress: "#2f55d4", review: "#7a4500", done: "#1d7a46", done_with_note: "#1d7a46", blocked: "#b3261e" };
+export const statusLabels = (): Record<TaskStatus, string> => ({ not_started: t("не начата"), in_progress: t("в работе"), review: t("на проверке"), done: t("готова"), done_with_note: t("готова с замечанием"), blocked: t("заблокирована") });
+export const statusColor: Record<TaskStatus, string> = { not_started: "#5b6270", in_progress: "#2f55d4", review: "#7a4500", done: "#1d7a46", done_with_note: "#1d7a46", blocked: "#b3261e" };
 const taskErrors = (): Record<string, string> => ({
   TASK_NEEDS_CHECKS: t("«Готова» ставится только по зелёным проверкам задачи, а у этой задачи нет кейсов в плане проверки. Выберите «готова с замечанием» и напишите, почему её можно считать сделанной."),
   TASK_CHECKS_NOT_PASSED: t("Не все кейсы этой задачи пройдены. Отметьте результаты в «Плане проверки» или выберите «готова с замечанием» с объяснением."),
@@ -323,8 +323,8 @@ const taskErrors = (): Record<string, string> => ({
   TASK_ASSIGNEE_NOT_IN_PROJECT: t("Этот человек не участвует в проекте."),
   ROADMAP_NOT_APPROVED: t("План ещё не утверждён."),
 });
-const agentStatus = (): Record<string, string> => ({ queued: t("в очереди"), running: t("агент пишет код"), succeeded: t("готово, проверки пройдены"), failed: t("не получилось или проверки не пройдены"), stopped: t("остановлено"), unavailable: t("агент не подключён") });
-const agentErrors = (): Record<string, string> => ({
+export const agentStatus = (): Record<string, string> => ({ queued: t("в очереди"), running: t("агент пишет код"), succeeded: t("готово, проверки пройдены"), failed: t("не получилось или проверки не пройдены"), stopped: t("остановлено"), unavailable: t("агент не подключён") });
+export const agentErrors = (): Record<string, string> => ({
   AGENT_TASK_RUNNING: t("ИИ-агент уже работает над другой задачей проекта. Дождитесь её окончания."),
   AGENT_NOT_CONFIGURED: t("ИИ-агент не подключён на этом сервере."),
   HANDOFF_NOT_BUILT: t("Сначала соберите «Пакет для разработки»: агент работает по нему."),
@@ -411,7 +411,7 @@ function ModuleAgent({ projectId, module, running, canEdit, testPlanApproved, on
     <div style={{ margin: "0 0 10px" }}>
       {module.agent && (
         <p className={styles.small} style={{ margin: "0 0 6px" }}>
-          {t("ИИ-агент")}: {labels[module.agent.status] ?? module.agent.status} · <a href={`/projects/${projectId}/stages/handoff`}>{t("ход и результат")}</a>
+          {t("ИИ-агент")}: {labels[module.agent.status] ?? module.agent.status} · <a href={`/projects/${projectId}/stages/m_${module.key}`}>{t("этап модуля")}</a>
         </p>
       )}
       {canEdit && !(module.agent && ["queued", "running"].includes(module.agent.status)) && (

@@ -444,6 +444,7 @@ export default function StagePage() {
       )}
       {stage.artifactType === "features" && stage.status !== "locked" && draft !== null && (
         <FeaturesEditor value={draft as AppFeatures} onChange={edit} disabled={!canType} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} spec={detail.options.features}
+          process={(detail.inputs.find((input) => input.key === "process")?.content as BusinessProcess | null) ?? null}
           dataOptions={[{ key: "user", name: t("Пользователь") }, ...((detail.inputs.find((input) => input.key === "process")?.content as BusinessProcess | null)?.data ?? []).filter((entity) => entity.key !== "user").map((entity) => ({ key: entity.key, name: entity.name }))]} />
       )}
       {stage.artifactType === "screens" && stage.status !== "locked" && draft !== null && (

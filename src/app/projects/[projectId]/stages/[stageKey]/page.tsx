@@ -36,6 +36,7 @@ import StagePassport from "./passport";
 import { applyFix, type AutoFix } from "./process-changes";
 import { SitemapEditor, blankSitemap } from "./sitemap-editor";
 import { IdeaEditor, blankIdea, type IdeaReview } from "./idea-editor";
+import { SuggestionsEditor, type Suggestions } from "./suggestions-editor";
 import { CatalogEditor } from "./catalog-editor";
 import { FeaturesEditor, HandoffView, PrototypeView, ScreensEditor, blankFeatures, blankScreens, type AppFeatures, type AppScreens } from "./webapp-editors";
 import { formatTenge } from "@/lib/money";
@@ -482,6 +483,26 @@ export default function StagePage() {
             </div>
           )}
         </section>
+      )}
+
+      {/* Starting point for empty feature suggestions */}
+      {stage.artifactType === "suggestions" && !detail.current && draft === null && stage.canEdit && (
+        <section className={styles.card} aria-label={t("Как начать")}>
+          <p className={styles.cardTitle}>{t("Что обычно бывает в таких продуктах?")}</p>
+          <div style={{ display: "grid", gap: 10 }}>
+            {ai.configured && canAi && stage.inputsReady && (
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{busy === "ai" ? t("ИИ подбирает…") : t("✨ Пусть ИИ подберёт и объяснит")}</button>
+            )}
+            {!ai.configured && ai.templateAvailable && stage.inputsReady && (
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{t("Подобрать по моему процессу")}</button>
+            )}
+            {canType && <button className={styles.secondary} onClick={() => edit({ items: [] })}>{t("Составить список самому")}</button>}
+          </div>
+          <p className={styles.small}>{t("Ничего не попадёт в продукт без вашего решения: по каждому предложению вы выберете «в первую версию», «потом» или «не нужно».")}</p>
+        </section>
+      )}
+      {stage.artifactType === "suggestions" && stage.status !== "locked" && draft !== null && (
+        <SuggestionsEditor value={draft as Suggestions} onChange={edit} disabled={!canType} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
       )}
 
       {/* Starting point for an empty idea review */}

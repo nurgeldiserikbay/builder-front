@@ -33,6 +33,7 @@ import { TechPlanView, type TechPlan } from "./techplan-view";
 import { ArchitectureEditor, type ArchitectureDesign } from "./architecture-editor";
 import { ContractsEditor, type Contracts } from "./contracts-editor";
 import { RoadmapEditor, type Roadmap } from "./roadmap-editor";
+import { TestPlanEditor, type TestPlan } from "./testplan-editor";
 import { ProcessEditor, blankProcess, type BusinessProcess } from "./process-editor";
 import ProcessAiChange from "./process-ai";
 import StagePassport from "./passport";
@@ -120,9 +121,9 @@ export default function StagePage() {
       // An app's plan accepted before designs were editable starts from the first design the platform prepared.
       const previewDesign = type === "techplan" ? next.options.techplan?.preview?.design ?? null : null;
       const current = next.current?.content && previewDesign && !(next.current.content as { design?: unknown }).design ? { ...(next.current.content as object), design: previewDesign } : next.current?.content;
-      setDraft(current ?? (type === "brief" ? {} : type === "offer" ? { services: [], hours: null } : type === "design" ? defaultDesign : type === "schedule" ? next.options.schedule?.template ?? null : type === "contracts" ? next.options.contracts?.template ?? null : type === "roadmap" ? next.options.roadmap?.template ?? null : type === "techplan" ? { ownerNotes: null, ...(next.options.techplan?.preview?.design ? { design: next.options.techplan.preview.design } : {}) } : null));
+      setDraft(current ?? (type === "brief" ? {} : type === "offer" ? { services: [], hours: null } : type === "design" ? defaultDesign : type === "schedule" ? next.options.schedule?.template ?? null : type === "contracts" ? next.options.contracts?.template ?? null : type === "roadmap" ? next.options.roadmap?.template ?? null : type === "testplan" ? next.options.testplan?.template ?? null : type === "techplan" ? { ownerNotes: null, ...(next.options.techplan?.preview?.design ? { design: next.options.techplan.preview.design } : {}) } : null));
       // A first style choice or the prefilled schedule is a ready-to-save draft: offer «Сохранить» right away.
-      setDirty(!next.current && (type === "design" || type === "schedule" || (type === "contracts" && Boolean(next.options.contracts?.template)) || (type === "roadmap" && Boolean(next.options.roadmap?.template)) || (type === "techplan" && Boolean(next.options.techplan?.preview))) && next.stage.canEdit);
+      setDirty(!next.current && (type === "design" || type === "schedule" || (type === "contracts" && Boolean(next.options.contracts?.template)) || (type === "roadmap" && Boolean(next.options.roadmap?.template)) || (type === "testplan" && Boolean(next.options.testplan?.template)) || (type === "techplan" && Boolean(next.options.techplan?.preview))) && next.stage.canEdit);
       return next;
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return null; }
@@ -658,6 +659,18 @@ export default function StagePage() {
         ) : (
           <section className={styles.card} aria-label={t("План реализации")}>
             <p className={styles.small} style={{ margin: 0 }}>{t("План строится из принятых ТЗ, архитектуры и контрактов. Примите их, чтобы начать.")}</p>
+          </section>
+        )
+      )}
+
+      {stage.artifactType === "testplan" && stage.status !== "locked" && detail.options.testplan && (
+        draft !== null ? (
+          <TestPlanEditor projectId={projectId} value={draft as TestPlan} onChange={edit} options={detail.options.testplan} disabled={!canType}
+            findings={(detail.review?.findings ?? []).map((finding) => ({ target: finding.target ?? null, message: finding.message }))}
+            onRebuild={canType && detail.current ? () => edit(detail.options.testplan!.template) : null} />
+        ) : (
+          <section className={styles.card} aria-label={t("План проверки")}>
+            <p className={styles.small} style={{ margin: 0 }}>{t("Кейсы строятся из принятых ТЗ, архитектуры, контрактов и плана реализации. Примите их, чтобы начать.")}</p>
           </section>
         )
       )}

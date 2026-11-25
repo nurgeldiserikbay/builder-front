@@ -27,6 +27,7 @@ import BrowserCheckPanel from "./browser-check";
 import StarterCodePanel from "./starter-code";
 import AppCodePanel from "./app-code";
 import AgentPanel from "./agent-panel";
+import NetworkAgentPanel from "./network-agent-panel";
 import { TimesheetPanel } from "./timesheet";
 import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
@@ -476,6 +477,7 @@ export default function StagePage() {
       )}
       {stage.artifactType === "handoff" && stage.status !== "locked" && <StarterCodePanel projectId={projectId} packageBuilt={Boolean(detail.current)} key={detail.current?.versionNumber ?? 0} />}
       {stage.artifactType === "handoff" && stage.status !== "locked" && <AgentPanel projectId={projectId} packageBuilt={Boolean(detail.current)} canEdit={stage.canEdit} key={`agent-${detail.current?.versionNumber ?? 0}`} />}
+      {stage.artifactType === "handoff" && stage.status !== "locked" && <NetworkAgentPanel projectId={projectId} />}
       {stage.artifactType === "handoff" && stage.status !== "locked" && <AppCodePanel projectId={projectId} packageBuilt={Boolean(detail.current)} key={`ai-${detail.current?.versionNumber ?? 0}`} />}
 
       {/* Requests between stages: what holds this stage, and what later stages are waiting for from it */}

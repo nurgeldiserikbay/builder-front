@@ -4,7 +4,7 @@ import StageRequests from "./stage-requests";
 
 import ApprovalPanel from "./approval";
 import StageRoute from "./stage-route";
-import ProposalsPanel, { ProposeChange } from "../../proposals";
+import ProposalsPanel, { RaiseRequest } from "../../proposals";
 import PlaybookCard from "./playbook-card";
 import CommentsPanel from "./comments";
 import ReviewPanel from "./review";
@@ -460,6 +460,16 @@ export default function StagePage() {
       {stage.artifactType === "handoff" && stage.status !== "locked" && <AgentPanel projectId={projectId} packageBuilt={Boolean(detail.current)} canEdit={stage.canEdit} key={`agent-${detail.current?.versionNumber ?? 0}`} />}
       {stage.artifactType === "handoff" && stage.status !== "locked" && <AppCodePanel projectId={projectId} packageBuilt={Boolean(detail.current)} key={`ai-${detail.current?.versionNumber ?? 0}`} />}
 
+      {/* Requests between stages: what holds this stage, and what later stages are waiting for from it */}
+      {(stage.requests?.outgoing ?? []).filter((item) => item.blocking).map((item) => (
+        <p key={item.id} className={`${styles.notice} ${styles.warn}`} role="status">
+          <strong>{t("Этап ждёт: ")}</strong>{t("{0} к этапу «{1}» — «{2}». Пока не ответят или не исправят, этап нельзя принять.", [item.kind === "question" ? t("вопрос") : t("запрос на изменение"), t(item.targetTitle), item.text.slice(0, 140)])}{" "}
+          <a href={`/projects/${projectId}/stages/${item.targetStageKey}`}>{t("Открыть «{0}»", [t(item.targetTitle)])}</a>
+        </p>
+      ))}
+      {(stage.requests?.incoming ?? []).some((item) => item.blocking && item.status === "open") && (
+        <p className={`${styles.notice} ${styles.warn}`} role="status">{t("Следующие этапы ждут ответа от этого этапа — см. «Запросы между этапами» ниже.")}</p>
+      )}
       {/* Optional stage: why it can be skipped, and the skip with a written reason */}
       {stage.status === "skipped" && (
         <div className={`${styles.notice} ${styles.info}`}>
@@ -853,15 +863,16 @@ export default function StagePage() {
             {detail.inputs.map((input) => (
               <li key={input.key}>
                 <strong>{input.title}</strong>{input.satisfied ? t(" (версия {0}): {1}", [input.versionNumber, summarize(input.key, input.content)]) : t(" — ещё не принят")}
-                {specialist && assignment?.status === "active" && input.satisfied && <>{" · "}<ProposeChange projectId={projectId} stageKey={stageKey} target={{ key: input.key, title: input.title }} onSent={() => setProposalsVersion((value) => value + 1)} /></>}
                 {!input.satisfied && <> · <a className={styles.back} href={`/projects/${projectId}/stages/${input.key}`}>{t("открыть")}</a></>}
               </li>
             ))}
           </ul>
         </details>
       )}
-      {(specialist || ["owner", "manager"].includes(detail.viewer.role)) && <ProposalsPanel key={proposalsVersion} projectId={projectId} aiReady={detail.ai.configured} onDecided={() => void load()}
-        filter={specialist ? { fromStageKey: stageKey } : { targetStageKey: stageKey }} />}
+      {stage.canEdit && detail.inputs.length > 0 && (
+        <RaiseRequest projectId={projectId} stageKey={stageKey} targets={detail.inputs.map((input) => ({ key: input.key, title: input.title }))} onSent={() => { setProposalsVersion((value) => value + 1); void load(); }} />
+      )}
+      <ProposalsPanel key={proposalsVersion} projectId={projectId} stageKey={stageKey} aiReady={detail.ai.configured} onDecided={() => void load()} />
       {detail.ai.level !== "none" && <PlaybookCard projectId={projectId} stageKey={stageKey} />}
       {stage.canInvite && stage.status !== "locked" && (
         <SpecialistsPanel key={`team-${teamVersion}`} projectId={projectId} stageKey={stageKey} editable={!accepted} />

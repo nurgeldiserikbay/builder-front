@@ -450,6 +450,15 @@ export default function StagePage() {
           {!stage.inputsReady && <p className={styles.small}>{t("Черновик станет доступен, когда будут приняты предыдущие этапы.")}</p>}
         </section>
       )}
+      {stage.artifactType === "features" && stage.status !== "approved" && (detail.options.backlogNext?.length ?? 0) > 0 && (
+        <section className={styles.notice} aria-label={t("Что взять в новую версию")}>
+          <strong>{t("Новая версия {0}: добавьте в ТЗ", [detail.options.backlogNext![0].version ?? 2])}</strong>
+          <ul className={styles.list} style={{ margin: "6px 0 0" }}>
+            {detail.options.backlogNext!.map((item) => <li key={item.id}>{item.title}{item.details ? <span className={styles.small}>{" — "}{item.details}</span> : null}</li>)}
+          </ul>
+          <p className={styles.small} style={{ margin: "6px 0 0" }}>{t("Когда новое ТЗ будет принято, следующие этапы получат уведомления об изменениях — переделывать придётся только то, что затронуто.")}</p>
+        </section>
+      )}
       {stage.artifactType === "features" && stage.status !== "locked" && draft !== null && (
         <FeaturesEditor value={draft as AppFeatures} onChange={edit} disabled={!canType} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} spec={detail.options.features}
           process={(detail.inputs.find((input) => input.key === "process")?.content as BusinessProcess | null) ?? null}

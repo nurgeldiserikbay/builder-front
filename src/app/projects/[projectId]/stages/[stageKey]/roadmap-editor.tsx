@@ -305,7 +305,7 @@ function RisksEditor({ value, onChange, options, disabled }: { value: Roadmap; o
 }
 
 type TaskStatus = "not_started" | "in_progress" | "review" | "done" | "done_with_note" | "blocked";
-type ProgressTask = { key: string; title: string; release: number; hours: number; status: TaskStatus; assigneeUserId: string | null; assignee: string | null; dueDate: string | null; note: string | null; blockedBy: string | null; late: boolean; checks: { total: number; passed: number } };
+type ProgressTask = { key: string; title: string; release: number; hours: number; status: TaskStatus; assigneeUserId: string | null; assignee: string | null; dueDate: string | null; note: string | null; blockedBy: string | null; late: boolean; checks: { total: number; passed: number }; fromCase?: string | null };
 type Progress = {
   progress: number; hoursDone: number; hoursTotal: number; criticalPath: string[]; expectedFinish: string; remainingCriticalHours: number;
   spent: { aiRequests: number; specialistHours: number }; planned: { aiRequests: number; hours: number };
@@ -449,10 +449,11 @@ function TaskRow({ task, statuses, people, canEdit, open, onToggle, onSave }: {
       <button type="button" aria-expanded={open} onClick={onToggle} disabled={!canEdit} style={{ all: "unset", cursor: canEdit ? "pointer" : "default", display: "grid", gap: 2, width: "100%", minHeight: 44 }}>
         <span>{task.title}</span>
         <span className={styles.small}>
+          {task.fromCase ? <span style={{ color: "#7a4500" }}>{t("замечание владельца")} · </span> : null}
           <span style={{ color: statusColor[task.status], fontWeight: 600 }}>{statuses[task.status]}</span>
-          {` · ${t("{0} ч", [task.hours])} · ${t("выпуск {0}", [task.release])}`}{task.assignee ? ` · ${task.assignee}` : ""}{task.dueDate ? ` · ${t("до {0}", [date(task.dueDate)])}` : ""}
+          {task.fromCase ? "" : ` · ${t("{0} ч", [task.hours])} · ${t("выпуск {0}", [task.release])}`}{task.assignee ? ` · ${task.assignee}` : ""}{task.dueDate ? ` · ${t("до {0}", [date(task.dueDate)])}` : ""}
           {task.late ? <span style={{ color: "#b3261e" }}> · {t("опаздывает")}</span> : null}
-          {` · ${t("проверок: {0} из {1}", [task.checks.passed, task.checks.total])}`}
+          {task.fromCase ? ` · ${t("закроется, когда вы отметите сценарий «Работает»")}` : ` · ${t("проверок: {0} из {1}", [task.checks.passed, task.checks.total])}`}
         </span>
         {task.status === "done_with_note" && task.note && <span className={styles.small}>{t("Замечание")}: {task.note}</span>}
         {task.status === "blocked" && task.blockedBy && <span className={styles.small} style={{ color: "#b3261e" }}>{t("Ждёт")}: {task.blockedBy}</span>}

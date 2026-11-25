@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { explainError } from "@/lib/journey";
@@ -228,6 +228,7 @@ function ResultsView({ projectId, value, options }: { projectId: string; value: 
   const failed = value.cases.filter((item) => results[item.key]?.status === "failed").length;
   return (
     <>
+      <OwnerAcceptance projectId={projectId} value={value} />
       <section className={styles.card} aria-labelledby="results-title">
         <p id="results-title" className={styles.cardTitle}>{t("Результаты")}</p>
         <p style={{ margin: "0 0 6px" }}>{t("Пройдено {0} из {1}, не пройдено {2}.", [passed, value.cases.length, failed])}</p>
@@ -283,4 +284,94 @@ function ResultLabel({ result }: { result: Result }) {
   const by = result.source === "run" ? ` (${t("по прогону тестов")})` : "";
   return result.status === "passed" ? <span style={{ color: "#1d7a46", fontWeight: 600 }}>{t("работает")}{by}</span>
     : <span style={{ color: "#b3261e", fontWeight: 600 }}>{t("не работает")}{by}{result.note ? `: ${result.note}` : ""}</span>;
+}
+
+type Verdict = "works" | "broken" | "remark";
+type Acceptance = {
+  acceptances: Array<{ caseKey: string; verdict: Verdict | null; note: string | null; stale: boolean }>;
+  readiness: { blocking: { total: number; passed: number }; scenarios: { total: number; works: number }; openRemarks: number };
+  canAccept: boolean;
+};
+const acceptanceErrors = (): Record<string, string> => ({
+  ACCEPTANCE_NOTE_REQUIRED: t("Напишите, что не так или что поправить, — хотя бы 10 символов."),
+  STAGE_ACCEPT_FORBIDDEN: t("Принимать сценарии может владелец или менеджер проекта."),
+  TESTPLAN_NOT_APPROVED: t("План проверки ещё не утверждён."),
+});
+
+/**
+ * «Приёмка владельцем»: the main scenarios — normal path and mistakes — tried on the test version. «Не работает» or a
+ * remark becomes a task of the plan; «Работает» closes it. Readiness follows the test plan's rule for a launch.
+ */
+function OwnerAcceptance({ projectId, value }: { projectId: string; value: TestPlan }) {
+  const [data, setData] = useState<Acceptance | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [problem, setProblem] = useState<{ key: string; text: string } | null>(null);
+  const load = useCallback(async () => { try { setData(await api<Acceptance>(`/projects/${projectId}/testplan/acceptance`)); } catch { setData(null); } }, [projectId]);
+  useEffect(() => { void load(); }, [load]);
+  if (!data) return null;
+  const send = async (caseKey: string, verdict: Verdict) => {
+    setProblem(null);
+    try {
+      setData(await api<Acceptance>(`/projects/${projectId}/testplan/cases/${caseKey}/acceptance`, { method: "PUT", body: JSON.stringify({ verdict, note: note || null }) }));
+      setOpen(null); setNote("");
+    } catch (caught) {
+      const code = caught instanceof Error ? caught.message : "";
+      setProblem({ key: caseKey, text: acceptanceErrors()[code] ?? explainError(caught) });
+    }
+  };
+  const { readiness } = data;
+  const ready = readiness.blocking.passed === readiness.blocking.total && readiness.scenarios.works === readiness.scenarios.total && readiness.openRemarks === 0;
+  const verdictLabel = (verdict: Verdict | null, stale: boolean) => stale ? <span style={{ color: "#7a4500" }}>{t("принято по старой версии — проверьте снова")}</span>
+    : verdict === "works" ? <span style={{ color: "#1d7a46", fontWeight: 600 }}>{t("работает")}</span>
+      : verdict === "broken" ? <span style={{ color: "#b3261e", fontWeight: 600 }}>{t("не работает")}</span>
+        : verdict === "remark" ? <span style={{ color: "#7a4500", fontWeight: 600 }}>{t("есть замечание")}</span> : <span>{t("не проверено")}</span>;
+  return (
+    <>
+      <section className={styles.card} aria-labelledby="ready-title" style={{ borderColor: ready ? "#d2eadb" : undefined }}>
+        <p id="ready-title" className={styles.cardTitle}>{t("Готовность к запуску")}</p>
+        <ul style={{ margin: 0, paddingLeft: 20 }}>
+          <li>{t("Блокирующие кейсы пройдены: {0} из {1}", [readiness.blocking.passed, readiness.blocking.total])}</li>
+          <li>{t("Главные сценарии приняты: {0} из {1}", [readiness.scenarios.works, readiness.scenarios.total])}</li>
+          <li>{t("Открытых замечаний: {0}", [readiness.openRemarks])}</li>
+        </ul>
+        <p className={styles.small} style={{ margin: "8px 0 0" }}>{ready ? t("По плану проверки всё готово к запуску.") : t("Запуск — когда все блокирующие кейсы пройдены, главные сценарии приняты и замечаний не осталось.")}</p>
+      </section>
+      <section className={styles.card} aria-labelledby="accept-title">
+        <p id="accept-title" className={styles.cardTitle}>{t("Приёмка владельцем")}</p>
+        <p className={styles.small} style={{ marginTop: 0 }}>{t("Пройдите главные сценарии в тестовой версии приложения и отметьте каждый. «Не работает» и замечание становятся задачей в плане реализации; когда всё поправят, отметьте «Работает».")}</p>
+        {data.acceptances.map((item) => {
+          const testCase = value.cases.find((one) => one.key === item.caseKey);
+          if (!testCase) return null;
+          const expanded = open === item.caseKey;
+          return (
+            <article key={item.caseKey} className={styles.section} style={{ paddingTop: 8, paddingBottom: 8 }}>
+              <button type="button" aria-expanded={expanded} onClick={() => { setOpen(expanded ? null : item.caseKey); setNote(""); }} style={{ all: "unset", cursor: "pointer", display: "grid", gap: 2, width: "100%", minHeight: 44 }}>
+                <span>{testCase.plain || testCase.title}</span>
+                <span className={styles.small}>{verdictLabel(item.verdict, item.stale)}{item.note ? ` — ${item.note}` : ""}</span>
+              </button>
+              {expanded && (
+                <div style={{ marginTop: 8 }}>
+                  <p style={{ margin: "0 0 4px" }}><strong>{t("Что сделать")}:</strong> {[testCase.given, ...testCase.steps].filter(Boolean).join(" → ")}</p>
+                  <p style={{ margin: "0 0 8px" }}><strong>{t("Должно получиться")}:</strong> {testCase.expected}</p>
+                  {data.canAccept ? (
+                    <>
+                      <label className={styles.field}><span className={styles.label}>{t("Что не так или что поправить (для «Не работает» и замечания)")}</span>
+                        <input className={styles.input} value={note} maxLength={500} onChange={(event) => setNote(event.target.value)} /></label>
+                      <div className={styles.row}>
+                        <button type="button" className={styles.button} onClick={() => void send(item.caseKey, "works")}>{t("Работает")}</button>
+                        <button type="button" className={styles.secondary} onClick={() => void send(item.caseKey, "remark")}>{t("Работает, есть замечание")}</button>
+                        <button type="button" className={styles.danger} onClick={() => void send(item.caseKey, "broken")}>{t("Не работает")}</button>
+                      </div>
+                    </>
+                  ) : <p className={styles.small} style={{ margin: 0 }}>{t("Принимать сценарии может владелец или менеджер проекта.")}</p>}
+                  {problem?.key === item.caseKey && <p role="alert" style={{ color: "#b3261e", margin: "8px 0 0" }}>{problem.text}</p>}
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </section>
+    </>
+  );
 }

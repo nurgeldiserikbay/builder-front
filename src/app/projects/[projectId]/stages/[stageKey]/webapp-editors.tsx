@@ -7,15 +7,18 @@ import { explainError } from "@/lib/journey";
 import { makeZip } from "@/lib/zip";
 import styles from "../../../journey.module.css";
 import { FeatureRoleMap, ModuleMap, ScreenFlowDiagram } from "./diagrams";
+import type { BusinessProcess } from "./process-editor";
+import { AccessEditor, CoverageView, FeatureChecks, QualityEditor, ServicesEditor, productSteps, type AccessRule, type FeatureCase, type SpecQuality, type SpecService } from "./spec-extras";
 
 export type AppRole = { key: string; name: string; description: string };
-export type AppFeature = { key: string; title: string; description: string; roles: string[]; priority: "must" | "should" | "later"; acceptance: string[]; data?: string[] };
+export type AppFeature = { key: string; title: string; description: string; roles: string[]; priority: "must" | "should" | "later"; acceptance: string[]; data?: string[]; story?: string; cases?: FeatureCase[]; sources?: string[] };
 /** Records the features can work with: the accepted process data and user accounts. */
 export type DataOption = { key: string; name: string };
 /** The ТЗ of any project; summary, requirements, limits and questions are missing in results made before the ТЗ stage. */
 export type AppFeatures = {
   roles: AppRole[]; features: AppFeature[]; sensitivity: "normal" | "personal" | "payments" | "health"; integrations: string[];
   summary?: string; requirements?: string[]; limits?: string[]; questions?: string[];
+  access?: AccessRule[]; quality?: SpecQuality; services?: SpecService[];
 };
 export type SpecOptions = { kind: "site" | "app"; firstVersionSoftLimit: number; markdown: string | null };
 export type ScreenBlock = { kind: "list" | "table" | "form" | "details" | "text" | "actions" | "stats" | "search"; title: string; fields: string[] };
@@ -39,7 +42,21 @@ function freeKey(prefix: string, used: string[]): string {
 const lines = (value: string) => value.split("\n").map((line) => line.trim()).filter(Boolean);
 const commas = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
 
-export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions = [], spec }: { value: AppFeatures; onChange: (next: AppFeatures) => void; disabled: boolean; issues: string[]; dataOptions?: DataOption[]; spec?: SpecOptions }) {
+type SpecTab = "features" | "access" | "quality" | "services" | "coverage";
+
+export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions = [], spec, process = null }: { value: AppFeatures; onChange: (next: AppFeatures) => void; disabled: boolean; issues: string[]; dataOptions?: DataOption[]; spec?: SpecOptions; process?: BusinessProcess | null }) {
+  const [tab, setTab] = useState<SpecTab>("features");
+  const steps = productSteps(process);
+  const uncovered = steps.filter((step) => !value.features.some((feature) => (feature.sources ?? []).includes(step.ref))).length;
+  const clients = new Set((process?.actors ?? []).filter((actor) => actor.kind === "client").map((actor) => actor.key));
+  const usedData = dataOptions.filter((option) => value.features.some((feature) => (feature.data ?? []).includes(option.key)));
+  const tabs: Array<[SpecTab, string, string | null]> = [
+    ["features", t("Функции"), String(value.features.length)],
+    ["access", t("Кто что может"), (value.access ?? []).length ? null : "!"],
+    ["quality", t("Требования"), `${Object.values(value.quality ?? {}).filter(Boolean).length}/8`],
+    ["services", t("Интеграции"), String((value.services ?? []).length)],
+    ["coverage", t("Покрытие"), steps.length ? (uncovered ? `✕ ${uncovered}` : "✓") : null],
+  ];
   const site = spec?.kind === "site";
   const product = site ? t("на сайте") : t("в приложении");
   const count = (priority: AppFeature["priority"]) => value.features.filter((feature) => feature.priority === priority).length;
@@ -57,6 +74,42 @@ export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions 
   const removeRole = (key: string) => onChange({ ...value, roles: value.roles.filter((role) => role.key !== key), features: value.features.map((feature) => ({ ...feature, roles: feature.roles.filter((item) => item !== key) })) });
   return (
     <div style={{ display: "grid", gap: 14 }}>
+      <div role="tablist" aria-label={t("Разделы ТЗ")} style={{ display: "flex", gap: 6, overflowX: "auto", position: "sticky", top: 52, zIndex: 3, background: "var(--bg, #f6f7f5)", padding: "6px 0" }}>
+        {tabs.map(([key, label, badge]) => (
+          <button key={key} type="button" role="tab" aria-selected={tab === key} className={tab === key ? styles.button : styles.secondary}
+            style={{ minHeight: 40, padding: "4px 12px", whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => setTab(key)}>
+            {label}{badge ? <span style={{ marginLeft: 6, opacity: 0.8, color: badge.startsWith("✕") || badge === "!" ? (tab === key ? undefined : "#b3261e") : undefined }}>{badge}</span> : null}
+          </button>
+        ))}
+      </div>
+      {tab === "access" && (
+        <section className={styles.card} aria-labelledby="access-title">
+          <p id="access-title" className={styles.cardTitle}>{t("Кто что может")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{t("Для каждой роли — что она может делать с какими данными и только со своими записями или со всеми. Отсюда берутся права в архитектуре и проверки безопасности.")}</p>
+          {usedData.length ? <AccessEditor roles={value.roles} data={usedData} value={value.access ?? []} disabled={disabled} personal={value.sensitivity !== "normal"} clients={clients} onChange={(access) => onChange({ ...value, access })} />
+            : <p className={styles.small}>{t("Сначала отметьте у функций, с какими данными они работают.")}</p>}
+        </section>
+      )}
+      {tab === "services" && (
+        <section className={styles.card} aria-labelledby="services-title">
+          <p id="services-title" className={styles.cardTitle}>{t("Интеграции")}</p>
+          <ServicesEditor value={value.services ?? []} disabled={disabled} onChange={(services) => onChange({ ...value, services, integrations: services.map((service) => service.name).filter(Boolean) })} />
+        </section>
+      )}
+      {tab === "coverage" && (
+        <section className={styles.card} aria-labelledby="coverage-title">
+          <p id="coverage-title" className={styles.cardTitle}>{t("Покрытие процесса")}</p>
+          <p className={styles.small} style={{ marginTop: 0 }}>{t("Каждый шаг бизнес-процесса, который делает продукт, должен быть описан функцией — иначе его забудут сделать и проверить.")}</p>
+          <CoverageView steps={steps} features={value.features} />
+        </section>
+      )}
+      {tab === "quality" && (
+        <section className={styles.card} aria-labelledby="quality-title">
+          <p id="quality-title" className={styles.cardTitle}>{t("Нефункциональные требования")}</p>
+          <QualityEditor value={value.quality ?? {}} disabled={disabled} onChange={(quality) => onChange({ ...value, quality })} />
+        </section>
+      )}
+      {tab === "features" && <>
       {issues.length > 0 && <div className={`${styles.notice} ${styles.warn}`}><strong>{t("Чего не хватает")}</strong><ul className={styles.list}>{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div>}
       <section className={styles.card} aria-labelledby="summary-title">
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
@@ -131,6 +184,7 @@ export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions 
             </label>
             <label className={styles.small}>{t("Готово, когда")}<textarea className={styles.input} value={feature.acceptance.join("\n")} disabled={disabled} placeholder={t("Например: клиент видит статус заявки сразу после отправки")}
               onChange={(event) => setFeature(feature.key, { acceptance: event.target.value.split("\n").slice(0, 6) })} onBlur={(event) => setFeature(feature.key, { acceptance: lines(event.target.value) })} /></label>
+            <FeatureChecks story={feature.story ?? ""} cases={feature.cases ?? []} sources={feature.sources ?? []} steps={steps} disabled={disabled} onChange={(patch) => setFeature(feature.key, patch)} />
             {!disabled && <button type="button" className={styles.ghost} onClick={() => onChange({ ...value, features: value.features.filter((item) => item.key !== feature.key) })}>{t("Убрать функцию")}</button>}
           </article>
         ))}
@@ -155,6 +209,9 @@ export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions 
         </section>
       )}
 
+      </>}
+
+      {tab === "quality" && <>
       <section className={styles.card} aria-labelledby="data-title">
         <p id="data-title" className={styles.cardTitle}>{t("Данные и интеграции")}</p>
         <label className={styles.small}>{site ? t("Какие данные собирает сайт") : t("Какие данные хранит приложение")}
@@ -163,8 +220,7 @@ export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions 
           </select>
         </label>
         <p className={styles.small}>{t("От этого зависят требования к защите в пакете: платежи и медицинские данные требуют отдельной проверки.")}</p>
-        <label className={styles.small}>{t("С какими сервисами связать (через запятую)")}<input className={styles.input} value={value.integrations.join(", ")} disabled={disabled} placeholder={t("Например: Kaspi, 1С, Google Календарь")}
-          onChange={(event) => onChange({ ...value, integrations: commas(event.target.value).slice(0, 8) })} /></label>
+        <p className={styles.small}>{t("Сервисы для связи — на вкладке «Интеграции».")}</p>
       </section>
 
       <section className={styles.card} aria-labelledby="notes-title">
@@ -182,6 +238,7 @@ export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions 
         ))}
         <p className={styles.small} style={{ margin: "6px 0 0" }}>{t("Открытые вопросы видны в проверке качества, пока вы их не решите.")}</p>
       </section>
+      </>}
     </div>
   );
 }

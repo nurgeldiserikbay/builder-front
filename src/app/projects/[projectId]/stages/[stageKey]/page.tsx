@@ -30,6 +30,7 @@ import AgentPanel from "./agent-panel";
 import { TimesheetPanel } from "./timesheet";
 import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
+import { ArchitectureEditor, type ArchitectureDesign } from "./architecture-editor";
 import { ProcessEditor, blankProcess, type BusinessProcess } from "./process-editor";
 import ProcessAiChange from "./process-ai";
 import StagePassport from "./passport";
@@ -114,7 +115,10 @@ export default function StagePage() {
       const intro = next.options.brief?.intro;
       if (intro) setInstruction((current) => current || intro.slice(0, 1000));
       const type = next.stage.artifactType;
-      setDraft(next.current?.content ?? (type === "brief" ? {} : type === "offer" ? { services: [], hours: null } : type === "design" ? defaultDesign : type === "schedule" ? next.options.schedule?.template ?? null : type === "techplan" ? { ownerNotes: null } : null));
+      // An app's plan accepted before designs were editable starts from the first design the platform prepared.
+      const previewDesign = type === "techplan" ? next.options.techplan?.preview?.design ?? null : null;
+      const current = next.current?.content && previewDesign && !(next.current.content as { design?: unknown }).design ? { ...(next.current.content as object), design: previewDesign } : next.current?.content;
+      setDraft(current ?? (type === "brief" ? {} : type === "offer" ? { services: [], hours: null } : type === "design" ? defaultDesign : type === "schedule" ? next.options.schedule?.template ?? null : type === "techplan" ? { ownerNotes: null, ...(next.options.techplan?.preview?.design ? { design: next.options.techplan.preview.design } : {}) } : null));
       // A first style choice or the prefilled schedule is a ready-to-save draft: offer «Сохранить» right away.
       setDirty(!next.current && (type === "design" || type === "schedule" || (type === "techplan" && Boolean(next.options.techplan?.preview))) && next.stage.canEdit);
       return next;
@@ -614,12 +618,21 @@ export default function StagePage() {
           issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
       )}
 
-      {stage.artifactType === "techplan" && stage.status !== "locked" && detail.options.techplan && (
+      {stage.artifactType === "techplan" && stage.status !== "locked" && detail.options.techplan && (() => {
+        const overview = (
         <TechPlanView plan={(detail.options.techplan.outdated || !detail.current ? detail.options.techplan.preview : detail.current.content as TechPlan) ?? null}
           outdated={detail.options.techplan.outdated} notes={((draft as { ownerNotes?: string | null } | null)?.ownerNotes) ?? ""} disabled={!canType}
-          onNotes={(value) => edit({ ownerNotes: value })} busy={busy === "plan"}
+          onNotes={(value) => edit({ ...((draft as object | null) ?? {}), ownerNotes: value })} busy={busy === "plan"}
           onRefresh={stage.canEdit ? () => run("plan", async () => { await saveDraft(); setMessage(t("Архитектура обновлена по принятым этапам. Проверьте и примите её.")); }) : null}  flags={reviewFlags} />
-      )}
+        );
+        // An application's architecture is edited: the design in tabs, the computed plan as «Обзор».
+        const design = (draft as { design?: ArchitectureDesign } | null)?.design;
+        return design ? (
+          <ArchitectureEditor value={design} disabled={!canType} overview={overview}
+            onChange={(next) => edit({ ...(draft as object), design: next })}
+            findings={(detail.review?.findings ?? []).map((finding) => ({ target: finding.target ?? null, message: finding.message }))} />
+        ) : overview;
+      })()}
 
       {/* Build stage */}
       {stage.artifactType === "site" && stage.status !== "locked" && (

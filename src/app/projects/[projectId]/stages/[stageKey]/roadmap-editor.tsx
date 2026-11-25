@@ -316,7 +316,8 @@ type Progress = {
 const statusLabels = (): Record<TaskStatus, string> => ({ not_started: t("не начата"), in_progress: t("в работе"), review: t("на проверке"), done: t("готова"), done_with_note: t("готова с замечанием"), blocked: t("заблокирована") });
 const statusColor: Record<TaskStatus, string> = { not_started: "#5b6270", in_progress: "#2f55d4", review: "#7a4500", done: "#1d7a46", done_with_note: "#1d7a46", blocked: "#b3261e" };
 const taskErrors = (): Record<string, string> => ({
-  TASK_NEEDS_CHECKS: t("«Готова» ставится только по зелёным проверкам задачи, а их пока нет. Выберите «готова с замечанием» и напишите, почему её можно считать сделанной."),
+  TASK_NEEDS_CHECKS: t("«Готова» ставится только по зелёным проверкам задачи, а у этой задачи нет кейсов в плане проверки. Выберите «готова с замечанием» и напишите, почему её можно считать сделанной."),
+  TASK_CHECKS_NOT_PASSED: t("Не все кейсы этой задачи пройдены. Отметьте результаты в «Плане проверки» или выберите «готова с замечанием» с объяснением."),
   TASK_NOTE_REQUIRED: t("Для «готова с замечанием» напишите причину — хотя бы 10 символов."),
   TASK_BLOCKER_REQUIRED: t("Напишите, что или кого ждёт задача."),
   TASK_ASSIGNEE_NOT_IN_PROJECT: t("Этот человек не участвует в проекте."),
@@ -349,7 +350,7 @@ function ProgressView({ projectId }: { projectId: string }) {
         <p className={styles.small} style={{ margin: "0 0 4px" }}>{t("Ожидаемое окончание — {0}: на критическом пути осталось {1} ч.", [date(data.expectedFinish), data.remainingCriticalHours])}</p>
         <p className={styles.small} style={{ margin: 0 }}>{t("Потрачено с утверждения: {0} запросов к ИИ из ~{1}, {2} ч специалистов по табелю (в плане — {3} ч работы).", [data.spent.aiRequests, data.planned.aiRequests, data.spent.specialistHours, data.planned.hours])}</p>
         {data.next && <p style={{ margin: "10px 0 0" }}><strong>{t("Следующая важная задача")}:</strong> {data.next.title} <span className={styles.small}>({data.next.module})</span></p>}
-        <p className={styles.small} style={{ margin: "10px 0 0" }}>{t("«Готова» ставится только по зелёным проверкам задачи. Проверки появятся с планом тестов; до тех пор задачу закрывают «готова с замечанием» с объяснением.")}</p>
+        <p className={styles.small} style={{ margin: "10px 0 0" }}>{t("«Готова» ставится, только когда все кейсы задачи из плана проверки пройдены. Иначе задачу закрывают «готова с замечанием» с объяснением.")}</p>
       </section>
       {(data.blocked.length > 0 || data.late.length > 0) && (
         <section className={styles.card} aria-label={t("Что мешает")} style={{ borderColor: "#ecc7c7" }}>

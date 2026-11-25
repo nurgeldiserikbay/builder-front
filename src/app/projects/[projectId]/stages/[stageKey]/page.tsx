@@ -31,6 +31,7 @@ import { TimesheetPanel } from "./timesheet";
 import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
 import { ArchitectureEditor, type ArchitectureDesign } from "./architecture-editor";
+import { ContractsEditor, type Contracts } from "./contracts-editor";
 import { ProcessEditor, blankProcess, type BusinessProcess } from "./process-editor";
 import ProcessAiChange from "./process-ai";
 import StagePassport from "./passport";
@@ -118,9 +119,9 @@ export default function StagePage() {
       // An app's plan accepted before designs were editable starts from the first design the platform prepared.
       const previewDesign = type === "techplan" ? next.options.techplan?.preview?.design ?? null : null;
       const current = next.current?.content && previewDesign && !(next.current.content as { design?: unknown }).design ? { ...(next.current.content as object), design: previewDesign } : next.current?.content;
-      setDraft(current ?? (type === "brief" ? {} : type === "offer" ? { services: [], hours: null } : type === "design" ? defaultDesign : type === "schedule" ? next.options.schedule?.template ?? null : type === "techplan" ? { ownerNotes: null, ...(next.options.techplan?.preview?.design ? { design: next.options.techplan.preview.design } : {}) } : null));
+      setDraft(current ?? (type === "brief" ? {} : type === "offer" ? { services: [], hours: null } : type === "design" ? defaultDesign : type === "schedule" ? next.options.schedule?.template ?? null : type === "contracts" ? next.options.contracts?.template ?? null : type === "techplan" ? { ownerNotes: null, ...(next.options.techplan?.preview?.design ? { design: next.options.techplan.preview.design } : {}) } : null));
       // A first style choice or the prefilled schedule is a ready-to-save draft: offer «Сохранить» right away.
-      setDirty(!next.current && (type === "design" || type === "schedule" || (type === "techplan" && Boolean(next.options.techplan?.preview))) && next.stage.canEdit);
+      setDirty(!next.current && (type === "design" || type === "schedule" || (type === "contracts" && Boolean(next.options.contracts?.template)) || (type === "techplan" && Boolean(next.options.techplan?.preview))) && next.stage.canEdit);
       return next;
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return null; }
@@ -633,6 +634,20 @@ export default function StagePage() {
             findings={(detail.review?.findings ?? []).map((finding) => ({ target: finding.target ?? null, message: finding.message }))} />
         ) : overview;
       })()}
+
+      {stage.artifactType === "contracts" && stage.status !== "locked" && detail.options.contracts && (
+        draft !== null ? (
+          <ContractsEditor value={draft as Contracts} onChange={edit} options={detail.options.contracts} disabled={!canType} dirty={dirty}
+            findings={(detail.review?.findings ?? []).map((finding) => ({ target: finding.target ?? null, message: finding.message, severity: finding.severity }))}
+            onRebuild={canType && detail.current ? () => edit(detail.options.contracts!.template) : null} />
+        ) : (
+          <section className={styles.card} aria-label={t("Контракты")}>
+            <p className={styles.small} style={{ margin: 0 }}>{detail.options.contracts.missing === "design"
+              ? t("В принятой архитектуре нет схемы данных. Откройте «Архитектуру», проверьте схему и примите её заново — тогда здесь появится черновик.")
+              : t("Контракты строятся из принятых ТЗ и архитектуры. Примите их, чтобы начать.")}</p>
+          </section>
+        )
+      )}
 
       {/* Build stage */}
       {stage.artifactType === "site" && stage.status !== "locked" && (

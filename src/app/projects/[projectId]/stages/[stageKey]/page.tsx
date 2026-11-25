@@ -32,6 +32,7 @@ import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
 import { ArchitectureEditor, type ArchitectureDesign } from "./architecture-editor";
 import { ContractsEditor, type Contracts } from "./contracts-editor";
+import { RoadmapEditor, type Roadmap } from "./roadmap-editor";
 import { ProcessEditor, blankProcess, type BusinessProcess } from "./process-editor";
 import ProcessAiChange from "./process-ai";
 import StagePassport from "./passport";
@@ -119,9 +120,9 @@ export default function StagePage() {
       // An app's plan accepted before designs were editable starts from the first design the platform prepared.
       const previewDesign = type === "techplan" ? next.options.techplan?.preview?.design ?? null : null;
       const current = next.current?.content && previewDesign && !(next.current.content as { design?: unknown }).design ? { ...(next.current.content as object), design: previewDesign } : next.current?.content;
-      setDraft(current ?? (type === "brief" ? {} : type === "offer" ? { services: [], hours: null } : type === "design" ? defaultDesign : type === "schedule" ? next.options.schedule?.template ?? null : type === "contracts" ? next.options.contracts?.template ?? null : type === "techplan" ? { ownerNotes: null, ...(next.options.techplan?.preview?.design ? { design: next.options.techplan.preview.design } : {}) } : null));
+      setDraft(current ?? (type === "brief" ? {} : type === "offer" ? { services: [], hours: null } : type === "design" ? defaultDesign : type === "schedule" ? next.options.schedule?.template ?? null : type === "contracts" ? next.options.contracts?.template ?? null : type === "roadmap" ? next.options.roadmap?.template ?? null : type === "techplan" ? { ownerNotes: null, ...(next.options.techplan?.preview?.design ? { design: next.options.techplan.preview.design } : {}) } : null));
       // A first style choice or the prefilled schedule is a ready-to-save draft: offer «Сохранить» right away.
-      setDirty(!next.current && (type === "design" || type === "schedule" || (type === "contracts" && Boolean(next.options.contracts?.template)) || (type === "techplan" && Boolean(next.options.techplan?.preview))) && next.stage.canEdit);
+      setDirty(!next.current && (type === "design" || type === "schedule" || (type === "contracts" && Boolean(next.options.contracts?.template)) || (type === "roadmap" && Boolean(next.options.roadmap?.template)) || (type === "techplan" && Boolean(next.options.techplan?.preview))) && next.stage.canEdit);
       return next;
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return null; }
@@ -645,6 +646,18 @@ export default function StagePage() {
             <p className={styles.small} style={{ margin: 0 }}>{detail.options.contracts.missing === "design"
               ? t("В принятой архитектуре нет схемы данных. Откройте «Архитектуру», проверьте схему и примите её заново — тогда здесь появится черновик.")
               : t("Контракты строятся из принятых ТЗ и архитектуры. Примите их, чтобы начать.")}</p>
+          </section>
+        )
+      )}
+
+      {stage.artifactType === "roadmap" && stage.status !== "locked" && detail.options.roadmap && (
+        draft !== null ? (
+          <RoadmapEditor projectId={projectId} value={draft as Roadmap} onChange={edit} options={detail.options.roadmap} disabled={!canType}
+            findings={(detail.review?.findings ?? []).map((finding) => ({ target: finding.target ?? null, message: finding.message }))}
+            onRebuild={canType && detail.current ? () => edit(detail.options.roadmap!.template) : null} />
+        ) : (
+          <section className={styles.card} aria-label={t("План реализации")}>
+            <p className={styles.small} style={{ margin: 0 }}>{t("План строится из принятых ТЗ, архитектуры и контрактов. Примите их, чтобы начать.")}</p>
           </section>
         )
       )}

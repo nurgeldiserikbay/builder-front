@@ -6,7 +6,7 @@ import type { StageReview } from "@/app/projects/[projectId]/stages/[stageKey]/r
 import { API_BASE_URL, ApiError, api } from "./api";
 
 export type StageStatus = "locked" | "ready" | "awaiting_lead" | "in_progress" | "in_review" | "changes_requested" | "approved" | "stale" | "imported" | "skipped" | "blocked";
-export type ArtifactType = "brief" | "idea" | "process" | "suggestions" | "offer" | "content" | "design" | "site" | "schedule" | "techplan" | "sitemap" | "catalog" | "features" | "screens" | "handoff";
+export type ArtifactType = "brief" | "idea" | "process" | "suggestions" | "concept" | "offer" | "content" | "design" | "site" | "schedule" | "techplan" | "sitemap" | "catalog" | "features" | "screens" | "handoff";
 
 export type CatalogType = {
   key: "landing" | "company_site"; title: string; description: string; goodFor: string; examples: string[]; resultExplanation: string;
@@ -117,7 +117,7 @@ export type StageDetail = {
     provenance: { provider: string; model: string | null; instruction: string | null; targetKey: string | null; rulesApplied: number } | null }>;
   rules: Array<{ id: string; kind: "stage_rule" | "project_rule"; status: "active" | "disabled"; text: string; createdAt: string }>;
   ai: { level: string; whatItDoes: string; instructionExamples: string[]; describeHint: string | null; configured: boolean; remainingToday: number; templateAvailable: boolean; budget: { limit: number | null; used: number } | null; month: { left: number; limit: number; planTitle: string } | null };
-  options: { palettes: Preset[]; fonts: Preset[]; corners: Preset[]; heroLayouts: Preset[]; sectionTypes: Record<SectionType, string>; schedule?: ScheduleOptions; techplan?: TechPlanOptions; process?: ProcessOptions; sitemap?: SitemapOptions; catalog?: CatalogOptions; pages?: SitemapPage[] | null; technology?: string | null; brief?: { intro: string | null }; features?: { kind: "site" | "app"; firstVersionSoftLimit: number; markdown: string | null } };
+  options: { palettes: Preset[]; fonts: Preset[]; corners: Preset[]; heroLayouts: Preset[]; sectionTypes: Record<SectionType, string>; schedule?: ScheduleOptions; techplan?: TechPlanOptions; process?: ProcessOptions; sitemap?: SitemapOptions; catalog?: CatalogOptions; pages?: SitemapPage[] | null; technology?: string | null; brief?: { intro: string | null }; features?: { kind: "site" | "app"; firstVersionSoftLimit: number; markdown: string | null }; concept?: ConceptDocumentData };
 };
 
 const messages: Record<string, string> = {
@@ -598,3 +598,12 @@ export async function shrinkPhoto(file: File, maxEdge = 2000): Promise<Blob> {
     return file;
   }
 }
+
+/** The product concept the platform assembled for this viewer (builder-back src/journey/concept.ts). */
+export type ConceptDocumentData = {
+  title: string; markdown: string;
+  sections: Array<{ key: string; title: string; source: string | null; markdown: string; empty: string | null }>;
+  diagrams: Array<{ key: "process" | "data"; number: number; caption: string }>;
+  /** The accepted process the diagrams are drawn from; typed by the stage page. */
+  inputs: { process: unknown };
+};

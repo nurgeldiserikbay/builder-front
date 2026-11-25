@@ -15,7 +15,7 @@ type SvgProps = { width: number; height: number; viewBox?: string; style?: React
 /** Latin letters for Cyrillic (and Kazakh) ones: some browsers drop a download name with other letters. */
 const LATIN: Record<string, string> = { а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya", ә: "a", ғ: "g", қ: "k", ң: "n", ө: "o", ұ: "u", ү: "u", һ: "h", і: "i" };
 /** Name for the downloaded file: the diagram label in Latin letters, digits and dashes. */
-const fileName = (label: string) => label.toLowerCase().split("").map((char) => LATIN[char] ?? char).join("").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "diagram";
+export const fileName = (label: string) => label.toLowerCase().split("").map((char) => LATIN[char] ?? char).join("").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "diagram";
 
 export default function DiagramCanvas({ label, children, legend }: { label: string; children: React.ReactElement<SvgProps>; legend?: React.ReactNode }) {
   const svg = Children.only(children);
@@ -116,7 +116,7 @@ export default function DiagramCanvas({ label, children, legend }: { label: stri
 
   return (
     <div className={`${styles.wrap} ${full ? styles.full : ""}`} role={full ? "dialog" : undefined} aria-modal={full || undefined} aria-label={full ? label : undefined}>
-      <div className={styles.toolbar} role="toolbar" aria-label={t("Управление схемой")}>
+      <div className={styles.toolbar} data-print="hide" role="toolbar" aria-label={t("Управление схемой")}>
         {full && <span className={styles.title}>{label}</span>}
         <button type="button" className={styles.tool} onClick={() => step(-1)} aria-label={t("Уменьшить")} title={t("Уменьшить")}>−</button>
         <button type="button" className={styles.zoom} onClick={() => setZoom(1)} title={t("Обычный размер")}>{Math.round(zoom * 100)}%</button>

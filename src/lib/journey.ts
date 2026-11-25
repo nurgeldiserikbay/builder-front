@@ -6,7 +6,7 @@ import type { StageReview } from "@/app/projects/[projectId]/stages/[stageKey]/r
 import { API_BASE_URL, ApiError, api } from "./api";
 
 export type StageStatus = "locked" | "ready" | "awaiting_lead" | "in_progress" | "in_review" | "changes_requested" | "approved" | "stale" | "imported" | "skipped" | "blocked";
-export type ArtifactType = "brief" | "process" | "offer" | "content" | "design" | "site" | "schedule" | "techplan" | "sitemap" | "catalog" | "features" | "screens" | "handoff";
+export type ArtifactType = "brief" | "idea" | "process" | "offer" | "content" | "design" | "site" | "schedule" | "techplan" | "sitemap" | "catalog" | "features" | "screens" | "handoff";
 
 export type CatalogType = {
   key: "landing" | "company_site"; title: string; description: string; goodFor: string; examples: string[]; resultExplanation: string;
@@ -100,7 +100,7 @@ export type StageDetail = {
     canSubmit: boolean; canRequestChanges: boolean; canInvite: boolean; canSuggest: boolean; reviewNote: string | null; approval: Approval; blockingComments?: number;
     key: string; title: string; purpose: string; outcome: string; phase?: PhaseKey; guide?: StageGuide; artifactType: ArtifactType; status: StageStatus; statusLabel: string; statusExplanation: string;
     acceptance: string[]; acceptExplanation: string; importHint: string | null; fields: FieldDefinition[] | null; lockedKeys: string[]; acceptedVersionId: string | null;
-    canEdit: boolean; canAccept: boolean; canReopen: boolean; canImport: boolean; inputsReady: boolean; changesPending?: boolean; canOverrideReview?: boolean;
+    canEdit: boolean; canAccept: boolean; canReopen: boolean; canImport: boolean; optional?: string | null; canSkip?: boolean; inputsReady: boolean; changesPending?: boolean; canOverrideReview?: boolean;
     contract?: { explanation: string } | null;
     waitingBranches?: Array<{ stageKey: string; title: string; sourceKey: string; sourceTitle: string }>;
     impact?: { opens: Array<{ key: string; title: string }>; willNotify: Array<{ key: string; title: string; status: string }> };

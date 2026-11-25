@@ -6,7 +6,7 @@ import type { StageReview } from "@/app/projects/[projectId]/stages/[stageKey]/r
 import { API_BASE_URL, ApiError, api } from "./api";
 
 export type StageStatus = "locked" | "ready" | "awaiting_lead" | "in_progress" | "in_review" | "changes_requested" | "approved" | "stale" | "imported" | "skipped" | "blocked";
-export type ArtifactType = "brief" | "idea" | "process" | "offer" | "content" | "design" | "site" | "schedule" | "techplan" | "sitemap" | "catalog" | "features" | "screens" | "handoff";
+export type ArtifactType = "brief" | "idea" | "process" | "suggestions" | "offer" | "content" | "design" | "site" | "schedule" | "techplan" | "sitemap" | "catalog" | "features" | "screens" | "handoff";
 
 export type CatalogType = {
   key: "landing" | "company_site"; title: string; description: string; goodFor: string; examples: string[]; resultExplanation: string;

@@ -20,7 +20,7 @@ export type TestPlan = { cases: TestCase[]; skipped: Array<{ class: CaseClass; w
 export type TestPlanOptions = {
   template: TestPlan | null; limits: { cases: number; steps: number }; classes: CaseClass[]; methods: CaseMethod[]; missing: "inputs" | null; markdown: string | null;
   roles: Array<{ key: string; name: string }>; features: Array<{ key: string; title: string; priority: string }>; tasks: Array<{ key: string; title: string; module: string }>;
-  threats: Array<{ key: string; how: string }>; approved: boolean; results: Array<{ caseKey: string; status: "passed" | "failed"; note: string | null; planVersion: number; stale: boolean }>;
+  threats: Array<{ key: string; how: string }>; approved: boolean; results: Array<{ caseKey: string; status: "passed" | "failed"; note: string | null; planVersion: number; source: string; stale: boolean }>;
 };
 type Finding = { target: string | null; message: string };
 
@@ -199,7 +199,7 @@ function describeLink(link: string, options: TestPlanOptions): string {
   return link;
 }
 
-type Result = { status: "passed" | "failed"; note: string | null; stale: boolean } | null;
+type Result = { status: "passed" | "failed"; note: string | null; source?: string; stale: boolean } | null;
 const caseErrors = (): Record<string, string> => ({
   CASE_AUTOMATIC: t("Этот кейс проверяет автотест: результат придёт из прогона проверок, отметить его вручную нельзя."),
   CASE_NOTE_REQUIRED: t("Напишите, что именно не так, — хотя бы 10 символов."),
@@ -207,7 +207,7 @@ const caseErrors = (): Record<string, string> => ({
 });
 
 function ResultsView({ projectId, value, options }: { projectId: string; value: TestPlan; options: TestPlanOptions }) {
-  const [results, setResults] = useState<Record<string, Result>>(() => Object.fromEntries(options.results.map((item) => [item.caseKey, { status: item.status, note: item.note, stale: item.stale }])));
+  const [results, setResults] = useState<Record<string, Result>>(() => Object.fromEntries(options.results.map((item) => [item.caseKey, { status: item.status, note: item.note, source: item.source, stale: item.stale }])));
   const [open, setOpen] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [problem, setProblem] = useState<{ key: string; text: string } | null>(null);
@@ -268,7 +268,7 @@ function ResultsView({ projectId, value, options }: { projectId: string; value: 
       )}
       <section className={styles.card} aria-label={t("Автотесты")}>
         <p className={styles.cardTitle}>{t("Автотесты")}</p>
-        <p className={styles.small} style={{ marginTop: 0 }}>{t("Ждут прогона: результат появится, когда ИИ-агент напишет код модуля и его тесты.")}</p>
+        <p className={styles.small} style={{ marginTop: 0 }}>{t("Результат приходит из прогона: платформа сама запускает тесты, которые написал ИИ-агент, и отмечает кейсы по названиям тестов. Тесты пишет ИИ — прочитайте их или попросите специалиста проверить.")}</p>
         <ul style={{ margin: 0, paddingLeft: 20 }}>
           {value.cases.filter((item) => item.method === "auto").map((item) => <li key={item.key}>{item.title} — <ResultLabel result={results[item.key] ?? null} /></li>)}
         </ul>
@@ -280,6 +280,7 @@ function ResultsView({ projectId, value, options }: { projectId: string; value: 
 function ResultLabel({ result }: { result: Result }) {
   if (!result) return <span>{t("не проверен")}</span>;
   if (result.stale) return <span style={{ color: "#7a4500" }}>{t("проверен по старой версии — проверьте снова")}</span>;
-  return result.status === "passed" ? <span style={{ color: "#1d7a46", fontWeight: 600 }}>{t("работает")}</span>
-    : <span style={{ color: "#b3261e", fontWeight: 600 }}>{t("не работает")}{result.note ? `: ${result.note}` : ""}</span>;
+  const by = result.source === "run" ? ` (${t("по прогону тестов")})` : "";
+  return result.status === "passed" ? <span style={{ color: "#1d7a46", fontWeight: 600 }}>{t("работает")}{by}</span>
+    : <span style={{ color: "#b3261e", fontWeight: 600 }}>{t("не работает")}{by}{result.note ? `: ${result.note}` : ""}</span>;
 }

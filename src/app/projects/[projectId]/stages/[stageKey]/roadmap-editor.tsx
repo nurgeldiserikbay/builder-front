@@ -310,8 +310,8 @@ type Progress = {
   progress: number; hoursDone: number; hoursTotal: number; criticalPath: string[]; expectedFinish: string; remainingCriticalHours: number;
   spent: { aiRequests: number; specialistHours: number }; planned: { aiRequests: number; hours: number };
   blocked: Array<{ key: string; title: string; module: string; blockedBy: string | null }>; late: Array<{ key: string; title: string; module: string; dueDate: string | null; critical: boolean }>;
-  next: { key: string; title: string; module: string } | null; canEdit: boolean; people: Array<{ userId: string; name: string }>;
-  modules: Array<{ key: string; name: string; critical: boolean; progress: number; hoursDone: number; hoursTotal: number; tasks: ProgressTask[] }>;
+  next: { key: string; title: string; module: string } | null; canEdit: boolean; people: Array<{ userId: string; name: string }>; testPlanApproved: boolean; agentRunning: boolean;
+  modules: Array<{ key: string; name: string; critical: boolean; progress: number; hoursDone: number; hoursTotal: number; tasks: ProgressTask[]; agent: { taskId: string; status: string; startedAt: string; finishedAt: string | null } | null }>;
 };
 const statusLabels = (): Record<TaskStatus, string> => ({ not_started: t("не начата"), in_progress: t("в работе"), review: t("на проверке"), done: t("готова"), done_with_note: t("готова с замечанием"), blocked: t("заблокирована") });
 const statusColor: Record<TaskStatus, string> = { not_started: "#5b6270", in_progress: "#2f55d4", review: "#7a4500", done: "#1d7a46", done_with_note: "#1d7a46", blocked: "#b3261e" };
@@ -322,6 +322,14 @@ const taskErrors = (): Record<string, string> => ({
   TASK_BLOCKER_REQUIRED: t("Напишите, что или кого ждёт задача."),
   TASK_ASSIGNEE_NOT_IN_PROJECT: t("Этот человек не участвует в проекте."),
   ROADMAP_NOT_APPROVED: t("План ещё не утверждён."),
+});
+const agentStatus = (): Record<string, string> => ({ queued: t("в очереди"), running: t("агент пишет код"), succeeded: t("готово, проверки пройдены"), failed: t("не получилось или проверки не пройдены"), stopped: t("остановлено"), unavailable: t("агент не подключён") });
+const agentErrors = (): Record<string, string> => ({
+  AGENT_TASK_RUNNING: t("ИИ-агент уже работает над другой задачей проекта. Дождитесь её окончания."),
+  AGENT_NOT_CONFIGURED: t("ИИ-агент не подключён на этом сервере."),
+  HANDOFF_NOT_BUILT: t("Сначала соберите «Пакет для разработки»: агент работает по нему."),
+  STAGE_INPUTS_NOT_ACCEPTED: t("Сначала примите все этапы до «Пакета для разработки»."),
+  AI_DAILY_LIMIT_REACHED: t("Лимит запросов к ИИ на сегодня исчерпан."),
 });
 const date = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "long" });
 
@@ -366,6 +374,7 @@ function ProgressView({ projectId }: { projectId: string }) {
           <p className={styles.cardTitle} style={{ marginBottom: 6 }}>{module.name}{module.critical ? <span className={styles.small} style={{ color: "#b3261e", fontWeight: 400 }}> · {t("критический путь")}</span> : null}</p>
           <Bar value={module.progress} />
           <p className={styles.small} style={{ margin: "6px 0 8px" }}>{t("{0}% — {1} из {2} ч", [module.progress, module.hoursDone, module.hoursTotal])}</p>
+          <ModuleAgent projectId={projectId} module={module} running={data.agentRunning} canEdit={data.canEdit} testPlanApproved={data.testPlanApproved} onStarted={load} />
           {module.tasks.map((task) => (
             <TaskRow key={task.key} task={task} statuses={statuses} people={data.people} canEdit={data.canEdit} open={open === task.key} onToggle={() => setOpen(open === task.key ? null : task.key)}
               onSave={async (body) => { const problem = await save(task.key, body); if (!problem) setOpen(null); return problem; }} />
@@ -373,6 +382,47 @@ function ProgressView({ projectId }: { projectId: string }) {
         </section>
       ))}
     </>
+  );
+}
+
+/**
+ * «Поручить ИИ-агенту»: the agent builds this module of the plan on top of the latest code (or from an empty folder), the
+ * platform writes the task from the plan, the contracts and the test plan. Progress and the result are on «Пакет для
+ * разработки»; the cases the run proves mark the tasks here.
+ */
+function ModuleAgent({ projectId, module, running, canEdit, testPlanApproved, onStarted }: {
+  projectId: string; module: Progress["modules"][number]; running: boolean; canEdit: boolean; testPlanApproved: boolean; onStarted: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
+  const labels = agentStatus();
+  const start = async () => {
+    setBusy(true); setProblem("");
+    try {
+      const state = await api<{ canStart: boolean; changeBase: string | null }>(`/projects/${projectId}/agent/tasks`);
+      await api(`/projects/${projectId}/agent/tasks`, { method: "POST", body: JSON.stringify(state.changeBase ? { kind: "change_app", baseTaskId: state.changeBase, module: module.key } : { kind: "build_app", module: module.key }) });
+      await onStarted();
+    } catch (caught) {
+      const code = caught instanceof Error ? caught.message : "";
+      setProblem(agentErrors()[code] ?? explainError(caught));
+    } finally { setBusy(false); }
+  };
+  return (
+    <div style={{ margin: "0 0 10px" }}>
+      {module.agent && (
+        <p className={styles.small} style={{ margin: "0 0 6px" }}>
+          {t("ИИ-агент")}: {labels[module.agent.status] ?? module.agent.status} · <a href={`/projects/${projectId}/stages/handoff`}>{t("ход и результат")}</a>
+        </p>
+      )}
+      {canEdit && !(module.agent && ["queued", "running"].includes(module.agent.status)) && (
+        <button type="button" className={styles.secondary} disabled={busy || running} onClick={() => void start()}>
+          {busy ? t("Ставим в очередь…") : module.agent ? t("Поручить агенту ещё раз") : t("Поручить модуль ИИ-агенту")}
+        </button>
+      )}
+      {canEdit && running && !(module.agent && ["queued", "running"].includes(module.agent.status)) && <p className={styles.small} style={{ margin: "4px 0 0" }}>{t("Агент сейчас занят другой задачей проекта.")}</p>}
+      {canEdit && !testPlanApproved && <p className={styles.small} style={{ margin: "4px 0 0" }}>{t("Без утверждённого плана проверки задачи не закроются сами: агенту нечем доказать, что они готовы.")}</p>}
+      {problem && <p role="alert" style={{ color: "#b3261e", margin: "6px 0 0" }}>{problem}</p>}
+    </div>
   );
 }
 

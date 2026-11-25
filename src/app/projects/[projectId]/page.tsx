@@ -14,6 +14,7 @@ import ProjectMap from "./project-map";
 import PhaseStrip from "./phases";
 import ReadinessCard from "./readiness-card";
 import Decisions from "./decisions";
+import Growth from "./growth";
 import BudgetCard from "./budget-card";
 import WalletCard from "./wallet-card";
 import AppHeader from "../../app-header";
@@ -39,7 +40,7 @@ export default function JourneyPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<"map" | "list">("map");
-  type Tab = "stages" | "team" | "money" | "publish" | "decisions" | "result" | "activity";
+  type Tab = "stages" | "team" | "money" | "publish" | "decisions" | "growth" | "result" | "activity";
   const [tab, setTab] = useState<Tab>("stages");
   // Money, publishing and decisions are for those who run the project; every team member sees stages, the team and the result.
   const managing = ["owner", "manager"].includes(journey?.project.role ?? "");
@@ -47,12 +48,13 @@ export default function JourneyPage() {
     { key: "stages", label: t("Этапы") }, { key: "team", label: t("Команда") },
     // A web application is not published by BuildPath: its result is the package for developers.
     ...(managing ? [{ key: "money" as const, label: t("Деньги") }, ...(journey?.project.projectType === "web_app" ? [] : [{ key: "publish" as const, label: t("Публикация") }]), { key: "decisions" as const, label: t("Решения") }] : []),
+    { key: "growth", label: t("Развитие") },
     { key: "result", label: t("Результат") },
     { key: "activity", label: t("Журнал") },
   ];
   useEffect(() => {
     const fromHash = window.location.hash.slice(1);
-    if (["stages", "team", "money", "publish", "decisions", "result", "activity"].includes(fromHash)) setTab(fromHash as Tab);
+    if (["stages", "team", "money", "publish", "decisions", "growth", "result", "activity"].includes(fromHash)) setTab(fromHash as Tab);
   }, []);
   function openTab(next: Tab) {
     setTab(next);
@@ -253,6 +255,7 @@ export default function JourneyPage() {
             )}
 
             {tab === "decisions" && !specialist && managing && <Decisions projectId={projectId} />}
+            {tab === "growth" && <Growth projectId={projectId} />}
 
             {tab === "activity" && <ActivityLog projectId={projectId} stages={journey.stages.map((stage) => ({ key: stage.key, title: stage.title }))} />}
             {tab === "result" && !specialist && (

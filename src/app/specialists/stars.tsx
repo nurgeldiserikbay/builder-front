@@ -16,5 +16,5 @@ export function inviteTarget(): { projectId: string; stageKey: string } | null {
   const query = new URLSearchParams(window.location.search);
   const projectId = query.get("project");
   const stageKey = query.get("stage");
-  return projectId && stageKey && /^[0-9a-f-]{36}$/i.test(projectId) && /^[a-z]+$/.test(stageKey) && query.get("invite") === "1" ? { projectId, stageKey } : null;
+  return projectId && stageKey && /^[0-9a-f-]{36}$/i.test(projectId) && /^(?:[a-z]+|m_[a-z][a-z0-9_]{0,31})$/.test(stageKey) && query.get("invite") === "1" ? { projectId, stageKey } : null;
 }

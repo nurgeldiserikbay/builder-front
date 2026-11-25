@@ -2,6 +2,7 @@ import type { ContractsOptions } from "@/app/projects/[projectId]/stages/[stageK
 import type { RoadmapOptions } from "@/app/projects/[projectId]/stages/[stageKey]/roadmap-editor";
 import type { TestPlanOptions } from "@/app/projects/[projectId]/stages/[stageKey]/testplan-editor";
 import type { LaunchOptions } from "@/app/projects/[projectId]/stages/[stageKey]/launch-editor";
+import type { ModuleOptions } from "@/app/projects/[projectId]/stages/[stageKey]/module-editor";
 import { t } from "@/lib/i18n";
 import type { ScheduleOptions } from "@/app/projects/[projectId]/stages/[stageKey]/schedule-editor";
 import type { TechPlanOptions } from "@/app/projects/[projectId]/stages/[stageKey]/techplan-view";
@@ -10,7 +11,7 @@ import type { StageReview } from "@/app/projects/[projectId]/stages/[stageKey]/r
 import { API_BASE_URL, ApiError, api } from "./api";
 
 export type StageStatus = "locked" | "ready" | "awaiting_lead" | "in_progress" | "in_review" | "changes_requested" | "approved" | "stale" | "imported" | "skipped" | "blocked";
-export type ArtifactType = "brief" | "idea" | "process" | "suggestions" | "concept" | "offer" | "content" | "design" | "site" | "schedule" | "techplan" | "contracts" | "roadmap" | "testplan" | "launch" | "sitemap" | "catalog" | "features" | "screens" | "handoff";
+export type ArtifactType = "brief" | "idea" | "process" | "suggestions" | "concept" | "offer" | "content" | "design" | "site" | "schedule" | "techplan" | "contracts" | "roadmap" | "testplan" | "launch" | "sitemap" | "catalog" | "features" | "screens" | "handoff" | "module";
 
 export type CatalogType = {
   key: "landing" | "company_site"; title: string; description: string; goodFor: string; examples: string[]; resultExplanation: string;
@@ -123,7 +124,7 @@ export type StageDetail = {
     provenance: { provider: string; model: string | null; instruction: string | null; targetKey: string | null; rulesApplied: number } | null }>;
   rules: Array<{ id: string; kind: "stage_rule" | "project_rule"; status: "active" | "disabled"; text: string; createdAt: string }>;
   ai: { level: string; whatItDoes: string; instructionExamples: string[]; describeHint: string | null; configured: boolean; remainingToday: number; templateAvailable: boolean; budget: { limit: number | null; used: number } | null; month: { left: number; limit: number; planTitle: string } | null };
-  options: { palettes: Preset[]; fonts: Preset[]; corners: Preset[]; heroLayouts: Preset[]; sectionTypes: Record<SectionType, string>; schedule?: ScheduleOptions; techplan?: TechPlanOptions; process?: ProcessOptions; sitemap?: SitemapOptions; catalog?: CatalogOptions; pages?: SitemapPage[] | null; technology?: string | null; brief?: { intro: string | null }; features?: { kind: "site" | "app"; firstVersionSoftLimit: number; markdown: string | null }; concept?: ConceptDocumentData; contracts?: ContractsOptions; roadmap?: RoadmapOptions; testplan?: TestPlanOptions; launch?: LaunchOptions; backlogNext?: Array<{ id: string; title: string; details: string | null; version: number | null; source: string }> };
+  options: { palettes: Preset[]; fonts: Preset[]; corners: Preset[]; heroLayouts: Preset[]; sectionTypes: Record<SectionType, string>; schedule?: ScheduleOptions; techplan?: TechPlanOptions; process?: ProcessOptions; sitemap?: SitemapOptions; catalog?: CatalogOptions; pages?: SitemapPage[] | null; technology?: string | null; brief?: { intro: string | null }; features?: { kind: "site" | "app"; firstVersionSoftLimit: number; markdown: string | null }; concept?: ConceptDocumentData; contracts?: ContractsOptions; roadmap?: RoadmapOptions; testplan?: TestPlanOptions; launch?: LaunchOptions; module?: ModuleOptions; backlogNext?: Array<{ id: string; title: string; details: string | null; version: number | null; source: string }> };
 };
 
 const messages: Record<string, string> = {

@@ -37,6 +37,7 @@ import { applyFix, type AutoFix } from "./process-changes";
 import { SitemapEditor, blankSitemap } from "./sitemap-editor";
 import { IdeaEditor, blankIdea, type IdeaReview } from "./idea-editor";
 import { SuggestionsEditor, type Suggestions } from "./suggestions-editor";
+import { ConceptDocumentView, ConceptDownloads, ConceptEditor, blankConcept, withOwnerParts, type Concept, type ConceptDocument } from "./concept-editor";
 import { CatalogEditor } from "./catalog-editor";
 import { FeaturesEditor, HandoffView, PrototypeView, ScreensEditor, blankFeatures, blankScreens, type AppFeatures, type AppScreens } from "./webapp-editors";
 import { formatTenge } from "@/lib/money";
@@ -483,6 +484,32 @@ export default function StagePage() {
             </div>
           )}
         </section>
+      )}
+
+      {/* Product concept: the document as the reader gets it, the owner's parts and the downloads */}
+      {stage.artifactType === "concept" && stage.status !== "locked" && detail.options.concept && (
+        <>
+          {!detail.current && draft === null && stage.canEdit && (
+            <section className={styles.card} aria-label={t("Как начать")}>
+              <p className={styles.cardTitle}>{t("Документ уже собран из ваших этапов")}</p>
+              <p className={styles.small}>{t("Осталось написать «в двух словах», проверить словарь и открытые вопросы.")}</p>
+              <div style={{ display: "grid", gap: 10 }}>
+                {ai.configured && canAi && stage.inputsReady && (
+                  <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{busy === "ai" ? t("ИИ пишет…") : t("✨ Пусть ИИ подготовит мои части")}</button>
+                )}
+                {!ai.configured && ai.templateAvailable && stage.inputsReady && (
+                  <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{t("Подготовить по моим этапам")}</button>
+                )}
+                {canType && <button className={styles.secondary} onClick={() => edit(blankConcept())}>{t("Написать самому")}</button>}
+              </div>
+            </section>
+          )}
+          {draft !== null && <ConceptEditor value={draft as Concept} onChange={edit} disabled={!canType} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />}
+          <ConceptDownloads projectId={projectId} saved={Boolean(detail.current)} dirty={dirty} title={detail.options.concept.title} />
+          <section className={styles.card} aria-label={t("Документ")}>
+            <ConceptDocumentView document={draft !== null ? withOwnerParts(detail.options.concept as ConceptDocument, { ...blankConcept(), ...(draft as Concept) }) : detail.options.concept as ConceptDocument} />
+          </section>
+        </>
       )}
 
       {/* Starting point for empty feature suggestions */}

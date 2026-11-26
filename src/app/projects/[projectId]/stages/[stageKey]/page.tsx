@@ -16,7 +16,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import {
-  explainError, isPlanMessage, stageFiles, type StageFile, originLabels, statusTone, type Content, type Design, type Journey, type Offer, type SiteCheck, type QualityReport, type StageDetail, type Sitemap, type Catalog,
+  explainError, isPlanMessage, stageFiles, type StageFile, originLabels, statusTone, type Content, type Design, type Journey, type Offer, type SiteCheck, type QualityReport, type StageDetail, type Sitemap, CustomerPaths, type Catalog,
 } from "@/lib/journey";
 import { ContentEditor, DesignPicker, FieldsForm } from "./editors";
 import { SpecialistsPanel, SuggestionsPanel } from "./specialists";
@@ -46,6 +46,7 @@ import ProcessAiChange from "./process-ai";
 import StagePassport from "./passport";
 import { applyFix, type AutoFix } from "./process-changes";
 import { SitemapEditor, blankSitemap } from "./sitemap-editor";
+import { PathsEditor } from "./paths-editor";
 import { IdeaEditor, blankIdea, type IdeaReview } from "./idea-editor";
 import { SuggestionsEditor, type Suggestions } from "./suggestions-editor";
 import { ConceptDocumentView, ConceptDownloads, ConceptEditor, blankConcept, withOwnerParts, type Concept, type ConceptDocument } from "./concept-editor";
@@ -67,6 +68,7 @@ const blankContent: Content = {
 
 function summarize(key: string, content: unknown): string {
   if (!content) return "";
+  if (key === "paths") { const value = content as { paths?: Array<{ who: string }> }; return (value.paths ?? []).map((path) => path.who).filter(Boolean).join(", "); }
   if (key === "story") { const story = content as Record<string, string | null>; return [story.name, story.essence].filter(Boolean).join(" — "); }
   if (key === "goal") { const brief = content as Record<string, string | null>; return [brief.businessName, brief.whatYouDo].filter(Boolean).join(" — "); }
   if (key === "offer") return t("Услуг: {0}", [(content as Offer).services.length]);
@@ -614,6 +616,26 @@ export default function StagePage() {
       )}
       {stage.artifactType === "sitemap" && stage.status !== "locked" && draft !== null && detail.options.sitemap && (
         <SitemapEditor value={draft as Sitemap} onChange={edit} options={detail.options.sitemap} sectionTypes={detail.options.sectionTypes} disabled={!canType}
+          issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
+      )}
+      {/* Starting point for empty customer paths */}
+      {stage.artifactType === "paths" && !detail.current && draft === null && stage.canEdit && (
+        <section className={styles.card} aria-label={t("Как начать")}>
+          <p className={styles.cardTitle}>{t("Как начнём путь клиента?")}</p>
+          <div style={{ display: "grid", gap: 10 }}>
+            {ai.configured && canAi && stage.inputsReady && (
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{busy === "ai" ? t("ИИ проходит сайт глазами клиентов…") : t("✨ Пусть ИИ предложит пути клиентов")}</button>
+            )}
+            {!ai.configured && ai.templateAvailable && stage.inputsReady && (
+              <button className={styles.button} disabled={Boolean(busy)} onClick={() => run("ai", () => askAi({}))}>{t("Начать с групп клиентов из разбора идеи")}</button>
+            )}
+            {canType && <button className={styles.secondary} onClick={() => edit({ paths: [] })}>{t("Описать самому")}</button>}
+          </div>
+          <p className={styles.small}>{t("Пройдите сайт глазами клиента: откуда он пришёл, что ищет, что его может остановить и чем всё заканчивается.")}</p>
+        </section>
+      )}
+      {stage.artifactType === "paths" && stage.status !== "locked" && draft !== null && detail.options.paths && (
+        <PathsEditor value={draft as CustomerPaths} onChange={edit} options={detail.options.paths} disabled={!canType}
           issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
       )}
       {stage.artifactType === "process" && stage.status !== "locked" && draft !== null && detail.options.process && (

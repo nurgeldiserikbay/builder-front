@@ -103,7 +103,7 @@ export default function NetworkAgentPanel({ projectId }: { projectId: string }) 
     <section id="network-agent" className={styles.card} aria-labelledby="network-agent-title">
       <p className={styles.kicker}>{t("Закрытая сеть")}</p>
       <h2 id="network-agent-title" className={styles.h2}>{t("Агент в вашей сети")}</h2>
-      <p className={styles.small} style={{ margin: "0 0 10px" }}>{t("Если репозиторий или сервер приложения во внутренней сети, BuildPath до них не достанет. Запустите внутри сети программу-агента: она сама обращается к BuildPath по HTTPS — порты и VPN не нужны. Агент умеет три вещи: проверить приложение, отправить код во внутренний git и запустить вашу команду выкладки. Пароли и ключи остаются у вас.")}</p>
+      <p className={styles.small} style={{ margin: "0 0 10px" }}>{t("Если репозиторий или сервер приложения во внутренней сети, BuildPath до них не достанет. Запустите внутри сети программу-агента: она сама обращается к BuildPath по HTTPS — порты и VPN не нужны. Агент умеет три вещи: проверить приложение, отправить код во внутренний git и запустить вашу команду выкладки. После запуска приложения агент с указанным APP_URL сам проверяет его каждые 10 минут (версия 1.1.0 и новее). Пароли и ключи остаются у вас.")}</p>
 
       {agent ? (
         <div style={{ display: "grid", gap: 4, margin: "0 0 10px" }}>

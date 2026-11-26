@@ -27,7 +27,7 @@ type Branch = {
   merge: "nothing" | "ready" | "conflict" | "markers"; conflicts: Array<{ path: string; kind: string }>; markers: string[]; changed: number; canSync: boolean;
 };
 type AgentState = {
-  configured: boolean; canStart: boolean; busy?: boolean; latest: { id: string; status: string; statusLabel: string; createdAt: string; finishedAt: string | null } | null;
+  configured: boolean; canStart: boolean; busy?: boolean; ownStack?: boolean; latest: { id: string; status: string; statusLabel: string; createdAt: string; finishedAt: string | null } | null;
   mainLine?: { version: number }; branch?: Branch | null;
 };
 
@@ -185,6 +185,7 @@ function ModuleAgentCard({ projectId, moduleKey }: { projectId: string; moduleKe
           ) : <p className={styles.small} style={{ margin: "6px 0" }}>{t("Агент этот модуль ещё не делал. Задачу ему напишет платформа: модуль, на что он опирается, его задачи, операции API и кейсы, которые должны пройти.")}</p>}
           {state.branch && <BranchView branch={state.branch} mainVersion={state.mainLine?.version ?? 0} />}
           {!state.configured && <p className={styles.small}>{t("ИИ-агент не подключён на этом сервере.")}</p>}
+          {state.ownStack && <p className={styles.small}>{t("В решении «Технологии» выбран свой стек разработчика: ИИ-агент на нём код не пишет. Модули делают специалисты.")}</p>}
           {state.busy && <p className={styles.small}>{t("Агент сейчас занят другой задачей проекта.")}</p>}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {state.canStart && (

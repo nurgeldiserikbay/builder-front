@@ -4693,5 +4693,6 @@
   "Напишите, что поменять в плане. ИИ покажет, какие модули, задачи и риски изменит; срок и критический путь пересчитаются сами. Сохраните, только если всё устраивает.": "Write what to change in the plan. The AI shows which modules, tasks and risks it will change; the timeline and the critical path are recomputed by themselves. Save only if it all suits you.",
   "Например: перенеси отчёты во второй выпуск": "For example: move the reports to the second release",
   "Напишите, что добавить или поменять в плане проверки. ИИ покажет новые и изменённые кейсы — его кейсы помечены «от ИИ». Сохраните, только если всё устраивает.": "Write what to add or change in the test plan. The AI shows the new and changed cases — its cases are marked «from AI». Save only if it all suits you.",
-  "Например: добавь типичные для нашей отрасли злоупотребления клиентов": "For example: add client abuse typical for our industry"
+  "Например: добавь типичные для нашей отрасли злоупотребления клиентов": "For example: add client abuse typical for our industry",
+  "В решении «Технологии» выбран свой стек разработчика: ИИ-агент на нём код не пишет. Модули делают специалисты.": "The «Technologies» decision is the developer's own stack: the AI agent does not write code on it. Specialists build the modules."
 }

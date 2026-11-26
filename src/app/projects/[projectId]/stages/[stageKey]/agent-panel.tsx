@@ -21,7 +21,7 @@ type Task = {
 };
 type Repository = { provider: string; repoPath: string; webUrl: string; defaultBranch: string };
 type State = {
-  configured: boolean; repository: Repository | null; deployment: Deployment | null; profile: { key: string; version: string }; limits: { turns: number; wallMs: number; costTiyn: number | null }; canStart: boolean; changeBase: string | null; changeFromRepository?: boolean;
+  configured: boolean; ownStack?: boolean; repository: Repository | null; deployment: Deployment | null; profile: { key: string; version: string }; limits: { turns: number; wallMs: number; costTiyn: number | null }; canStart: boolean; changeBase: string | null; changeFromRepository?: boolean;
   latest: Task | null; history: { id: string; kind?: string; statusLabel: string; createdAt: string; costTiyn: number }[];
   mainLine?: { version: number; head: { id: string; moduleKey: string | null; status: string; statusLabel: string; createdAt: string; files: number } | null };
 };
@@ -30,6 +30,7 @@ const toolLabel: Record<string, string> = { write_file: "✎", read_file: "👁"
 const errors: Record<string, string> = {
   AGENT_TASK_RUNNING: t("Агент уже работает над задачей. Дождитесь конца или остановите её."),
   AGENT_NOT_CONFIGURED: t("ИИ-агент не подключён на этом сервере: нужны модель ИИ и изолированная среда (E2B)."),
+  AGENT_STACK_NOT_SUPPORTED: t("В решении «Технологии» выбран свой стек разработчика: ИИ-агент на нём код не пишет. Модули делают специалисты."),
   HANDOFF_NOT_BUILT: t("Сначала соберите пакет для разработки на этом этапе."),
   REPO_NOT_CONNECTED: t("Репозиторий не подключён. Подключите его в решении «Где хранить код»."),
   AGENT_TASK_NO_FILES: t("Агент не оставил файлов — отправлять нечего."),
@@ -127,6 +128,7 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
       </p>
 
       {!state.configured && <p className={`${styles.notice} ${styles.info}`}>{errors.AGENT_NOT_CONFIGURED}</p>}
+      {state.ownStack && <p className={`${styles.notice} ${styles.info}`}>{errors.AGENT_STACK_NOT_SUPPORTED} <a href={`/projects/${projectId}/choices/technologies`}>{t("Открыть решение")}</a></p>}
 
       {state.mainLine && state.mainLine.version > 0 && state.mainLine.head && (
         <p className={styles.small} style={{ margin: "6px 0" }}>

@@ -32,6 +32,8 @@ import { TimesheetPanel } from "./timesheet";
 import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
 import { ArchitectureEditor, type ArchitectureDesign } from "./architecture-editor";
+import ArchitectureAiChange from "./architecture-ai";
+import { applyArchFix } from "./architecture-changes";
 import { ContractsEditor, type Contracts } from "./contracts-editor";
 import { RoadmapEditor, type Roadmap } from "./roadmap-editor";
 import { TestPlanEditor, type TestPlan } from "./testplan-editor";
@@ -270,6 +272,8 @@ export default function StagePage() {
   const editMode = detail.access?.editMode ?? "both";
   const canType = stage.canEdit && editMode !== "ai_only";
   const canAi = stage.canEdit && editMode !== "manual_only";
+  // An application's architecture as saved: what «Исправить» and «Изменить через ИИ» start from.
+  const currentDesign = stage.artifactType === "techplan" ? ((detail.current?.content as { design?: ArchitectureDesign | null } | undefined)?.design ?? null) : null;
   const aiUsable = ai.level !== "none" && ai.configured && canAi && stage.inputsReady;
   const issueKeys = detail.issues.map((issue) => issue.key);
   const siteChecks = stage.artifactType === "site" || stage.artifactType === "handoff" ? ((detail.current?.content as { checks?: SiteCheck[] } | undefined)?.checks ?? []) : [];
@@ -793,9 +797,11 @@ export default function StagePage() {
         <ReviewPanel projectId={projectId} stageKey={stageKey} versionId={detail.current.id} review={detail.review}
           canFix={canAi && stage.inputsReady && ai.level !== "none"} aiConfigured={ai.configured}
           canOverride={Boolean(stage.canOverrideReview) && !accepted}
-          onAutoFix={stage.artifactType === "process" && canType ? async (fix: AutoFix) => {
+          onAutoFix={(stage.artifactType === "process" || (stage.artifactType === "techplan" && currentDesign)) && canType ? async (fix: AutoFix) => {
             // The platform makes the change itself and saves it; the server checks the new version again.
-            const content = applyFix(detail.current!.content as BusinessProcess, fix);
+            const content = fix.kind === "arch_add"
+              ? { ownerNotes: (detail.current!.content as TechPlan).ownerNotes ?? null, design: applyArchFix(currentDesign!, fix) }
+              : applyFix(detail.current!.content as BusinessProcess, fix);
             const saved = await api<{ versionNumber: number }>(`/projects/${projectId}/stages/${stageKey}/draft`, { method: "PUT", body: JSON.stringify({ content, baseVersionId: detail.current!.id }) });
             await load(); setPreview(null);
             setMessage(t("Исправлено — версия {0}. Проверка запущена заново.", [saved.versionNumber]));
@@ -809,7 +815,11 @@ export default function StagePage() {
         <ProcessAiChange projectId={projectId} stageKey={stageKey} base={detail.current.content as BusinessProcess} baseFindings={detail.review?.findings.map((finding) => finding.id) ?? []} requestPrice={requestPrice}
           onApplied={async (text) => { await load(); setMessage(text); loadBudget(); }} />
       )}
-      {ai.level !== "none" && stage.artifactType !== "brief" && !(stage.artifactType === "process" && ai.configured) && detail.current && canAi && (
+      {stage.artifactType === "techplan" && currentDesign && ai.configured && detail.current && canAi && stage.inputsReady && !dirty && (
+        <ArchitectureAiChange projectId={projectId} stageKey={stageKey} base={currentDesign} baseFindings={detail.review?.findings.map((finding) => finding.id) ?? []} requestPrice={requestPrice}
+          onApplied={async (text) => { await load(); setMessage(text); loadBudget(); }} />
+      )}
+      {ai.level !== "none" && stage.artifactType !== "brief" && !(stage.artifactType === "process" && ai.configured) && !(stage.artifactType === "techplan" && ai.configured) && detail.current && canAi && (
         <section className={styles.card} aria-label={t("Инструкция для ИИ")}>
           <p className={styles.cardTitle}>{t("✨ Попросить ИИ")}</p>
           {!ai.configured && <p className={styles.small} style={{ marginTop: 0 }}>{t("ИИ пока не подключён к платформе — правьте вручную.")}</p>}

@@ -4655,5 +4655,19 @@
   "Пока вы нажимали, в основную линию влили другой модуль. Нажмите ещё раз — модуль начнётся с новой версии.": "Another module was merged into the main line just now. Press again — the module will start from the new version.",
   "Согласовывать нечего: модуль вливается в основную линию без конфликтов.": "Nothing to bring up: the module merges into the main line without conflicts.",
   "Модуль нельзя принять: его код конфликтует с основной линией. Сначала согласуйте его.": "The module cannot be accepted: its code conflicts with the main line. Bring it up first.",
-  "Модуль нельзя принять: его код конфликтует с основной линией. На странице модуля нажмите «Согласовать с основной линией».": "The module cannot be accepted: its code conflicts with the main line. On the module's page press «Bring up to the main line»."
+  "Модуль нельзя принять: его код конфликтует с основной линией. На странице модуля нажмите «Согласовать с основной линией».": "The module cannot be accepted: its code conflicts with the main line. On the module's page press «Bring up to the main line».",
+  "Добавь угрозы для оплаты и меры против них": "Add threats to payments and what stops them",
+  "Добавь в заказ поле «способ доставки» со статусами": "Add a «delivery method» field with statuses to the order",
+  "Добавь рассылку SMS-напоминаний": "Add SMS reminders",
+  "Опиши решение, где хранить резервные копии": "Describe a decision on where to keep backups",
+  "Изменения ИИ сохранены — версия {0}. Сценарии и контракт API пересчитаны, проверка качества обновлена.": "The AI's changes are saved — version {0}. The scenarios and the API contract are recomputed and the quality review is updated.",
+  "Напишите, что поменять в архитектуре. ИИ покажет, что добавит, изменит и уберёт, — сохраните, только если всё устраивает. Сценарии и контракт API платформа пересчитает сама.": "Write what to change in the architecture. The AI shows what it will add, change and remove — save it only if it all suits you. The platform recomputes the scenarios and the API contract itself.",
+  "Например: добавь хранение фото к заказу": "For example: add photo storage to the order",
+  "Запись «{0}»": "Record «{0}»",
+  "Связь «{0}» → «{1}»": "Relation «{0}» → «{1}»",
+  "Компонент «{0}»": "Component «{0}»",
+  "Решение «{0}»": "Decision «{0}»",
+  "Угроза: {0}": "Threat: {0}",
+  "Рабочее окружение": "Production environment",
+  "Тестовое окружение": "Test environment"
 }

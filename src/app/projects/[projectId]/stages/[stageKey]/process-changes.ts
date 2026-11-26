@@ -2,8 +2,10 @@
 // quality review. Both work on the same shape the server stores (process.ts).
 import { t } from "@/lib/i18n";
 import type { BusinessProcess } from "./process-editor";
+import type { ArchFix } from "./architecture-changes";
 
 export type AutoFix =
+  | ArchFix
   | { kind: "remove_actor"; actor: string }
   | { kind: "remove_step"; scenario: string; step: string }
   | { kind: "remove_link"; entity: string; to: string }
@@ -11,6 +13,7 @@ export type AutoFix =
 
 /** Applies a fix the review offered. The server checks the result again when it is saved. */
 export function applyFix(process: BusinessProcess, fix: AutoFix): BusinessProcess {
+  if (fix.kind === "arch_add") return process;
   if (fix.kind === "remove_actor") {
     return { ...process, actors: process.actors.filter((actor) => actor.key !== fix.actor) };
   }

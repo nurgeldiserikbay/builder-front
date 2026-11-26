@@ -1,29 +1,24 @@
 "use client";
 
-// «Изменить через ИИ» for an application's architecture: the person writes what to change, the AI proposes a new design,
-// and the proposal is listed by name — added, changed, removed — with what the quality review would say about it before
-// anything is saved. The scenarios and the API contract follow the design: the platform recomputes them on apply.
+// «Изменить через ИИ» for an application's architecture, contracts, implementation plan and test plan: the person writes
+// what to change, the AI proposes a new version, and the proposal is listed by name — added, changed, removed — with what
+// the quality review would say about it before anything is saved.
 import { useMemo, useState } from "react";
 import { t } from "@/lib/i18n";
 import { ApiError, api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import { formatTenge } from "@/lib/money";
 import styles from "../../../journey.module.css";
-import type { ArchitectureDesign } from "./architecture-editor";
-import { designDiff } from "./architecture-changes";
 import type { ReviewFinding } from "./review";
+import type { DesignDiff } from "./architecture-changes";
 
-type Proposal = { proposalId: string; content: { design?: ArchitectureDesign | null }; issues: Array<{ key: string; message: string }>; findings: Array<Omit<ReviewFinding, "overridden">> };
+type Proposal = { proposalId: string; content: unknown; issues: Array<{ key: string; message: string }>; findings: Array<Omit<ReviewFinding, "overridden">> };
 
-const EXAMPLES = () => [
-  t("Добавь угрозы для оплаты и меры против них"),
-  t("Добавь в заказ поле «способ доставки» со статусами"),
-  t("Добавь рассылку SMS-напоминаний"),
-  t("Опиши решение, где хранить резервные копии"),
-];
-
-export default function ArchitectureAiChange({ projectId, stageKey, base, baseFindings, requestPrice, onApplied }: {
-  projectId: string; stageKey: string; base: ArchitectureDesign; requestPrice: number | null; onApplied: (message: string) => Promise<void> | void;
+export default function StructuredAiChange({ projectId, stageKey, diffOf, examples, intro, placeholder, applied, baseFindings, requestPrice, onApplied }: {
+  projectId: string; stageKey: string; requestPrice: number | null; onApplied: (message: string) => Promise<void> | void;
+  /** What the proposal adds, changes and removes compared with the saved version, by name. */
+  diffOf: (proposal: unknown) => DesignDiff | null;
+  examples: string[]; intro: string; placeholder: string; applied: string;
   /** Finding ids of the current version: the preview lists only what the change would add. */
   baseFindings: string[];
 }) {
@@ -31,7 +26,7 @@ export default function ArchitectureAiChange({ projectId, stageKey, base, baseFi
   const [busy, setBusy] = useState<"" | "ask" | "apply" | "dismiss">("");
   const [error, setError] = useState("");
   const [proposal, setProposal] = useState<Proposal | null>(null);
-  const diff = useMemo(() => (proposal?.content.design ? designDiff(base, proposal.content.design) : null), [base, proposal]);
+  const diff = useMemo(() => (proposal ? diffOf(proposal.content) : null), [diffOf, proposal]);
   const nothing = diff && !diff.added.length && !diff.changed.length && !diff.removed.length;
   const fresh = proposal ? proposal.findings.filter((finding) => !baseFindings.includes(finding.id)) : [];
   const blocking = proposal ? fresh.filter((finding) => finding.severity === "blocking").length + proposal.issues.length : 0;
@@ -49,7 +44,7 @@ export default function ArchitectureAiChange({ projectId, stageKey, base, baseFi
       const result = await api<{ versionNumber?: number }>(`/projects/${projectId}/stages/${stageKey}/ai-proposals/${proposal.proposalId}/${action}`, { method: "POST" });
       setProposal(null);
       if (!keepInstruction && action === "dismiss") setInstruction("");
-      if (action === "apply") { setInstruction(""); await onApplied(t("Изменения ИИ сохранены — версия {0}. Сценарии и контракт API пересчитаны, проверка качества обновлена.", [result.versionNumber ?? ""])); }
+      if (action === "apply") { setInstruction(""); await onApplied(applied.replace("{0}", String(result.versionNumber ?? ""))); }
     } catch (caught) {
       // Someone saved the stage meanwhile: this proposal was made for the older version.
       if (caught instanceof ApiError && (caught.message === "PROPOSAL_STALE" || caught.message === "PROPOSAL_CLOSED")) setProposal(null);
@@ -58,13 +53,13 @@ export default function ArchitectureAiChange({ projectId, stageKey, base, baseFi
   }
 
   return (
-    <section className={styles.card} aria-labelledby="architecture-ai-title">
-      <p id="architecture-ai-title" className={styles.cardTitle}>{t("✨ Изменить через ИИ")}</p>
+    <section className={styles.card} aria-labelledby="structured-ai-title">
+      <p id="structured-ai-title" className={styles.cardTitle}>{t("✨ Изменить через ИИ")}</p>
       {!proposal && <>
-        <p className={styles.small} style={{ marginTop: 0 }}>{t("Напишите, что поменять в архитектуре. ИИ покажет, что добавит, изменит и уберёт, — сохраните, только если всё устраивает. Сценарии и контракт API платформа пересчитает сама.")}{requestPrice !== null ? t(" Один запрос к ИИ стоит около {0}.", [formatTenge(requestPrice)]) : ""}</p>
-        <textarea className={styles.textarea} value={instruction} maxLength={1000} aria-label={t("Что изменить")} placeholder={t("Например: добавь хранение фото к заказу")} onChange={(event) => setInstruction(event.target.value)} />
+        <p className={styles.small} style={{ marginTop: 0 }}>{intro}{requestPrice !== null ? t(" Один запрос к ИИ стоит около {0}.", [formatTenge(requestPrice)]) : ""}</p>
+        <textarea className={styles.textarea} value={instruction} maxLength={1000} aria-label={t("Что изменить")} placeholder={placeholder} onChange={(event) => setInstruction(event.target.value)} />
         <div className={styles.chips} style={{ margin: "10px 0" }} aria-label={t("Примеры")}>
-          {EXAMPLES().map((example) => <button key={example} type="button" className={styles.exampleChip} onClick={() => setInstruction(example)}>{example}</button>)}
+          {examples.map((example) => <button key={example} type="button" className={styles.exampleChip} onClick={() => setInstruction(example)}>{example}</button>)}
         </div>
         <button className={`${styles.button} ${styles.block}`} disabled={Boolean(busy) || instruction.trim().length < 2} onClick={() => void ask()}>{busy === "ask" ? t("ИИ готовит изменения…") : t("Показать, что изменит ИИ")}</button>
       </>}

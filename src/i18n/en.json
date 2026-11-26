@@ -4705,5 +4705,10 @@
   "Сменить адрес (если форму засыпают спамом)": "Change the address (if the form gets spam)",
   "Включаем…": "Turning on…",
   "Включить приём отзывов": "Turn on feedback",
-  "Приём отзывов выключен.": "Feedback is off."
+  "Приём отзывов выключен.": "Feedback is off.",
+ "Паспорт идеи и проекта и все тексты (удобно читать и пересылать)": "The idea and project passports and all texts (easy to read and forward)",
+ "Паспорт идеи": "Idea passport",
+ "Тип проекта: {0}. Его выбрали при создании проекта по вашему рассказу.": "Project type: {0}. It was chosen from your story when the project was created.",
+ "Да, это моя идея": "Yes, this is my idea",
+ "Пару предложений своими словами: чем занимаетесь, кто ваши клиенты, как они к вам приходят. Мы подберём, что нужно сделать, а рассказ станет первым этапом — «Идея своими словами».": "A couple of sentences in your own words: what you do, who your clients are, how they come to you. We will work out what to make, and the story becomes the first stage — «The idea in your own words»."
 }

@@ -67,6 +67,7 @@ const blankContent: Content = {
 
 function summarize(key: string, content: unknown): string {
   if (!content) return "";
+  if (key === "story") { const story = content as Record<string, string | null>; return [story.name, story.essence].filter(Boolean).join(" — "); }
   if (key === "goal") { const brief = content as Record<string, string | null>; return [brief.businessName, brief.whatYouDo].filter(Boolean).join(" — "); }
   if (key === "offer") return t("Услуг: {0}", [(content as Offer).services.length]);
   if (key === "content") return t("Блоков: {0}", [(content as Content).sections.length]);
@@ -123,14 +124,14 @@ export default function StagePage() {
       setDetail(next);
       // The story from the project's start fills «своими словами», so the owner does not retell it.
       const intro = next.options.brief?.intro;
-      if (intro) setInstruction((current) => current || intro.slice(0, 1000));
+      if (intro && next.stage.artifactType !== "story") setInstruction((current) => current || intro.slice(0, 1000));
       const type = next.stage.artifactType;
       // An app's plan accepted before designs were editable starts from the first design the platform prepared.
       const previewDesign = type === "techplan" ? next.options.techplan?.preview?.design ?? null : null;
       const current = next.current?.content && previewDesign && !(next.current.content as { design?: unknown }).design ? { ...(next.current.content as object), design: previewDesign } : next.current?.content;
-      setDraft(current ?? (type === "brief" ? {} : type === "offer" ? { services: [], hours: null } : type === "design" ? defaultDesign : type === "schedule" ? next.options.schedule?.template ?? null : type === "contracts" ? next.options.contracts?.template ?? null : type === "roadmap" ? next.options.roadmap?.template ?? null : type === "testplan" ? next.options.testplan?.template ?? null : type === "launch" ? { items: [] } : type === "module" ? { summary: "" } : type === "techplan" ? { ownerNotes: null, ...(next.options.techplan?.preview?.design ? { design: next.options.techplan.preview.design } : {}) } : null));
+      setDraft(current ?? (type === "story" ? { name: next.options.story?.name ?? "", story: next.options.brief?.intro ?? null } : type === "brief" ? {} : type === "offer" ? { services: [], hours: null } : type === "design" ? defaultDesign : type === "schedule" ? next.options.schedule?.template ?? null : type === "contracts" ? next.options.contracts?.template ?? null : type === "roadmap" ? next.options.roadmap?.template ?? null : type === "testplan" ? next.options.testplan?.template ?? null : type === "launch" ? { items: [] } : type === "module" ? { summary: "" } : type === "techplan" ? { ownerNotes: null, ...(next.options.techplan?.preview?.design ? { design: next.options.techplan.preview.design } : {}) } : null));
       // A first style choice or the prefilled schedule is a ready-to-save draft: offer «Сохранить» right away.
-      setDirty(!next.current && (type === "design" || type === "schedule" || (type === "contracts" && Boolean(next.options.contracts?.template)) || (type === "roadmap" && Boolean(next.options.roadmap?.template)) || (type === "testplan" && Boolean(next.options.testplan?.template)) || type === "launch" || type === "module" || (type === "techplan" && Boolean(next.options.techplan?.preview))) && next.stage.canEdit);
+      setDirty(!next.current && ((type === "story" && Boolean(next.options.brief?.intro)) || type === "design" || type === "schedule" || (type === "contracts" && Boolean(next.options.contracts?.template)) || (type === "roadmap" && Boolean(next.options.roadmap?.template)) || (type === "testplan" && Boolean(next.options.testplan?.template)) || type === "launch" || type === "module" || (type === "techplan" && Boolean(next.options.techplan?.preview))) && next.stage.canEdit);
       return next;
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return null; }
@@ -397,7 +398,7 @@ export default function StagePage() {
       )}
 
       {/* «Разговор»: form stages are filled by talking; on the process and the ТЗ the AI composes the stage from the talk */}
-      {((stage.artifactType === "brief" || stage.artifactType === "offer") && stage.fields || stage.artifactType === "process" || stage.artifactType === "features") && canAi && (
+      {((stage.artifactType === "story" || stage.artifactType === "brief" || stage.artifactType === "offer") && stage.fields || stage.artifactType === "process" || stage.artifactType === "features") && canAi && (
         <InterviewPanel projectId={projectId} stageKey={stageKey} fields={stage.fields ?? undefined} story={detail.options.brief?.intro ?? null} requestPrice={requestPrice}
           onApplied={async () => { setDirty(false); await load(); loadBudget(); }} />
       )}
@@ -621,9 +622,12 @@ export default function StagePage() {
       )}
 
       {/* Editors */}
-      {stage.status !== "locked" && stage.fields && (stage.artifactType === "brief" || stage.artifactType === "offer") && draft !== null && (
+      {stage.status !== "locked" && stage.fields && (stage.artifactType === "story" || stage.artifactType === "brief" || stage.artifactType === "offer") && draft !== null && (
         <section className={styles.card}>
-          <p className={styles.cardTitle}>{stage.artifactType === "brief" ? t("Паспорт проекта") : t("Услуги")}</p>
+          <p className={styles.cardTitle}>{stage.artifactType === "story" ? t("Паспорт идеи") : stage.artifactType === "brief" ? t("Паспорт проекта") : t("Услуги")}</p>
+          {stage.artifactType === "story" && detail.options.story && (
+            <p className={styles.small} style={{ marginTop: 0 }}>{t("Тип проекта: {0}. Его выбрали при создании проекта по вашему рассказу.", [detail.options.story.typeTitle])}</p>
+          )}
           <FieldsForm fields={stage.fields} value={draft as Record<string, unknown>} onChange={edit} issueKeys={issueKeys} disabled={!canType}
             lockedKeys={stage.lockedKeys} onToggleLock={toggleLock} canLock={canType && Boolean(detail.current)} />
         </section>
@@ -839,7 +843,7 @@ export default function StagePage() {
           applied={t("Изменения ИИ сохранены — версия {0}. Проверка качества обновлена.")}
           onApplied={async (text) => { await load(); setMessage(text); loadBudget(); }} />
       )}
-      {ai.level !== "none" && stage.artifactType !== "brief" && !(stage.artifactType === "process" && ai.configured) && !(stage.artifactType === "techplan" && ai.configured) && !(engineering && ai.configured) && detail.current && canAi && (
+      {ai.level !== "none" && stage.artifactType !== "brief" && stage.artifactType !== "story" && !(stage.artifactType === "process" && ai.configured) && !(stage.artifactType === "techplan" && ai.configured) && !(engineering && ai.configured) && detail.current && canAi && (
         <section className={styles.card} aria-label={t("Инструкция для ИИ")}>
           <p className={styles.cardTitle}>{t("✨ Попросить ИИ")}</p>
           {!ai.configured && <p className={styles.small} style={{ marginTop: 0 }}>{t("ИИ пока не подключён к платформе — правьте вручную.")}</p>}
@@ -882,7 +886,7 @@ export default function StagePage() {
 
 
       {stage.canImport && canType && stage.importHint && (
-        <details className={`${styles.card} ${styles.details}`} open={!detail.current && stage.artifactType !== "brief"}
+        <details className={`${styles.card} ${styles.details}`} open={!detail.current && stage.artifactType !== "brief" && stage.artifactType !== "story"}
           onToggle={(event) => { if (stage.artifactType === "features" && (event.target as HTMLDetailsElement).open && importDocs === null) void loadImportDocs(); }}>
           <summary>{stage.artifactType === "features" ? t("У меня уже есть ТЗ") : t("У меня уже есть готовое")}</summary>
           <p className={styles.small}>{stage.importHint}</p>
@@ -1096,7 +1100,7 @@ export default function StagePage() {
           ) : (
             <>
               <span className={styles.bottomText}>{acceptReason}</span>
-              <button className={styles.button} disabled={Boolean(busy) || acceptBlocked} onClick={accept}>{busy === "accept" ? t("Принимаем…") : stage.status === "stale" ? t("Подтвердить") : stage.contract ? t("Утвердить") : t("Принять этап")}</button>
+              <button className={styles.button} disabled={Boolean(busy) || acceptBlocked} onClick={accept}>{busy === "accept" ? t("Принимаем…") : stage.status === "stale" ? t("Подтвердить") : stage.artifactType === "story" ? t("Да, это моя идея") : stage.contract ? t("Утвердить") : t("Принять этап")}</button>
             </>
           )}
         </div></div>

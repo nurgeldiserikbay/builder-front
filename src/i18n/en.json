@@ -4669,5 +4669,11 @@
   "Решение «{0}»": "Decision «{0}»",
   "Угроза: {0}": "Threat: {0}",
   "Рабочее окружение": "Production environment",
-  "Тестовое окружение": "Test environment"
+  "Тестовое окружение": "Test environment",
+  "Права роли на этом экране": "The role's rights on this screen",
+  "Что роли можно здесь по ТЗ": "What the role may do here by the ТЗ",
+  "{0}: {1}": "{0}: {1}",
+  " — только свои": " — own only",
+  "{0}: ничего — по ТЗ роли с этими данными работать нельзя": "{0}: nothing — by the ТЗ the role may not work with this data",
+  "Функция «{0}» по ТЗ не для этой роли": "By the ТЗ the feature «{0}» is not for this role"
 }

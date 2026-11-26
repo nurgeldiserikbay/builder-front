@@ -243,7 +243,39 @@ export function FeaturesEditor({ value, onChange, disabled, issues, dataOptions 
   );
 }
 
-export function ScreensEditor({ value, onChange, features, disabled, issues }: { value: AppScreens; onChange: (next: AppScreens) => void; features: AppFeatures | null; disabled: boolean; issues: string[] }) {
+/** Features every role has on its start screen; their data (the account) is not «data shown on the screen». */
+const SERVICE_FEATURES = new Set(["signin", "privacy"]);
+
+/**
+ * What the screen's role may do with the data of the screen's features, by the ТЗ's «Кто что может» (the same rules as
+ * the server's review): it is shown under each screen and changes as features are ticked.
+ */
+function ScreenRights({ screen, features, dataNames }: { screen: AppScreen; features: AppFeatures; dataNames: Record<string, string> }) {
+  const access = features.access ?? [];
+  if (!access.length) return null;
+  const words: Record<string, string> = { view: t("смотреть"), create: t("создавать"), edit: t("менять"), delete: t("удалять") };
+  const shown = features.features.filter((feature) => screen.features.includes(feature.key) && !SERVICE_FEATURES.has(feature.key));
+  const entities = [...new Set(shown.flatMap((feature) => feature.data ?? []))];
+  const foreign = shown.filter((feature) => feature.roles.length && !feature.roles.includes(screen.role));
+  if (!entities.length && !foreign.length) return null;
+  return (
+    <div className={styles.small} style={{ background: "var(--surface-2, #f4f6f8)", borderRadius: 10, padding: "8px 10px" }} aria-label={t("Права роли на этом экране")}>
+      <p style={{ margin: "0 0 4px", fontWeight: 600 }}>{t("Что роли можно здесь по ТЗ")}</p>
+      <ul className={styles.list} style={{ margin: 0 }}>
+        {entities.map((entity) => {
+          const row = access.find((item) => item.role === screen.role && item.data === entity);
+          const name = dataNames[entity] ?? entity;
+          return row && row.actions.length
+            ? <li key={entity}>{t("{0}: {1}", [name, row.actions.map((action) => words[action]).join(", ")])}{row.scope === "own" ? t(" — только свои") : ""}</li>
+            : <li key={entity} style={{ color: "#b3261e" }}>{t("{0}: ничего — по ТЗ роли с этими данными работать нельзя", [name])}</li>;
+        })}
+        {foreign.map((feature) => <li key={feature.key} style={{ color: "#b3261e" }}>{t("Функция «{0}» по ТЗ не для этой роли", [feature.title])}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+export function ScreensEditor({ value, onChange, features, disabled, issues, dataNames = {} }: { value: AppScreens; onChange: (next: AppScreens) => void; features: AppFeatures | null; disabled: boolean; issues: string[]; dataNames?: Record<string, string> }) {
   const roles = features?.roles ?? [];
   const setScreen = (key: string, patch: Partial<AppScreen>) => onChange({ screens: value.screens.map((screen) => (screen.key === key ? { ...screen, ...patch } : screen)) });
   const setBlock = (screen: AppScreen, index: number, patch: Partial<ScreenBlock>) => setScreen(screen.key, { blocks: screen.blocks.map((block, at) => (at === index ? { ...block, ...patch } : block)) });
@@ -277,6 +309,7 @@ export function ScreensEditor({ value, onChange, features, disabled, issues }: {
                     </label>
                   ))}
                 </details>
+                {features && <ScreenRights screen={screen} features={features} dataNames={dataNames} />}
                 <p className={styles.small} style={{ margin: "6px 0 0" }}>{t("Блоки")}</p>
                 {screen.blocks.map((block, index) => (
                   <div key={index} style={{ display: "grid", gap: 4, gridTemplateColumns: "minmax(0,1fr) minmax(0,1.4fr)", alignItems: "end" }}>

@@ -26,7 +26,7 @@ type ResultPackage = { generatedAt: string; complete: boolean; openItems: string
 
 const fileLabels: Record<string, string> = {
   "site.html": t("Готовая страница сайта (откройте в браузере или загрузите на хостинг)"),
-  "project.md": t("Паспорт проекта и все тексты (удобно читать и пересылать)"),
+  "project.md": t("Паспорт идеи и проекта и все тексты (удобно читать и пересылать)"),
   "project.json": t("Все данные проекта (для разработчика или переноса)"),
 };
 

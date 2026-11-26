@@ -316,7 +316,7 @@ export default function ProjectsPage() {
             {step === 1 && (
               <>
                 <h1 className={styles.h1}>{t("Расскажите о своём деле")}</h1>
-                <p className={styles.lead}>{t("Пару предложений своими словами: чем занимаетесь, кто ваши клиенты, как они к вам приходят. Мы подберём, какой сайт нужен, а ИИ потом заполнит по рассказу паспорт проекта.")}</p>
+                <p className={styles.lead}>{t("Пару предложений своими словами: чем занимаетесь, кто ваши клиенты, как они к вам приходят. Мы подберём, что нужно сделать, а рассказ станет первым этапом — «Идея своими словами».")}</p>
                 <label className={styles.field}>
                   <span className={styles.label}>{t("О вашем деле")}</span>
                   <textarea className={styles.textarea} style={{ minHeight: 140 }} value={story} maxLength={1000} autoFocus

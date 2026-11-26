@@ -45,7 +45,7 @@ export default function InterviewPanel({ projectId, stageKey, fields: formFields
 
   // The story from the project wizard is offered as the first answer, so the owner does not retell it.
   const offerStory = (next: Interview) => {
-    if (story && stageKey === "goal" && next.mode === "ai" && next.messages.length > 0 && !next.messages.some((message) => message.role === "owner")) setText((current) => current || story.slice(0, 1000));
+    if (story && (stageKey === "story" || stageKey === "goal") && next.mode === "ai" && next.messages.length > 0 && !next.messages.some((message) => message.role === "owner")) setText((current) => current || story.slice(0, 1000));
   };
   const card = useRef<HTMLElement | null>(null);
   useEffect(() => {

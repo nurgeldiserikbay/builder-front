@@ -11,7 +11,7 @@ import type { StageReview } from "@/app/projects/[projectId]/stages/[stageKey]/r
 import { API_BASE_URL, ApiError, api } from "./api";
 
 export type StageStatus = "locked" | "ready" | "awaiting_lead" | "in_progress" | "in_review" | "changes_requested" | "approved" | "stale" | "imported" | "skipped" | "blocked";
-export type ArtifactType = "story" | "brief" | "idea" | "process" | "suggestions" | "concept" | "offer" | "content" | "design" | "site" | "schedule" | "techplan" | "contracts" | "roadmap" | "testplan" | "launch" | "sitemap" | "catalog" | "features" | "screens" | "handoff" | "module";
+export type ArtifactType = "story" | "brief" | "paths" | "idea" | "process" | "suggestions" | "concept" | "offer" | "content" | "design" | "site" | "schedule" | "techplan" | "contracts" | "roadmap" | "testplan" | "launch" | "sitemap" | "catalog" | "features" | "screens" | "handoff" | "module";
 
 export type CatalogType = {
   key: "landing" | "company_site"; title: string; description: string; goodFor: string; examples: string[]; resultExplanation: string;
@@ -70,6 +70,12 @@ export type PageSeo = { page: string; title: string; description: string };
 export type Content = { sections: Section[]; seo: { title: string; description: string }; pageSeo?: PageSeo[] };
 export type SitemapPage = { key: string; path: string; title: string; purpose: string; sections: SectionType[] };
 export type Sitemap = { pages: SitemapPage[] };
+export type CustomerPath = {
+  key: string; who: string; from: "search" | "maps" | "ads" | "social" | "messenger" | "referral" | "qr" | "other"; wants: string;
+  steps: Array<{ where: string; sees: string }>; action: "call" | "message" | "form" | "email" | "visit" | "booking" | "order" | null; doubt: string; answer: string;
+};
+export type CustomerPaths = { paths: CustomerPath[] };
+export type PathsOptions = { limits: { paths: number; steps: number; longPath: number }; sources: Array<{ id: CustomerPath["from"]; label: string }>; actions: Array<{ id: NonNullable<CustomerPath["action"]>; label: string }>; places: string[] };
 export type Product = { key: string; name: string; description: string; price: number; unit: string | null; available: boolean; imageId: string | null };
 export type DeliveryOption = { key: string; title: string; price: number; needsAddress: boolean; note: string };
 export type Catalog = { products: Product[]; delivery: DeliveryOption[]; payment: { onDelivery: boolean; transfer: boolean; transferNote: string }; minOrder: number | null };
@@ -124,7 +130,7 @@ export type StageDetail = {
     provenance: { provider: string; model: string | null; instruction: string | null; targetKey: string | null; rulesApplied: number } | null }>;
   rules: Array<{ id: string; kind: "stage_rule" | "project_rule"; status: "active" | "disabled"; text: string; createdAt: string }>;
   ai: { level: string; whatItDoes: string; instructionExamples: string[]; describeHint: string | null; configured: boolean; remainingToday: number; templateAvailable: boolean; budget: { limit: number | null; used: number } | null; month: { left: number; limit: number; planTitle: string } | null };
-  options: { palettes: Preset[]; fonts: Preset[]; corners: Preset[]; heroLayouts: Preset[]; sectionTypes: Record<SectionType, string>; schedule?: ScheduleOptions; techplan?: TechPlanOptions; process?: ProcessOptions; sitemap?: SitemapOptions; catalog?: CatalogOptions; pages?: SitemapPage[] | null; technology?: string | null; brief?: { intro: string | null }; story?: { name: string; typeTitle: string }; features?: { kind: "site" | "app"; firstVersionSoftLimit: number; markdown: string | null }; concept?: ConceptDocumentData; contracts?: ContractsOptions; roadmap?: RoadmapOptions; testplan?: TestPlanOptions; launch?: LaunchOptions; module?: ModuleOptions; backlogNext?: Array<{ id: string; title: string; details: string | null; version: number | null; source: string }> };
+  options: { palettes: Preset[]; fonts: Preset[]; corners: Preset[]; heroLayouts: Preset[]; sectionTypes: Record<SectionType, string>; schedule?: ScheduleOptions; techplan?: TechPlanOptions; process?: ProcessOptions; sitemap?: SitemapOptions; paths?: PathsOptions; catalog?: CatalogOptions; pages?: SitemapPage[] | null; technology?: string | null; brief?: { intro: string | null }; story?: { name: string; typeTitle: string }; features?: { kind: "site" | "app"; firstVersionSoftLimit: number; markdown: string | null }; concept?: ConceptDocumentData; contracts?: ContractsOptions; roadmap?: RoadmapOptions; testplan?: TestPlanOptions; launch?: LaunchOptions; module?: ModuleOptions; backlogNext?: Array<{ id: string; title: string; details: string | null; version: number | null; source: string }> };
 };
 
 const messages: Record<string, string> = {

@@ -1,7 +1,7 @@
 // «Входящие» and the project log («Журнал»): how items and events read on screen.
 import { t } from "@/lib/i18n";
 
-export type InboxKind = "stage_review" | "stage_changes" | "change_notice" | "change_proposal" | "time_entries" | "dispute" | "mention" | "request_responses";
+export type InboxKind = "stage_review" | "stage_changes" | "change_notice" | "change_proposal" | "time_entries" | "dispute" | "mention" | "request_responses" | "plan_tasks" | "plan_slip";
 export type InboxItem = {
   id: string; kind: InboxKind; projectId: string; projectName: string; projectType: string | null; stageKey: string | null;
   since: string; dueAt: string | null; count: number; who: string | null; text: string | null;
@@ -29,12 +29,18 @@ export function inboxLine(item: InboxItem, stageTitle: StageTitle): { title: str
     case "dispute": return { title: t("Открыт спор по этапу «{0}»", [stage]), action: t("Ответить"), href: stageHref };
     case "mention": return { title: t("Вас упомянули в замечании к этапу «{0}»", [stage]), action: t("Ответить"), href: `${stageHref}#comments-title` };
     case "request_responses": return { title: t("На заявку по этапу «{0}» откликнулись: {1}", [stage, item.count]), action: t("Сравнить"), href: `${stageHref}#requests-title` };
+    case "plan_tasks": return { title: item.count === 1 ? t("Ваша задача плана реализации") : t("Ваши задачи плана реализации: {0}", [item.count]), action: t("Открыть"), href: stageHref };
+    case "plan_slip": {
+      const [promised, now] = (item.text ?? "").split("→");
+      const day = (value: string | undefined) => (value ? new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "long" }) : "");
+      return { title: t("Срок плана сдвигается: обещано {0}, выходит {1}", [day(promised), day(now)]), action: t("Решить"), href: stageHref };
+    }
   }
 }
 
 /** The quote under the line: the proposal, the dispute claim, the comment or the reason a stage was returned. */
 export function inboxQuote(item: InboxItem): string | null {
-  return item.kind === "change_notice" ? null : item.text;
+  return item.kind === "change_notice" || item.kind === "plan_slip" ? null : item.text;
 }
 
 export const activityKindLabel = (kind: ActivityKind | "all"): string => ({
@@ -81,6 +87,8 @@ export function activityLine(event: ActivityEvent, stageTitle: (key: string | nu
     case "change_discussed": return t("Изменение обсуждается на этапе «{0}»", [s]);
     case "change_replied": return t("Ответ по изменению этапа «{0}»", [s]);
     case "change_proposed": return t("Предложено изменить этап «{0}»", [s]);
+    case "plan_finish_moved": return t("Срок плана сдвинулся на {0} раб. дн. позже обещанного", [event.details.workingDaysLate ?? "?"]);
+    case "plan_task_status": return t("Изменён статус задачи плана реализации");
     case "change_notice_escalated": return t("Решение по изменению этапа «{0}» передано владельцу", [s]);
     case "stage_request_created": return t("Размещена заявка на этап «{0}»", [s]);
     case "stage_request_response": return t("Новый отклик на заявку по этапу «{0}»", [s]);

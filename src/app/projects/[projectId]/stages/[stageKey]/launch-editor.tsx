@@ -17,7 +17,72 @@ export type LaunchOptions = {
   };
   items: Array<{ key: LaunchItemKey; title: string; why: string; required: boolean }>;
   markdown: string | null;
+  monitoring?: AppMonitoring;
 };
+
+export type AppMonitoring = { watched: false } | {
+  watched: true; url: string; via: "platform" | "network_agent"; status: "unknown" | "up" | "down";
+  downSince: string | null; checkedAt: string | null; lastMs: number | null; lastError: string | null; lastErrorText: string | null; stale: boolean;
+  agent: { version: string | null; lastSeenAt: string | null; reports: boolean } | null;
+  incidents: Array<{ startedAt: string; endedAt: string | null; cause: string; causeText: string }>;
+};
+
+const when = (iso: string) => new Date(iso).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const lasted = (from: string, to: string) => {
+  const minutes = Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 60_000));
+  return minutes < 60 ? t("{0} мин", [minutes]) : t("{0} ч {1} мин", [Math.floor(minutes / 60), minutes % 60]);
+};
+
+/** After launch: is the application answering, who checks it, and the last outages. */
+function Watch({ projectId, monitoring }: { projectId: string; monitoring: AppMonitoring | undefined }) {
+  if (!monitoring?.watched) {
+    return (
+      <section className={styles.card} aria-labelledby="watch-title">
+        <p id="watch-title" className={styles.cardTitle}>{t("Слежение за приложением")}</p>
+        <p className={styles.small} style={{ margin: 0 }}>{t("После того как вы примете этот этап, платформа будет каждые 10 минут открывать /api/health приложения. Если оно не ответит два раза подряд, мы напишем вам и запишем сбой в журнал.")}</p>
+      </section>
+    );
+  }
+  const m = monitoring;
+  const color = m.status === "down" ? "#b3261e" : m.status === "up" && !m.stale ? "#1d7a46" : "#7a4500";
+  const headline = m.status === "down"
+    ? t("Не работает с {0}", [when(m.downSince ?? m.checkedAt ?? new Date().toISOString())])
+    : m.status === "up" ? t("Работает") : t("Ещё не проверяли");
+  const agentOld = m.via === "network_agent" && m.agent && !m.agent.reports;
+  return (
+    <section className={styles.card} aria-labelledby="watch-title">
+      <p id="watch-title" className={styles.cardTitle}>{t("Слежение за приложением")}</p>
+      <p style={{ margin: "0 0 4px", fontWeight: 700, color }}><span aria-hidden="true">{m.status === "down" ? "✕ " : m.status === "up" ? "✓ " : "… "}</span>{headline}</p>
+      <p className={styles.small} style={{ margin: "0 0 4px", overflowWrap: "anywhere" }}>{m.url}</p>
+      <p className={styles.small} style={{ margin: "0 0 8px" }}>
+        {m.via === "network_agent" ? t("Проверяет агент изнутри вашей сети, каждые 10 минут.") : t("Проверяет платформа, каждые 10 минут.")}
+        {" "}{m.checkedAt ? t("Последняя проверка: {0}", [when(m.checkedAt)]) + (m.lastMs !== null && m.status === "up" ? t(", ответ за {0} мс", [m.lastMs]) : "") + "." : ""}
+        {m.status === "down" && m.lastErrorText ? " " + t("Причина: {0}.", [m.lastErrorText]) : ""}
+      </p>
+      {agentOld && (
+        <p className={styles.small} style={{ margin: "0 0 8px", color: "#7a4500" }}>
+          {t("Агент версии {0} не присылает проверки. Скачайте программу заново и перезапустите агента — тогда платформа узнает о сбоях.", [m.agent?.version ?? "?"])}{" "}
+          <Link href={`/projects/${projectId}/stages/handoff`} style={{ color: "var(--brand, #2f55d4)", textDecoration: "underline" }}>{t("Открыть агента")}</Link>
+        </p>
+      )}
+      {m.stale && !agentOld && (
+        <p className={styles.small} style={{ margin: "0 0 8px", color: "#7a4500" }}>
+          {m.via === "network_agent" ? t("Больше 30 минут нет проверок. Проверьте, что агент запущен и видит интернет.") : t("Больше 30 минут нет проверок платформы — состояние выше может быть устаревшим.")}
+        </p>
+      )}
+      <p style={{ margin: "8px 0 4px", fontWeight: 600 }}>{t("Последние сбои")}</p>
+      {m.incidents.length === 0 ? <p className={styles.small} style={{ margin: 0 }}>{t("С начала слежения сбоев не было.")}</p> : (
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {m.incidents.map((incident) => (
+            <li key={incident.startedAt} className={styles.small} style={{ marginBottom: 6 }}>
+              <strong>{when(incident.startedAt)}</strong> — {incident.endedAt ? t("не работало {0}", [lasted(incident.startedAt, incident.endedAt)]) : t("ещё не работает")} · {incident.causeText}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 function Check({ ok, title, text, link }: { ok: boolean; title: string; text: string; link?: { href: string; label: string } }) {
   return (
@@ -43,6 +108,7 @@ export function LaunchEditor({ projectId, value, onChange, options, disabled }: 
   );
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 14 }}>
+      <Watch projectId={projectId} monitoring={options.monitoring} />
       <section className={styles.card} aria-labelledby="platform-title">
         <p id="platform-title" className={styles.cardTitle}>{t("Что проверила платформа")}</p>
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>

@@ -472,7 +472,8 @@ export default function StagePage() {
       )}
       {stage.artifactType === "screens" && stage.status !== "locked" && draft !== null && (
         <ScreensEditor value={draft as AppScreens} onChange={edit} features={(detail.inputs.find((input) => input.key === "features")?.content as AppFeatures | null) ?? null}
-          disabled={!canType} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
+          disabled={!canType} issues={dirty ? [] : detail.issues.map((issue) => issue.message)}
+          dataNames={((detail.options as { screens?: { dataNames?: Record<string, string> } } | undefined)?.screens?.dataNames) ?? {}} />
       )}
       {stage.artifactType === "screens" && detail.current && !dirty && <PrototypeView projectId={projectId} version={detail.current.versionNumber} />}
       {stage.artifactType === "handoff" && stage.status !== "locked" && (

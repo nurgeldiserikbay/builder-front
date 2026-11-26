@@ -19,12 +19,16 @@ export type ModuleOptions = {
     tasks: Array<{ key: string; title: string; status: TaskStatus; cases: number; passed: number; failed: number; fromCase: string | null }>;
     cases: Array<{ key: string; title: string; task: string; method: "auto" | "ai_browser" | "human"; status: "passed" | "failed" | null; stale: boolean }>;
     agent: { taskId: string; status: string; checksFailed: number } | null;
+    contract?: Array<{ key: string; method: string; path: string; result: string | null }>;
   };
 };
 type AgentState = { configured: boolean; canStart: boolean; busy?: boolean; changeBase: string | null; latest: { id: string; status: string; statusLabel: string; createdAt: string; finishedAt: string | null } | null };
 
 const executorLabel = (): Record<string, string> => ({ ai: t("ИИ-агент"), ai_supervised: t("ИИ-агент под присмотром специалиста"), specialist: t("специалист") });
 const methodLabel = (): Record<string, string> => ({ auto: t("автотест"), ai_browser: t("ИИ-агент в браузере"), human: t("человек") });
+const contractLabel = (): Record<string, string> => ({
+  passed: t("как обещано"), missing: t("нет операции"), crash: t("падает"), open: t("отвечает без входа"), accepts_empty: t("принимает пустые данные"), unexpected: t("без входа не 401"), no_answer: t("не отвечает"),
+});
 const finished = (status: TaskStatus) => status === "done" || status === "done_with_note";
 
 export function ModuleEditor({ projectId, value, onChange, options, disabled }: {
@@ -102,6 +106,24 @@ export function ModuleEditor({ projectId, value, onChange, options, disabled }: 
         )}
         <p className={styles.small} style={{ margin: "8px 0 0" }}><a href={`/projects/${projectId}/stages/testplan`}>{t("Открыть план проверки")}</a>{" "}{t("— там отмечают кейсы, которые проверяют люди.")}</p>
       </section>
+
+      {(facts.contract?.length ?? 0) > 0 && (
+        <section className={styles.card} aria-labelledby="module-contract">
+          <p id="module-contract" className={styles.cardTitle} style={{ margin: 0 }}>{t("Операции по контрактам")}</p>
+          <p className={styles.small} style={{ margin: "4px 0 8px" }}>{t("Что модуль обещал соседям. После сборки платформа сама обращается к каждой операции без входа: операция должна быть, отвечать 401 и не падать. Вход и регистрация должны отказывать пустым данным.")}</p>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+            {facts.contract!.map((operation) => (
+              <li key={operation.key} style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                <span className={`${styles.chip} ${styles[operation.result === "passed" ? "done" : operation.result ? "alert" : "closed"]}`} style={{ marginTop: 0 }}>
+                  {operation.result === null ? t("не проверено") : contractLabel()[operation.result] ?? operation.result}
+                </span>
+                <span className={styles.mono} style={{ flex: "1 1 200px", wordBreak: "break-all" }}>{operation.method} {operation.path}</span>
+              </li>
+            ))}
+          </ul>
+          {facts.contract!.every((operation) => operation.result === null) && <p className={styles.small} style={{ margin: "8px 0 0" }}>{t("Проверка будет после следующей сборки модуля агентом.")}</p>}
+        </section>
+      )}
 
       <section className={styles.card} aria-labelledby="module-summary">
         <label className={styles.field} style={{ margin: 0 }}>

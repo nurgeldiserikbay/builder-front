@@ -255,7 +255,7 @@ export default function JourneyPage() {
             )}
 
             {tab === "decisions" && !specialist && managing && <Decisions projectId={projectId} />}
-            {tab === "growth" && <Growth projectId={projectId} />}
+            {tab === "growth" && <Growth projectId={projectId} app={journey?.project.projectType === "web_app"} />}
 
             {tab === "activity" && <ActivityLog projectId={projectId} stages={journey.stages.map((stage) => ({ key: stage.key, title: stage.title }))} />}
             {tab === "result" && !specialist && (

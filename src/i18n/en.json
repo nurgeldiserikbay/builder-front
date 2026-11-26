@@ -4694,5 +4694,16 @@
   "Например: перенеси отчёты во второй выпуск": "For example: move the reports to the second release",
   "Напишите, что добавить или поменять в плане проверки. ИИ покажет новые и изменённые кейсы — его кейсы помечены «от ИИ». Сохраните, только если всё устраивает.": "Write what to add or change in the test plan. The AI shows the new and changed cases — its cases are marked «from AI». Save only if it all suits you.",
   "Например: добавь типичные для нашей отрасли злоупотребления клиентов": "For example: add client abuse typical for our industry",
-  "В решении «Технологии» выбран свой стек разработчика: ИИ-агент на нём код не пишет. Модули делают специалисты.": "The «Technologies» decision is the developer's own stack: the AI agent does not write code on it. Specialists build the modules."
+  "В решении «Технологии» выбран свой стек разработчика: ИИ-агент на нём код не пишет. Модули делают специалисты.": "The «Technologies» decision is the developer's own stack: the AI agent does not write code on it. Specialists build the modules.",
+  "из приложения": "from the app",
+  "Отзывы из приложения": "Feedback from the app",
+  "Включите — и ИИ-агент добавит в приложение ссылку «Сообщить о проблеме или идее» с короткой формой. Сообщения людей будут сами появляться в списке выше с пометкой «из приложения»: проблемы — с высокой важностью.": "Turn it on and the AI agent adds a «Report a problem or idea» link with a short form to the application. People's messages will appear in the list above by themselves, marked «from the app»: problems with high importance.",
+  "На этом сервере не задан публичный адрес API (PUBLIC_API_URL) — приём отзывов недоступен.": "The public API address (PUBLIC_API_URL) is not set on this server — feedback cannot be received.",
+  "Приём включён. Получено сообщений: {0}{1}.": "Receiving is on. Messages received: {0}{1}.",
+  ", последнее — {0}": ", the last one {0}",
+  "Форма появится в приложении со следующей задачей ИИ-агента. Если приложение пишет разработчик, передайте ему адрес:": "The form appears in the application with the next AI agent task. If a developer writes the application, give them the address:",
+  "Сменить адрес (если форму засыпают спамом)": "Change the address (if the form gets spam)",
+  "Включаем…": "Turning on…",
+  "Включить приём отзывов": "Turn on feedback",
+  "Приём отзывов выключен.": "Feedback is off."
 }

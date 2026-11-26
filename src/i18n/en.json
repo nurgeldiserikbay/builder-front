@@ -4601,5 +4601,14 @@
   "ветка {0}": "branch {0}",
   "код завершения {0}": "exit code {0}",
   "Вывод команды": "Command output",
-  "агентом изнутри вашей сети": "by the agent from inside your network"
+  "агентом изнутри вашей сети": "by the agent from inside your network",
+  "как обещано": "as promised",
+  "нет операции": "no operation",
+  "падает": "fails",
+  "отвечает без входа": "answers without sign-in",
+  "принимает пустые данные": "accepts empty data",
+  "без входа не 401": "not 401 without sign-in",
+  "Операции по контрактам": "Operations by the contracts",
+  "Что модуль обещал соседям. После сборки платформа сама обращается к каждой операции без входа: операция должна быть, отвечать 401 и не падать. Вход и регистрация должны отказывать пустым данным.": "What the module promised its neighbours. After a build the platform calls each operation without sign-in: it must exist, answer 401 and not fail. Sign-in and sign-up must refuse empty data.",
+  "Проверка будет после следующей сборки модуля агентом.": "The check comes after the agent's next build of the module."
 }

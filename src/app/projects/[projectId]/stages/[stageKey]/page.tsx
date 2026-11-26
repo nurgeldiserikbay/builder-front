@@ -32,7 +32,9 @@ import { TimesheetPanel } from "./timesheet";
 import { ScheduleEditor, type Schedule } from "./schedule-editor";
 import { TechPlanView, type TechPlan } from "./techplan-view";
 import { ArchitectureEditor, type ArchitectureDesign } from "./architecture-editor";
-import ArchitectureAiChange from "./architecture-ai";
+import StructuredAiChange from "./structured-ai";
+import { designDiff } from "./architecture-changes";
+import { contractsDiff, roadmapDiff, testplanDiff } from "./engineering-changes";
 import { applyArchFix } from "./architecture-changes";
 import { ContractsEditor, type Contracts } from "./contracts-editor";
 import { RoadmapEditor, type Roadmap } from "./roadmap-editor";
@@ -273,6 +275,11 @@ export default function StagePage() {
   const canType = stage.canEdit && editMode !== "ai_only";
   const canAi = stage.canEdit && editMode !== "manual_only";
   // An application's architecture as saved: what «Исправить» and «Изменить через ИИ» start from.
+  // Contracts, plan and test plan: «Изменить через ИИ» with a preview listed by name.
+  const engineering = stage.artifactType === "contracts" ? { diff: contractsDiff, intro: t("Напишите, что поменять в контрактах. ИИ покажет, какие модули, операции, события и интеграции добавит, изменит и уберёт, а проверка — не стали ли права шире ТЗ. Сохраните, только если всё устраивает."), placeholder: t("Например: добавь отмену записи с возвратом денег") }
+    : stage.artifactType === "roadmap" ? { diff: roadmapDiff, intro: t("Напишите, что поменять в плане. ИИ покажет, какие модули, задачи и риски изменит; срок и критический путь пересчитаются сами. Сохраните, только если всё устраивает."), placeholder: t("Например: перенеси отчёты во второй выпуск") }
+    : stage.artifactType === "testplan" ? { diff: testplanDiff, intro: t("Напишите, что добавить или поменять в плане проверки. ИИ покажет новые и изменённые кейсы — его кейсы помечены «от ИИ». Сохраните, только если всё устраивает."), placeholder: t("Например: добавь типичные для нашей отрасли злоупотребления клиентов") }
+    : null;
   const currentDesign = stage.artifactType === "techplan" ? ((detail.current?.content as { design?: ArchitectureDesign | null } | undefined)?.design ?? null) : null;
   const aiUsable = ai.level !== "none" && ai.configured && canAi && stage.inputsReady;
   const issueKeys = detail.issues.map((issue) => issue.key);
@@ -817,10 +824,22 @@ export default function StagePage() {
           onApplied={async (text) => { await load(); setMessage(text); loadBudget(); }} />
       )}
       {stage.artifactType === "techplan" && currentDesign && ai.configured && detail.current && canAi && stage.inputsReady && !dirty && (
-        <ArchitectureAiChange projectId={projectId} stageKey={stageKey} base={currentDesign} baseFindings={detail.review?.findings.map((finding) => finding.id) ?? []} requestPrice={requestPrice}
+        <StructuredAiChange projectId={projectId} stageKey={stageKey} baseFindings={detail.review?.findings.map((finding) => finding.id) ?? []} requestPrice={requestPrice}
+          diffOf={(content) => { const next = (content as { design?: ArchitectureDesign | null }).design; return next ? designDiff(currentDesign, next) : null; }}
+          intro={t("Напишите, что поменять в архитектуре. ИИ покажет, что добавит, изменит и уберёт, — сохраните, только если всё устраивает. Сценарии и контракт API платформа пересчитает сама.")}
+          placeholder={t("Например: добавь хранение фото к заказу")}
+          examples={[t("Добавь угрозы для оплаты и меры против них"), t("Добавь в заказ поле «способ доставки» со статусами"), t("Добавь рассылку SMS-напоминаний"), t("Опиши решение, где хранить резервные копии")]}
+          applied={t("Изменения ИИ сохранены — версия {0}. Сценарии и контракт API пересчитаны, проверка качества обновлена.")}
           onApplied={async (text) => { await load(); setMessage(text); loadBudget(); }} />
       )}
-      {ai.level !== "none" && stage.artifactType !== "brief" && !(stage.artifactType === "process" && ai.configured) && !(stage.artifactType === "techplan" && ai.configured) && detail.current && canAi && (
+      {engineering && ai.configured && detail.current && canAi && stage.inputsReady && !dirty && (
+        <StructuredAiChange key={stageKey} projectId={projectId} stageKey={stageKey} baseFindings={detail.review?.findings.map((finding) => finding.id) ?? []} requestPrice={requestPrice}
+          diffOf={(content) => engineering.diff(detail.current!.content as Record<string, unknown>, content as Record<string, unknown>)}
+          intro={engineering.intro} placeholder={engineering.placeholder} examples={ai.instructionExamples ?? []}
+          applied={t("Изменения ИИ сохранены — версия {0}. Проверка качества обновлена.")}
+          onApplied={async (text) => { await load(); setMessage(text); loadBudget(); }} />
+      )}
+      {ai.level !== "none" && stage.artifactType !== "brief" && !(stage.artifactType === "process" && ai.configured) && !(stage.artifactType === "techplan" && ai.configured) && !(engineering && ai.configured) && detail.current && canAi && (
         <section className={styles.card} aria-label={t("Инструкция для ИИ")}>
           <p className={styles.cardTitle}>{t("✨ Попросить ИИ")}</p>
           {!ai.configured && <p className={styles.small} style={{ marginTop: 0 }}>{t("ИИ пока не подключён к платформе — правьте вручную.")}</p>}

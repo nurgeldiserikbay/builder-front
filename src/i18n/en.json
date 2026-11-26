@@ -3327,7 +3327,7 @@
  "Запрошен возврат денег": "Refund requested",
  "Запущен разбор кода и ТЗ": "Code and spec analysis started",
  "Запущена проверка стартового кода": "Starter code check started",
- "Здесь всё, что ждёт именно вас: приёмка этапов, изменения, часы специалистов, споры и упоминания. Пункт исчезает, когда вопрос решён.": "Everything waiting for you: stage acceptance, changes, specialists' hours, disputes and mentions. An item disappears once it is resolved.",
+ "Здесь всё, что ждёт именно вас: приёмка этапов, изменения, ваши задачи плана, сдвиг срока, часы специалистов, споры и упоминания. Пункт исчезает, когда вопрос решён.": "Everything waiting for you: stage acceptance, changes, your plan tasks, a moving finish, specialists' hours, disputes and mentions. An item disappears once it is resolved.",
  "Здесь пока нет событий.": "No events yet.",
  "ИИ": "AI",
  "ИИ написал код приложения": "AI wrote the app code",
@@ -4610,5 +4610,13 @@
   "без входа не 401": "not 401 without sign-in",
   "Операции по контрактам": "Operations by the contracts",
   "Что модуль обещал соседям. После сборки платформа сама обращается к каждой операции без входа: операция должна быть, отвечать 401 и не падать. Вход и регистрация должны отказывать пустым данным.": "What the module promised its neighbours. After a build the platform calls each operation without sign-in: it must exist, answer 401 and not fail. Sign-in and sign-up must refuse empty data.",
-  "Проверка будет после следующей сборки модуля агентом.": "The check comes after the agent's next build of the module."
+  "Проверка будет после следующей сборки модуля агентом.": "The check comes after the agent's next build of the module.",
+  "Позже обещанного: при утверждении плана выходило {0}. Чтобы успеть — добавьте людей или ИИ-агента на модули критического пути или перенесите часть функций в следующий выпуск. Владелец и менеджеры получают сообщение, когда срок сдвигается на 2 рабочих дня и больше.": "Later than promised: when the plan was accepted it came out {0}. To make it — add people or the AI agent to the critical-path modules, or move some features to the next release. The owner and managers get a message when the finish moves by 2 working days or more.",
+  "Обещано при утверждении плана — {0}.": "Promised when the plan was accepted — {0}.",
+  "Ваша задача плана реализации": "Your implementation plan task",
+  "Ваши задачи плана реализации: {0}": "Your implementation plan tasks: {0}",
+  "Открыть": "Open",
+  "Срок плана сдвигается: обещано {0}, выходит {1}": "The plan's finish is moving: promised {0}, now {1}",
+  "Срок плана сдвинулся на {0} раб. дн. позже обещанного": "The plan's finish moved {0} working days past the promise",
+  "Изменён статус задачи плана реализации": "An implementation plan task's status changed"
 }

@@ -9,11 +9,11 @@ import { activityLine, dayHeading, dueText, inboxLine, inboxQuote, type Inbox, t
 import { useStageTitles } from "@/lib/use-catalog";
 
 const kindTone: Record<InboxKind, string> = {
-  dispute: "alert", change_notice: "attention", stage_review: "active", stage_changes: "attention", change_proposal: "active", time_entries: "active", mention: "closed", request_responses: "done",
+  dispute: "alert", change_notice: "attention", stage_review: "active", stage_changes: "attention", change_proposal: "active", time_entries: "active", mention: "closed", request_responses: "done", plan_tasks: "active", plan_slip: "attention",
 };
 const kindLabel = (kind: InboxKind) => ({
   stage_review: t("Приёмка"), stage_changes: t("Доработка"), change_notice: t("Изменение"), change_proposal: t("Предложение"),
-  time_entries: t("Часы"), dispute: t("Спор"), mention: t("Упоминание"), request_responses: t("Отклики"),
+  time_entries: t("Часы"), dispute: t("Спор"), mention: t("Упоминание"), request_responses: t("Отклики"), plan_tasks: t("Задачи"), plan_slip: t("Срок"),
 })[kind];
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString(dateLocale(), { hour: "2-digit", minute: "2-digit" });
@@ -66,7 +66,7 @@ export default function InboxPage() {
             <h1 className={styles.h1}>{t("Входящие")}</h1>
           </div>
         </div>
-        <p className={styles.lead} style={{ marginTop: -8 }}>{t("Здесь всё, что ждёт именно вас: приёмка этапов, изменения, часы специалистов, споры и упоминания. Пункт исчезает, когда вопрос решён.")}</p>
+        <p className={styles.lead} style={{ marginTop: -8 }}>{t("Здесь всё, что ждёт именно вас: приёмка этапов, изменения, ваши задачи плана, сдвиг срока, часы специалистов, споры и упоминания. Пункт исчезает, когда вопрос решён.")}</p>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
 
         <div className={styles.tabs} role="tablist" style={{ position: "static", padding: 0, background: "transparent", marginBottom: 16 }}>

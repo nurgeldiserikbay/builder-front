@@ -307,7 +307,7 @@ function RisksEditor({ value, onChange, options, disabled }: { value: Roadmap; o
 export type TaskStatus = "not_started" | "in_progress" | "review" | "done" | "done_with_note" | "blocked";
 type ProgressTask = { key: string; title: string; release: number; hours: number; status: TaskStatus; assigneeUserId: string | null; assignee: string | null; dueDate: string | null; note: string | null; blockedBy: string | null; late: boolean; checks: { total: number; passed: number }; fromCase?: string | null };
 type Progress = {
-  progress: number; hoursDone: number; hoursTotal: number; criticalPath: string[]; expectedFinish: string; remainingCriticalHours: number;
+  progress: number; hoursDone: number; hoursTotal: number; criticalPath: string[]; expectedFinish: string; promisedFinish?: string | null; remainingCriticalHours: number;
   spent: { aiRequests: number; specialistHours: number }; planned: { aiRequests: number; hours: number };
   blocked: Array<{ key: string; title: string; module: string; blockedBy: string | null }>; late: Array<{ key: string; title: string; module: string; dueDate: string | null; critical: boolean }>;
   next: { key: string; title: string; module: string } | null; canEdit: boolean; people: Array<{ userId: string; name: string }>; testPlanApproved: boolean; agentRunning: boolean;
@@ -356,6 +356,10 @@ function ProgressView({ projectId }: { projectId: string }) {
         <Bar value={data.progress} />
         <p style={{ margin: "8px 0 4px" }}>{t("Готово {0}% — {1} из {2} ч по оценкам.", [data.progress, data.hoursDone, data.hoursTotal])}</p>
         <p className={styles.small} style={{ margin: "0 0 4px" }}>{t("Ожидаемое окончание — {0}: на критическом пути осталось {1} ч.", [date(data.expectedFinish), data.remainingCriticalHours])}</p>
+        {data.promisedFinish && data.expectedFinish > data.promisedFinish && (
+          <p className={`${styles.notice} ${styles.warn}`} style={{ margin: "6px 0" }}>{t("Позже обещанного: при утверждении плана выходило {0}. Чтобы успеть — добавьте людей или ИИ-агента на модули критического пути или перенесите часть функций в следующий выпуск. Владелец и менеджеры получают сообщение, когда срок сдвигается на 2 рабочих дня и больше.", [date(data.promisedFinish)])}</p>
+        )}
+        {data.promisedFinish && data.expectedFinish <= data.promisedFinish && <p className={styles.small} style={{ margin: "0 0 4px" }}>{t("Обещано при утверждении плана — {0}.", [date(data.promisedFinish)])}</p>}
         <p className={styles.small} style={{ margin: 0 }}>{t("Потрачено с утверждения: {0} запросов к ИИ из ~{1}, {2} ч специалистов по табелю (в плане — {3} ч работы).", [data.spent.aiRequests, data.planned.aiRequests, data.spent.specialistHours, data.planned.hours])}</p>
         {data.next && <p style={{ margin: "10px 0 0" }}><strong>{t("Следующая важная задача")}:</strong> {data.next.title} <span className={styles.small}>({data.next.module})</span></p>}
         <p className={styles.small} style={{ margin: "10px 0 0" }}>{t("«Готова» ставится, только когда все кейсы задачи из плана проверки пройдены. Иначе задачу закрывают «готова с замечанием» с объяснением.")}</p>

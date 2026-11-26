@@ -327,6 +327,7 @@ export const agentStatus = (): Record<string, string> => ({ queued: t("в оче
 export const agentErrors = (): Record<string, string> => ({
   AGENT_TASK_RUNNING: t("ИИ-агент уже работает над другой задачей проекта. Дождитесь её окончания."),
   AGENT_NOT_CONFIGURED: t("ИИ-агент не подключён на этом сервере."),
+  AGENT_STACK_NOT_SUPPORTED: t("В решении «Технологии» выбран свой стек разработчика: ИИ-агент на нём код не пишет. Модули делают специалисты."),
   HANDOFF_NOT_BUILT: t("Сначала соберите «Пакет для разработки»: агент работает по нему."),
   STAGE_INPUTS_NOT_ACCEPTED: t("Сначала примите все этапы до «Пакета для разработки»."),
   AI_DAILY_LIMIT_REACHED: t("Лимит запросов к ИИ на сегодня исчерпан."),

@@ -22,7 +22,14 @@ export type ModuleOptions = {
     contract?: Array<{ key: string; method: string; path: string; result: string | null }>;
   };
 };
-type AgentState = { configured: boolean; canStart: boolean; busy?: boolean; changeBase: string | null; latest: { id: string; status: string; statusLabel: string; createdAt: string; finishedAt: string | null } | null };
+type Branch = {
+  name: string; tasks: number; headId: string | null; headStatus: string | null; startedFrom: number | null; behind: boolean;
+  merge: "nothing" | "ready" | "conflict" | "markers"; conflicts: Array<{ path: string; kind: string }>; markers: string[]; changed: number; canSync: boolean;
+};
+type AgentState = {
+  configured: boolean; canStart: boolean; busy?: boolean; latest: { id: string; status: string; statusLabel: string; createdAt: string; finishedAt: string | null } | null;
+  mainLine?: { version: number }; branch?: Branch | null;
+};
 
 const executorLabel = (): Record<string, string> => ({ ai: t("ИИ-агент"), ai_supervised: t("ИИ-агент под присмотром специалиста"), specialist: t("специалист") });
 const methodLabel = (): Record<string, string> => ({ auto: t("автотест"), ai_browser: t("ИИ-агент в браузере"), human: t("человек") });
@@ -152,12 +159,11 @@ function ModuleAgentCard({ projectId, moduleKey }: { projectId: string; moduleKe
     const timer = window.setInterval(() => void load(), 8000);
     return () => window.clearInterval(timer);
   }, [active, load]);
-  const start = async () => {
+  const start = async (sync = false) => {
     setBusy(true); setProblem("");
     try {
-      // The newest code of the project is what the module is built on; without it the agent starts the application.
-      const all = await api<{ changeBase: string | null }>(base);
-      await api(base, { method: "POST", body: JSON.stringify(all.changeBase ? { kind: "change_app", baseTaskId: all.changeBase, module: moduleKey } : { kind: "build_app", module: moduleKey }) });
+      // The module continues on its own branch, or starts from the main line: the platform chooses the base.
+      await api(base, { method: "POST", body: JSON.stringify(sync ? { module: moduleKey, sync: true } : { module: moduleKey }) });
       await load();
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : "";
@@ -177,16 +183,47 @@ function ModuleAgentCard({ projectId, moduleKey }: { projectId: string; moduleKe
               {" · "}<a href={`/projects/${projectId}/stages/handoff`}>{t("ход, код и предпросмотр")}</a>
             </p>
           ) : <p className={styles.small} style={{ margin: "6px 0" }}>{t("Агент этот модуль ещё не делал. Задачу ему напишет платформа: модуль, на что он опирается, его задачи, операции API и кейсы, которые должны пройти.")}</p>}
+          {state.branch && <BranchView branch={state.branch} mainVersion={state.mainLine?.version ?? 0} />}
           {!state.configured && <p className={styles.small}>{t("ИИ-агент не подключён на этом сервере.")}</p>}
           {state.busy && <p className={styles.small}>{t("Агент сейчас занят другой задачей проекта.")}</p>}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {state.canStart && (
-            <button type="button" className={styles.button} disabled={busy} onClick={() => void start()}>
+            <button type="button" className={state.branch?.canSync ? styles.secondary : styles.button} disabled={busy} onClick={() => void start()}>
               {busy ? t("Ставим в очередь…") : state.latest ? t("Поручить агенту ещё раз") : t("Поручить модуль ИИ-агенту")}
             </button>
           )}
+          {state.branch?.canSync && (
+            <button type="button" className={styles.button} disabled={busy} onClick={() => void start(true)}>
+              {busy ? t("Ставим в очередь…") : t("Согласовать с основной линией")}
+            </button>
+          )}
+          </div>
           {problem && <p role="alert" style={{ color: "#b3261e", margin: "6px 0 0" }}>{problem}</p>}
         </>
       )}
     </section>
+  );
+}
+
+/** The module's own line of code and what happens to it on acceptance: it becomes the next version of the main line. */
+function BranchView({ branch, mainVersion }: { branch: Branch; mainVersion: number }) {
+  const from = branch.startedFrom ? t("от версии {0} основной линии", [branch.startedFrom]) : t("с нуля");
+  const files = (paths: string[]) => paths.slice(0, 6).join(", ") + (paths.length > 6 ? " …" : "");
+  const merge = branch.merge === "nothing"
+    ? { tone: styles.info, text: t("Кода модуля пока нет — вливать в основную линию нечего.") }
+    : branch.merge === "ready"
+      ? { tone: styles.success, text: branch.behind
+        ? t("Пока модуль делали, в основную линию влили другие модули. Слияние пройдёт без конфликтов: при принятии этапа код станет версией {0} основной линии.", [mainVersion + 1])
+        : t("При принятии этапа код модуля станет версией {0} основной линии.", [mainVersion + 1]) }
+      : branch.merge === "conflict"
+        ? { tone: styles.warn, text: t("Модуль и основная линия изменили одни и те же строки: {0}. Пока это так, этап не принять. «Согласовать с основной линией» — агент сведёт обе версии, платформа проверит результат.", [files(branch.conflicts.map((item) => item.path))]) }
+        : { tone: styles.warn, text: t("В коде модуля остались пометки конфликта: {0}. Такой код в основную линию не попадёт — согласуйте ещё раз.", [files(branch.markers)]) };
+  return (
+    <div style={{ margin: "8px 0" }}>
+      <p className={styles.small} style={{ margin: "0 0 6px", overflowWrap: "anywhere" }}>
+        {t("Своя ветка кода: {0}", [branch.name])} · {branch.tasks ? t("задач агента: {0}, начата {1}", [branch.tasks, from]) : mainVersion ? t("начнётся с версии {0} основной линии", [mainVersion]) : t("начнётся с нуля: основной линии ещё нет")}
+      </p>
+      <p className={`${styles.notice} ${merge.tone}`} role="status" style={{ margin: 0 }}>{merge.text}</p>
+    </div>
   );
 }

@@ -22,7 +22,8 @@ type Task = {
 type Repository = { provider: string; repoPath: string; webUrl: string; defaultBranch: string };
 type State = {
   configured: boolean; repository: Repository | null; deployment: Deployment | null; profile: { key: string; version: string }; limits: { turns: number; wallMs: number; costTiyn: number | null }; canStart: boolean; changeBase: string | null; changeFromRepository?: boolean;
-  latest: Task | null; history: { id: string; statusLabel: string; createdAt: string; costTiyn: number }[];
+  latest: Task | null; history: { id: string; kind?: string; statusLabel: string; createdAt: string; costTiyn: number }[];
+  mainLine?: { version: number; head: { id: string; moduleKey: string | null; status: string; statusLabel: string; createdAt: string; files: number } | null };
 };
 
 const toolLabel: Record<string, string> = { write_file: "✎", read_file: "👁", list_files: "📂", run: "▶", finish: "✓" };
@@ -127,15 +128,24 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
 
       {!state.configured && <p className={`${styles.notice} ${styles.info}`}>{errors.AGENT_NOT_CONFIGURED}</p>}
 
+      {state.mainLine && state.mainLine.version > 0 && state.mainLine.head && (
+        <p className={styles.small} style={{ margin: "6px 0" }}>
+          {t("Основная линия кода: версия {0}, последним влит модуль «{1}» ({2}) · {3}.", [state.mainLine.version, state.mainLine.head.moduleKey ?? "—", new Date(state.mainLine.head.createdAt).toLocaleString(), state.mainLine.head.statusLabel])}{" "}
+          {t("У каждого модуля своя ветка; при принятии этапа модуля его код вливается сюда. В репозиторий — ветка buildpath/main-line.")}
+        </p>
+      )}
+
       {task && (
         <div className={`${styles.notice} ${tone}`} role="status" style={{ marginTop: 8 }}>
           <strong>{task.statusLabel}</strong>
+          {task.kind === "line_merge" && <span style={{ display: "block" }}>{t("Новая версия основной линии: платформа влила принятый модуль, код проверяется так же, как результат агента. ИИ здесь не работает, денег не списывается.")}</span>}
           {task.kind === "change_app" && task.instruction && <span style={{ display: "block", overflowWrap: "anywhere" }}>{t("Изменение: {0}", [task.instruction])}</span>}
+          {task.kind === "change_app" && task.baseSource === "line" && <span className={styles.small} style={{ display: "block" }}>{t("Согласование модуля с основной линией.")}</span>}
           {task.kind === "change_app" && task.baseSource === "repository" && <span className={styles.small} style={{ display: "block" }}>{t("Начато с кода из репозитория{0}.", [task.baseCommit ? ` (${task.baseCommit.slice(0, 7)})` : ""])}</span>}
           {task.stopRequested && pending && ` · ${t("останавливаем…")}`}
-          <span className={styles.small} style={{ display: "block" }}>
+          {task.kind !== "line_merge" && <span className={styles.small} style={{ display: "block" }}>
             {t("Шагов: {0}", [task.turns])}{task.costTiyn > 0 ? ` · ${t("потрачено {0}", [formatTenge(task.costTiyn / 100)])}` : ""}{task.stopLabel ? ` · ${task.stopLabel}` : ""}
-          </span>
+          </span>}
           {task.error && <span style={{ display: "block", marginTop: 4 }}>{task.error}</span>}
         </div>
       )}

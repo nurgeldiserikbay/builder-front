@@ -330,6 +330,9 @@ export const agentErrors = (): Record<string, string> => ({
   HANDOFF_NOT_BUILT: t("Сначала соберите «Пакет для разработки»: агент работает по нему."),
   STAGE_INPUTS_NOT_ACCEPTED: t("Сначала примите все этапы до «Пакета для разработки»."),
   AI_DAILY_LIMIT_REACHED: t("Лимит запросов к ИИ на сегодня исчерпан."),
+  MODULE_BRANCH_MOVED: t("Пока вы нажимали, в основную линию влили другой модуль. Нажмите ещё раз — модуль начнётся с новой версии."),
+  MODULE_NOTHING_TO_SYNC: t("Согласовывать нечего: модуль вливается в основную линию без конфликтов."),
+  MODULE_MERGE_CONFLICT: t("Модуль нельзя принять: его код конфликтует с основной линией. Сначала согласуйте его."),
 });
 const date = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "long" });
 
@@ -403,8 +406,8 @@ function ModuleAgent({ projectId, module, running, canEdit, testPlanApproved, on
   const start = async () => {
     setBusy(true); setProblem("");
     try {
-      const state = await api<{ canStart: boolean; changeBase: string | null }>(`/projects/${projectId}/agent/tasks`);
-      await api(`/projects/${projectId}/agent/tasks`, { method: "POST", body: JSON.stringify(state.changeBase ? { kind: "change_app", baseTaskId: state.changeBase, module: module.key } : { kind: "build_app", module: module.key }) });
+      // The module continues on its own branch, or starts from the main line: the platform chooses the base.
+      await api(`/projects/${projectId}/agent/tasks`, { method: "POST", body: JSON.stringify({ module: module.key }) });
       await onStarted();
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : "";

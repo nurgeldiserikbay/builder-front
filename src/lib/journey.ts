@@ -121,7 +121,9 @@ export type StageDetail = {
   inputs: Array<{ key: string; title: string; satisfied: boolean; versionNumber: number | null; content: unknown }>;
   /** For a specialist: accepted results the owner opened beyond the inputs, and their access settings. */
   extraReads?: Array<{ key: string; title: string; versionNumber: number; content: unknown }>;
-  access?: { hiddenParts: string[]; allowDownload: boolean; readDays: number; editMode?: "both" | "ai_only" | "manual_only" } | null;
+  access?: { hiddenParts: string[]; allowDownload: boolean; watermark?: boolean; readDays: number; editMode?: "both" | "ai_only" | "manual_only" } | null;
+  /** For a specialist whose owner turned watermarks on: the address and time drawn faintly over the stage. */
+  watermark?: string | null;
   current: { id: string; versionNumber: number; origin: string; note: string | null; createdAt: string; content: unknown } | null;
   issues: Array<{ key: string; message: string }>;
   review?: StageReview | null;
@@ -219,6 +221,10 @@ const messages: Record<string, string> = {
   INVITE_NOT_FOUND: t("Приглашение не найдено. Проверьте ссылку."),
   INVITE_EXPIRED: t("Срок приглашения истёк. Попросите владельца проекта прислать новое."),
   INVITE_NOT_AVAILABLE: t("Приглашение уже использовано или отозвано."),
+  CONFIDENTIALITY_NOT_ACCEPTED: t("Сначала примите условия конфиденциальности владельца проекта."),
+  CONFIDENTIALITY_CHANGED: t("Владелец только что изменил условия конфиденциальности. Прочитайте новый текст и примите его."),
+  CONFIDENTIALITY_INVALID: t("Текст условий конфиденциальности — от 20 до 4000 знаков."),
+  WATERMARK_FAILED: t("Не получилось поставить водяной знак: файл повреждён или защищён паролем. Попросите владельца загрузить его заново."),
   INVITE_EMAIL_MISMATCH: t("Приглашение отправлено на другой адрес. Войдите в аккаунт с той почтой, на которую пришло приглашение."),
   ASSIGNMENT_NOT_FOUND: t("Приглашение уже отозвано."),
   PREVIEW_NOT_AVAILABLE: t("Предпросмотр недоступен для этого этапа."),

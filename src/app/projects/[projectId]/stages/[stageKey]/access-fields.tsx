@@ -4,7 +4,7 @@ import { t } from "@/lib/i18n";
 import styles from "../../../journey.module.css";
 
 export type EditMode = "both" | "ai_only" | "manual_only";
-export type Access = { extraReadStages: string[]; hiddenParts: string[]; allowDownload: boolean; readDays: number; editMode?: EditMode };
+export type Access = { extraReadStages: string[]; hiddenParts: string[]; allowDownload: boolean; watermark?: boolean; readDays: number; editMode?: EditMode };
 export type AccessOptions = {
   inputs: Array<{ key: string; title: string }>;
   extraStages: Array<{ key: string; title: string }>;
@@ -33,6 +33,7 @@ export function accessLines(access: Access, options: AccessOptions) {
     if (item) cannot.push(t("Видеть: {0} — вместо них «{1}»", [t(item.title).toLowerCase(), t("скрыто владельцем")]));
   }
   (access.allowDownload ? can : cannot).push(t("Скачивать файлы этапа, загруженные другими"));
+  if (access.watermark) cannot.push(t("Скачивать фото, PDF и тексты без водяного знака: на них и на экране этапа — ваша почта и дата"));
   if (access.editMode === "ai_only") { can.push(t("Менять этап через ИИ: давать задания и принимать предложения")); cannot.push(t("Править этап вручную")); }
   if (access.editMode === "manual_only") { can.push(t("Править этап вручную")); cannot.push(t("Запускать ИИ на этапе")); }
   const after = access.readDays === 0 ? t("Когда этап примут, доступ закроется сразу.") : t("Когда этап примут, менять его будет нельзя; смотреть можно ещё {0} дн.", [access.readDays]);
@@ -88,6 +89,10 @@ export default function AccessFields({ value, options, onChange, disabled }: { v
       <label className={styles.checkRow}>
         <input type="checkbox" checked={value.allowDownload} onChange={(event) => onChange({ ...value, allowDownload: event.target.checked })} />
         <span>{t("Разрешить скачивать файлы этапа, которые загрузили другие")}</span>
+      </label>
+      <label className={styles.checkRow}>
+        <input type="checkbox" checked={Boolean(value.watermark)} onChange={(event) => onChange({ ...value, watermark: event.target.checked })} />
+        <span>{t("Водяной знак с почтой специалиста")}<br /><small className={styles.muted}>{t("На скачанных фото и PDF — повторяющаяся надпись с его почтой и временем, в текстах .md и .txt — первая строка, на экране этапа — бледная надпись. Word, Excel и архивы так пометить нельзя: они выдаются как есть, но каждое скачивание видно в «Истории». Знак не спасает от того, кто захочет его срезать, — он показывает, откуда утёк файл.")}</small></span>
       </label>
       <label className={styles.field} style={{ marginTop: 10 }}>
         <span className={styles.label}>{t("После приёмки этапа смотреть можно")}</span>

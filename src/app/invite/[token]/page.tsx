@@ -11,6 +11,7 @@ import AppHeader from "../../app-header";
 type Invite = {
   projectName: string; invitedBy: string; stageKey: string; stageTitle: string; stagePurpose: string; role: "lead" | "consultant"; roleTitle: string; roleExplanation: string;
   can: string[]; cannot: string[]; afterAcceptance: string; aiBudget: number | null; email: string; status: string; expired: boolean; projectId: string | null; termsText: string; timeRules: string[];
+  confidentiality: { text: string; hash: string } | null;
 };
 
 export default function InvitePage() {
@@ -30,7 +31,7 @@ export default function InvitePage() {
   async function accept() {
     setBusy(true); setError("");
     try {
-      const result = await api<{ projectId: string; stageKey: string }>(`/invites/${token}/accept`, { method: "POST" });
+      const result = await api<{ projectId: string; stageKey: string }>(`/invites/${token}/accept`, { method: "POST", body: JSON.stringify(invite?.confidentiality ? { confidentialityHash: invite.confidentiality.hash } : {}) });
       router.replace(`/projects/${result.projectId}/stages/${result.stageKey}`);
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) setSignedIn(false);
@@ -71,6 +72,13 @@ export default function InvitePage() {
               </div>
               <p className={styles.small} style={{ marginTop: 12 }}>{invite.afterAcceptance}{" "}{t("Результаты этапа принадлежат владельцу проекта.")}</p>
             </section>
+            {invite.confidentiality && (
+              <section className={styles.card} aria-labelledby="invite-confidentiality">
+                <p id="invite-confidentiality" className={styles.cardTitle}>{t("Условия конфиденциальности")}</p>
+                <p className={styles.small} style={{ marginTop: 0 }}>{t("Владелец проекта просит принять их до начала работы. Платформа запишет, когда вы приняли этот текст. Если владелец его изменит, этап закроется, пока вы не примете новый.")}</p>
+                <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{invite.confidentiality.text}</p>
+              </section>
+            )}
 
             {invite.status === "active" && invite.projectId && <a className={`${styles.button} ${styles.block}`} href={`/projects/${invite.projectId}/stages/${invite.stageKey}`}>{t("Открыть этап")}</a>}
             {unavailable && <p className={`${styles.notice} ${styles.warn}`}>{invite.expired ? t("Срок приглашения истёк. Попросите владельца проекта прислать новое.") : t("Приглашение больше не действует.")}</p>}
@@ -84,7 +92,7 @@ export default function InvitePage() {
                 <>
                   <label style={{ display: "flex", gap: 10, alignItems: "flex-start", margin: "0 0 14px" }}>
                     <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} style={{ width: 22, height: 22, flex: "none" }} />
-                    <span>{t("Я буду хранить материалы проекта в тайне и использовать их только для работы над этим этапом")}</span>
+                    <span>{invite.confidentiality ? t("Я прочитал(а) и принимаю условия конфиденциальности") : t("Я буду хранить материалы проекта в тайне и использовать их только для работы над этим этапом")}</span>
                   </label>
                   <button className={`${styles.button} ${styles.block}`} disabled={!agreed || busy || signedIn === null} onClick={accept}>{busy ? t("Подключаем…") : t("Принять приглашение")}</button>
                 </>

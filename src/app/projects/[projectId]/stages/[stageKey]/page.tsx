@@ -10,6 +10,8 @@ import CommentsPanel from "./comments";
 import ReviewPanel from "./review";
 import type { ReviewFlags } from "./diagrams";
 import StageFilesPanel from "./files";
+import ConfidentialityGate from "../../confidentiality-gate";
+import Watermark from "./watermark";
 import InterviewPanel from "./interview";
 import { t, dateLocale } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
@@ -89,6 +91,8 @@ export default function StagePage() {
   const [draft, setDraft] = useState<unknown>(null);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState("");
+  // A specialist whose confidentiality terms wait for acceptance sees them instead of the project.
+  const [gated, setGated] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState<string>("");
   const [instruction, setInstruction] = useState("");
@@ -138,12 +142,14 @@ export default function StagePage() {
       return next;
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return null; }
+      if (caught instanceof ApiError && caught.message === "CONFIDENTIALITY_NOT_ACCEPTED") { setGated(true); return null; }
       setError(explainError(caught));
       return null;
     }
   }, [projectId, stageKey, router]);
 
   useEffect(() => { void load(); }, [load]);
+  const reopenGate = useCallback(() => { setGated(false); void load(); }, [load]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -268,7 +274,8 @@ export default function StagePage() {
     });
   }
 
-  if (error && !detail) return <Shell projectId={projectId} title=""><p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть тариф →")}</a></>}</p></Shell>;
+  if (error && !detail && !gated) return <Shell projectId={projectId} title=""><p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть тариф →")}</a></>}</p></Shell>;
+  if (gated) return <Shell projectId={projectId} title=""><ConfidentialityGate projectId={projectId} onAccepted={reopenGate} /></Shell>;
   if (!detail) return <Shell projectId={projectId} title=""><p className={styles.muted}>{t("Загружаем этап…")}</p></Shell>;
 
   const { stage, ai } = detail;
@@ -317,6 +324,7 @@ export default function StagePage() {
 
   return (
     <Shell projectId={projectId} title={stage.title}>
+      {detail.watermark && <Watermark label={detail.watermark} />}
       <div className={styles.split}>
       <div className={styles.work}>
       <StageRoute projectId={projectId} stageKey={stageKey} />

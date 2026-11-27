@@ -68,6 +68,101 @@ function FeedbackInbox({ projectId, canEdit, onReceived }: { projectId: string; 
   );
 }
 
+type Usage = {
+  enabled: boolean; url: string | null; configured: boolean; period: 7 | 30; since: string | null;
+  days: Array<{ day: string; views: number; visitors: number; actions: number }>;
+  totals: { views: number; visitors: number; actions: number };
+  screens: Array<{ name: string; count: number }>; actions: Array<{ name: string; count: number }>;
+};
+
+/** Usage of the launched application: counts only — no cookies, no addresses, nothing about who the person is. */
+function AppUsage({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
+  const [usage, setUsage] = useState<Usage | null>(null);
+  const [days, setDays] = useState<7 | 30>(7);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const load = useCallback((period: 7 | 30) => api<Usage>(`/projects/${projectId}/usage?days=${period}`).then(setUsage).catch(() => setUsage(null)), [projectId]);
+  useEffect(() => { void load(days); }, [load, days]);
+  async function set(body: { enabled?: boolean; renew?: true }) {
+    setBusy(true); setError("");
+    try { await api(`/projects/${projectId}/usage`, { method: "PUT", body: JSON.stringify(body) }); await load(days); } catch (caught) { setError(explain(caught)); } finally { setBusy(false); }
+  }
+  if (!usage) return null;
+  const max = Math.max(1, ...usage.days.map((day) => day.views));
+  const label = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString(undefined, { day: "numeric", month: "short", timeZone: "UTC" });
+  // Anything ever counted: the period switch stays even when the chosen period is empty.
+  const counted = Boolean(usage.since);
+  return (
+    <section className={styles.card} aria-labelledby="app-usage-title">
+      <h2 id="app-usage-title" className={styles.h2}>{t("Сколько людей пользуется")}</h2>
+      <p className={styles.small}>{t("Включите — и ИИ-агент добавит в приложение пару строк, которые сообщают платформе: «открыт такой-то экран» и «сделано главное действие» (заявка, заказ). Платформа хранит только счётчики по дням: без cookie, без адресов и без того, кто именно заходил. Посетитель считается один раз в день — примерно, по признакам, которые на следующий день стираются.")}</p>
+      {!usage.configured && <p className={`${styles.notice} ${styles.info}`}>{t("На этом сервере не задан публичный адрес API (PUBLIC_API_URL) — подсчёт недоступен.")}</p>}
+      {!usage.enabled && canEdit && usage.configured && (
+        <button type="button" className={styles.button} disabled={busy} onClick={() => void set({ enabled: true })}>{busy ? t("Включаем…") : t("Включить подсчёт")}</button>
+      )}
+      {!usage.enabled && !canEdit && <p className={styles.small}>{t("Подсчёт выключен.")}</p>}
+      {usage.enabled && !counted && (
+        <p className={`${styles.notice} ${styles.info}`} role="status" style={{ margin: "8px 0" }}>{t("Подсчёт включён, данных пока нет. Строки подсчёта появятся в приложении со следующей задачей ИИ-агента; если приложение пишет разработчик, передайте ему адрес ниже.")}</p>
+      )}
+      {(usage.enabled || counted) && (
+        <>
+          {counted && <>
+          <div className={styles.row} style={{ gap: 8, margin: "10px 0" }} role="group" aria-label={t("Период")}>
+            {([7, 30] as const).map((period) => (
+              <button key={period} type="button" className={styles.filterChip} aria-pressed={days === period} onClick={() => setDays(period)}>{t("{0} дней", [period])}</button>
+            ))}
+          </div>
+          <div className={styles.stats} style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", margin: "0 0 8px" }}>
+            <div className={styles.stat}><b>{usage.totals.visitors}</b><span>{t("посетителей")}</span></div>
+            <div className={styles.stat}><b>{usage.totals.views}</b><span>{t("открытий экранов")}</span></div>
+            <div className={styles.stat}><b>{usage.totals.actions}</b><span>{t("главных действий")}</span></div>
+          </div>
+          <div role="img" aria-label={t("Открытия экранов по дням: {0}", [usage.days.map((day) => `${label(day.day)} — ${day.views}`).join(", ")])}
+            style={{ display: "flex", alignItems: "flex-end", gap: days === 7 ? 8 : 2, height: 110, margin: "12px 0 4px", borderBottom: "1px solid var(--line, #e3e6e4)" }}>
+            {usage.days.map((day) => (
+              <div key={day.day} title={`${label(day.day)}: ${day.views}`} style={{ flex: 1, height: `${Math.max(day.views ? 4 : 0, Math.round((day.views / max) * 100))}%`, background: "var(--brand-ink, #1f6f4a)", borderRadius: "4px 4px 0 0", minWidth: 3 }} />
+            ))}
+          </div>
+          <div className={styles.row} style={{ justifyContent: "space-between" }}>
+            <span className={styles.small}>{label(usage.days[0]!.day)}</span><span className={styles.small}>{label(usage.days.at(-1)!.day)}</span>
+          </div>
+          {usage.screens.length > 0 && (
+            <>
+              <h3 className={styles.cardTitle} style={{ marginTop: 14 }}>{t("Какие экраны открывают")}</h3>
+              <ul className={styles.list}>{usage.screens.map((item) => <li key={item.name}><code>{item.name}</code> — {item.count}</li>)}</ul>
+              <p className={styles.small}>{t("«:id» — вместо номеров и кодов в адресе: какая именно запись открыта, не сохраняется.")}</p>
+            </>
+          )}
+          {usage.actions.length > 0 && (
+            <>
+              <h3 className={styles.cardTitle} style={{ marginTop: 14 }}>{t("Главные действия")}</h3>
+              <ul className={styles.list}>{usage.actions.map((item) => <li key={item.name}>{item.name} — {item.count}</li>)}</ul>
+            </>
+          )}
+          </>}
+          {usage.enabled && usage.url && (
+            <details className={styles.details} style={{ marginTop: 10 }}>
+              <summary>{t("Адрес для разработчика")}</summary>
+              <code style={{ display: "block", overflowWrap: "anywhere", fontSize: 14, background: "var(--surface-2, #f4f6f8)", padding: "8px 10px", borderRadius: 8, marginTop: 6 }}>{usage.url}</code>
+              <p className={styles.small}>{t("Приложение отправляет navigator.sendBeacon с полями kind=view и name=путь экрана или kind=action и name=название действия. Больше ничего отправлять нельзя.")}</p>
+            </details>
+          )}
+          {canEdit && (
+            <div className={styles.row} style={{ gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+              {usage.enabled
+                ? <button type="button" className={styles.secondary} disabled={busy} onClick={() => void set({ enabled: false })}>{t("Выключить подсчёт")}</button>
+                : usage.configured && <button type="button" className={styles.secondary} disabled={busy} onClick={() => void set({ enabled: true })}>{t("Включить снова")}</button>}
+              {usage.enabled && <button type="button" className={styles.ghost} disabled={busy} onClick={() => void set({ renew: true })}>{t("Сменить адрес (если считают лишнее)")}</button>}
+            </div>
+          )}
+          {!usage.enabled && <p className={styles.small}>{t("Подсчёт выключен; накопленные цифры сохранены.")}</p>}
+        </>
+      )}
+      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
+    </section>
+  );
+}
+
 export default function Growth({ projectId, app = false }: { projectId: string; app?: boolean }) {
   const [data, setData] = useState<Backlog | null>(null);
   const [error, setError] = useState("");
@@ -189,6 +284,7 @@ export default function Growth({ projectId, app = false }: { projectId: string; 
           ))}</ul>
         </details>
       )}
+      {app && <AppUsage projectId={projectId} canEdit={data.canEdit} />}
       {app && <FeedbackInbox projectId={projectId} canEdit={data.canEdit} onReceived={() => void load()} />}
     </div>
   );

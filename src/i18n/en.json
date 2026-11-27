@@ -4801,5 +4801,14 @@
  "Замечание к концепции по ссылке от {0}": "A remark on the shared concept from {0}",
  "Замечания к концепции по ссылке: {0}": "Remarks on the shared concept: {0}",
  "Посмотреть": "View",
- "Читатели": "Readers"
+ "Читатели": "Readers",
+ "Новые шаги процесса": "New process steps",
+ "Выбранное в первую версию меняет то, как идёт работа. Эти шаги можно добавить в бизнес-процесс — тогда их увидят схема, концепция и архитектура.": "What you chose for the first version changes how the work goes. These steps can be added to the business process — then the diagram, the concept and the architecture see them.",
+ "Сначала сохраните решения — список считается по сохранённой версии.": "Save the decisions first — the list is built from the saved version.",
+ "«{0}»: в сценарии «{1}» после шага «{2}» — {3}: {4}": "«{0}»: in the scenario «{1}» after the step «{2}» — {3}: {4}",
+ "Не добавится:": "Will not be added:",
+ "Принятый процесс откроется с новыми шагами; посмотрите их и примите процесс снова. Этапы после него продолжат работать на принятой версии.": "The accepted process will open with the new steps; look them over and accept the process again. The stages after it keep working on the accepted version.",
+ "Шаги добавятся в черновик процесса; посмотрите их и примите процесс.": "The steps will be added to the process draft; look them over and accept the process.",
+ "Добавляем…": "Adding…",
+ "Добавить в процесс": "Add to the process"
 }

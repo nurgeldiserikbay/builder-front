@@ -98,6 +98,8 @@ export function activityLine(event: ActivityEvent, stageTitle: (key: string | nu
     case "specialist_invited": return t("Специалист приглашён на этап «{0}»", [s]);
     case "specialist_joined": return t("Специалист присоединился к этапу «{0}»", [s]);
     case "specialist_revoked": return t("Доступ специалиста к этапу «{0}» закрыт", [s]);
+    case "telegram_group_linked": return t("К проекту подключена группа в Telegram");
+    case "telegram_group_unlinked": return event.details.byTelegram ? t("Бота удалили из группы в Telegram — группа отключена") : t("Группа в Telegram отключена от проекта");
     case "specialist_access_changed": return t("Изменён доступ специалиста к этапу «{0}»", [s]);
     case "specialist_confidentiality_changed": return event.details.enabled === false ? t("Условия конфиденциальности специалиста на этапе «{0}» сняты", [s]) : t("Изменены условия конфиденциальности специалиста на этапе «{0}»", [s]);
     case "specialist_confidentiality_accepted": return t("Специалист принял условия конфиденциальности на этапе «{0}»", [s]);

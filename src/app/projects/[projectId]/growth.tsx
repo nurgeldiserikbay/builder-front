@@ -73,7 +73,96 @@ type Usage = {
   days: Array<{ day: string; views: number; visitors: number; actions: number }>;
   totals: { views: number; visitors: number; actions: number };
   screens: Array<{ name: string; count: number }>; actions: Array<{ name: string; count: number }>;
+  goals: UsageGoalRow[]; actionNames: string[];
 };
+type GoalKind = "visitors" | "views" | "action";
+type GoalSetting = { metricKey: string; kind: GoalKind; name: string | null; target: number; period: "week" | "month" };
+type UsageGoalRow = {
+  metricKey: string; text: string; goal: GoalSetting | null; hint: { target: number | null; period: "week" | "month" | null; kind: GoalKind | null } | null;
+  actual: number | null; percent: number | null; status: "not_set" | "no_data" | "reached" | "behind";
+};
+
+/** The success goals of the idea review against the counters: how each is counted, and how far the last week or month got. */
+function SuccessGoals({ projectId, usage, canEdit, onSaved }: { projectId: string; usage: Usage; canEdit: boolean; onSaved: () => Promise<unknown> }) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState<GoalSetting | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const kinds: Record<GoalKind, string> = { visitors: t("Посетители"), views: t("Открытия экранов"), action: t("Главное действие") };
+  const periods = { week: t("за неделю"), month: t("за месяц") };
+  const settings = usage.goals.map((row) => row.goal).filter((goal): goal is GoalSetting => Boolean(goal));
+  function open(row: UsageGoalRow) {
+    setError(""); setEditing(row.metricKey);
+    setForm(row.goal ?? { metricKey: row.metricKey, kind: row.hint?.kind ?? "visitors", name: row.hint?.kind === "action" ? usage.actionNames[0] ?? "" : null, target: row.hint?.target ?? 100, period: row.hint?.period ?? "month" });
+  }
+  async function save(next: GoalSetting[]) {
+    setBusy(true); setError("");
+    try { await api(`/projects/${projectId}/usage/goals`, { method: "PUT", body: JSON.stringify({ goals: next }) }); await onSaved(); setEditing(null); setForm(null); }
+    catch (caught) { setError(explain(caught)); } finally { setBusy(false); }
+  }
+  if (!usage.goals.length) return null;
+  return (
+    <div style={{ marginTop: 16 }}>
+      <h3 className={styles.cardTitle}>{t("Цели успеха из разбора идеи")}</h3>
+      <p className={styles.small}>{t("Укажите, по какому счётчику видна каждая цель — и здесь появится, сколько набралось за последние 7 дней (цель на неделю) или 30 дней (на месяц). Сам разбор идеи не меняется.")}</p>
+      <ul className={styles.list} style={{ listStyle: "none", padding: 0 }}>
+        {usage.goals.map((row) => (
+          <li key={row.metricKey} style={{ padding: "10px 0", borderTop: "1px solid var(--line, #e3e6e4)" }}>
+            <p style={{ margin: "0 0 4px", fontWeight: 600 }}>{row.text}</p>
+            {row.goal && row.status !== "not_set" && (
+              <>
+                <p className={styles.small} style={{ margin: "0 0 4px" }}>
+                  {t("{0}{1}: {2} из {3} {4}", [kinds[row.goal.kind], row.goal.name ? ` «${row.goal.name}»` : "", row.actual ?? 0, row.goal.target, periods[row.goal.period]])}
+                  {" · "}
+                  <b style={{ color: row.status === "reached" ? "#1f6f43" : row.status === "behind" ? "#8a5a00" : "inherit" }}>
+                    {row.status === "reached" ? t("достигнута") : row.status === "behind" ? t("пока не достигнута") : t("данных ещё нет")}
+                  </b>
+                </p>
+                <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={row.percent ?? 0} aria-label={row.text}
+                  style={{ height: 8, background: "var(--surface-2, #eef1ef)", borderRadius: 4, overflow: "hidden" }}>
+                  <div style={{ width: `${row.percent ?? 0}%`, height: "100%", background: row.status === "reached" ? "#1f6f43" : "#c08a1e" }} />
+                </div>
+              </>
+            )}
+            {!row.goal && <p className={styles.small} style={{ margin: 0 }}>{t("Не указано, как считать.")}</p>}
+            {canEdit && editing !== row.metricKey && (
+              <button type="button" className={styles.inlineLinkButton} style={{ marginTop: 6 }} onClick={() => open(row)}>{row.goal ? t("Изменить") : t("Указать, как считать")}</button>
+            )}
+            {editing === row.metricKey && form && (
+              <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                <label className={styles.field}><span className={styles.label}>{t("Что считать")}</span>
+                  <select className={styles.input} value={form.kind} onChange={(event) => setForm({ ...form, kind: event.target.value as GoalKind, name: event.target.value === "action" ? usage.actionNames[0] ?? "" : null })}>
+                    {(Object.keys(kinds) as GoalKind[]).map((kind) => <option key={kind} value={kind}>{kinds[kind]}</option>)}
+                  </select></label>
+                {form.kind === "action" && (
+                  <label className={styles.field}><span className={styles.label}>{t("Какое действие")}</span>
+                    <span className={styles.why}>{t("Так, как его называет приложение: например «заявка отправлена». Названия, которые уже приходили, — в подсказке.")}</span>
+                    <input className={styles.input} list="usage-action-names" value={form.name ?? ""} maxLength={40} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+                    <datalist id="usage-action-names">{usage.actionNames.map((name) => <option key={name} value={name} />)}</datalist></label>
+                )}
+                <div className={styles.row} style={{ gap: 8 }}>
+                  <label className={styles.field} style={{ flex: 1 }}><span className={styles.label}>{t("Сколько")}</span>
+                    <input className={styles.input} inputMode="numeric" value={String(form.target)} onChange={(event) => setForm({ ...form, target: Number(event.target.value.replace(/\D/g, "").slice(0, 8)) || 0 })} /></label>
+                  <label className={styles.field} style={{ flex: 1 }}><span className={styles.label}>{t("За какой срок")}</span>
+                    <select className={styles.input} value={form.period} onChange={(event) => setForm({ ...form, period: event.target.value as "week" | "month" })}>
+                      <option value="week">{t("Неделя")}</option><option value="month">{t("Месяц")}</option>
+                    </select></label>
+                </div>
+                <div className={styles.row} style={{ gap: 8, flexWrap: "wrap" }}>
+                  <button type="button" className={styles.button} disabled={busy || form.target < 1 || (form.kind === "action" && !form.name?.trim())}
+                    onClick={() => void save([...settings.filter((goal) => goal.metricKey !== form.metricKey), form])}>{busy ? t("Сохраняем…") : t("Сохранить")}</button>
+                  {row.goal && <button type="button" className={styles.ghost} disabled={busy} onClick={() => void save(settings.filter((goal) => goal.metricKey !== row.metricKey))}>{t("Не считать")}</button>}
+                  <button type="button" className={styles.ghost} disabled={busy} onClick={() => { setEditing(null); setForm(null); }}>{t("Отмена")}</button>
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
+    </div>
+  );
+}
 
 /** Usage of the launched application: counts only — no cookies, no addresses, nothing about who the person is. */
 function AppUsage({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
@@ -158,6 +247,7 @@ function AppUsage({ projectId, canEdit }: { projectId: string; canEdit: boolean 
           {!usage.enabled && <p className={styles.small}>{t("Подсчёт выключен; накопленные цифры сохранены.")}</p>}
         </>
       )}
+      <SuccessGoals projectId={projectId} usage={usage} canEdit={canEdit} onSaved={() => load(days)} />
       {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}</p>}
     </section>
   );

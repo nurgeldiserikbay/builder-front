@@ -20,6 +20,7 @@ import BudgetCard from "./budget-card";
 import WalletCard from "./wallet-card";
 import AppHeader from "../../app-header";
 import TeamCard from "./team-card";
+import TelegramGroupCard from "./telegram-group-card";
 import ProposalsPanel from "./proposals";
 import ActivityLog from "./activity";
 
@@ -221,6 +222,7 @@ export default function JourneyPage() {
             </>}
 
             {tab === "team" && !specialist && <TeamCard projectId={projectId} />}
+            {tab === "team" && !specialist && <TelegramGroupCard projectId={projectId} />}
 
             {tab === "money" && !specialist && managing && <>
             <p className={styles.small} style={{ margin: "0 0 14px" }} hidden={specialist}>

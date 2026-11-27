@@ -579,6 +579,37 @@ export default function StagePage() {
       {stage.artifactType === "suggestions" && stage.status !== "locked" && draft !== null && (
         <SuggestionsEditor value={draft as Suggestions} onChange={edit} disabled={!canType} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
       )}
+      {stage.artifactType === "suggestions" && detail.current && detail.options.processSteps?.available && (detail.options.processSteps.added.length > 0 || detail.options.processSteps.skipped.length > 0) && (
+        <section className={styles.card} aria-labelledby="process-steps-title">
+          <p id="process-steps-title" className={styles.cardTitle}>{t("Новые шаги процесса")}</p>
+          <p className={styles.small}>{t("Выбранное в первую версию меняет то, как идёт работа. Эти шаги можно добавить в бизнес-процесс — тогда их увидят схема, концепция и архитектура.")}</p>
+          {dirty && <p className={`${styles.notice} ${styles.info}`}>{t("Сначала сохраните решения — список считается по сохранённой версии.")}</p>}
+          {detail.options.processSteps.added.length > 0 && (
+            <ul className={styles.list}>
+              {detail.options.processSteps.added.map((item, index) => (
+                <li key={index}>{t("«{0}»: в сценарии «{1}» после шага «{2}» — {3}: {4}", [item.suggestion, item.scenario, item.after, item.actor, item.action])}</li>
+              ))}
+            </ul>
+          )}
+          {detail.options.processSteps.skipped.length > 0 && (
+            <>
+              <p className={styles.small} style={{ marginBottom: 4 }}>{t("Не добавится:")}</p>
+              <ul className={styles.list}>{detail.options.processSteps.skipped.map((item, index) => <li key={index}>{item.suggestion} — {item.reason}</li>)}</ul>
+            </>
+          )}
+          {detail.options.processSteps.canAdd && !dirty && (
+            <>
+              <p className={styles.small}>{detail.options.processSteps.processStatus === "approved" || detail.options.processSteps.processStatus === "imported"
+                ? t("Принятый процесс откроется с новыми шагами; посмотрите их и примите процесс снова. Этапы после него продолжат работать на принятой версии.")
+                : t("Шаги добавятся в черновик процесса; посмотрите их и примите процесс.")}</p>
+              <button type="button" className={styles.button} disabled={Boolean(busy)} onClick={() => run("steps", async () => {
+                await api(`/projects/${projectId}/suggested-steps`, { method: "POST" });
+                window.location.href = `/projects/${projectId}/stages/process`;
+              })}>{busy === "steps" ? t("Добавляем…") : t("Добавить в процесс")}</button>
+            </>
+          )}
+        </section>
+      )}
 
       {/* Starting point for an empty idea review */}
       {stage.artifactType === "idea" && !detail.current && draft === null && stage.canEdit && (

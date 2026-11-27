@@ -577,7 +577,7 @@ export default function StagePage() {
         </section>
       )}
       {stage.artifactType === "suggestions" && stage.status !== "locked" && draft !== null && (
-        <SuggestionsEditor value={draft as Suggestions} onChange={edit} disabled={!canType} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />
+        <SuggestionsEditor value={draft as Suggestions} onChange={edit} disabled={!canType} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} estimates={detail.options.estimate} />
       )}
       {stage.artifactType === "suggestions" && detail.current && detail.options.processSteps?.available && (detail.options.processSteps.added.length > 0 || detail.options.processSteps.skipped.length > 0) && (
         <section className={styles.card} aria-labelledby="process-steps-title">

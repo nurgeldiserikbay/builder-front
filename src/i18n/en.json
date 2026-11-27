@@ -4810,5 +4810,21 @@
  "Принятый процесс откроется с новыми шагами; посмотрите их и примите процесс снова. Этапы после него продолжат работать на принятой версии.": "The accepted process will open with the new steps; look them over and accept the process again. The stages after it keep working on the accepted version.",
  "Шаги добавятся в черновик процесса; посмотрите их и примите процесс.": "The steps will be added to the process draft; look them over and accept the process.",
  "Добавляем…": "Adding…",
- "Добавить в процесс": "Add to the process"
+ "Добавить в процесс": "Add to the process",
+ "делает платформа, без разработчика": "done by the platform, no developer needed",
+ "≈ {0} ч": "≈ {0} h",
+ "{0} раб. дн.": "{0} working days",
+ "плюс плата сервиса по его тарифу": "plus the service's own fee",
+ "плюс плата сервисов по их тарифам ({0})": "plus the services' own fees ({0})",
+ "Срок и цена": "Time and price",
+ "Дополнительное в первой версии: {0}": "Extras in the first version: {0}",
+ "Отметьте, что пойдёт в первую версию, — здесь появится, сколько это добавит.": "Mark what goes into the first version — this shows how much it adds.",
+ "Это оценка по типу работы, а не смета: «немного» — {0} ч, «заметная» — {1} ч, «большая» — {2} ч работы разработчика с ИИ; день — {3} ч, один разработчик. Точнее скажет архитектура и разработчик.": "This is an estimate by the kind of work, not a quote: «a little» — {0} h, «noticeable» — {1} h, «large» — {2} h of developer work with AI; a day is {3} h, one developer. The architecture and the developer will say more precisely.",
+ "Ставка разработчика, ₸ в час (необязательно)": "Developer's rate, ₸ per hour (optional)",
+ "С ней рядом с часами появится цена. Ставка видна всем, кто видит этот этап, и попадает в ТЗ и концепцию.": "With it, a price appears next to the hours. The rate is visible to everyone who sees this stage and goes into the specification and the concept.",
+ "Например: 5000": "For example: 5000",
+ "Ставка {0}: {1}": "Rate of {0}: {1}",
+ "Сколько работы: «{0}»": "How much work: «{0}»",
+ "своё": "own",
+ "Оценка: {0}": "Estimate: {0}"
 }

@@ -4884,5 +4884,13 @@
  "Изменены условия конфиденциальности специалиста на этапе «{0}»": "The specialist's confidentiality terms on stage «{0}» were changed",
  "Специалист принял условия конфиденциальности на этапе «{0}»": "The specialist accepted the confidentiality terms on stage «{0}»",
  "Специалист скачал файл этапа «{0}» с водяным знаком": "The specialist downloaded a file of stage «{0}» with a watermark",
- "Специалист скачал файл этапа «{0}»": "The specialist downloaded a file of stage «{0}»"
+ "Специалист скачал файл этапа «{0}»": "The specialist downloaded a file of stage «{0}»",
+ "критическая": "critical",
+ "высокая": "high",
+ "средняя": "moderate",
+ "низкая": "low",
+ "не проверено: база уязвимостей npm не ответила": "not checked: the npm advisory database did not answer",
+ "Критических: {0}, высоких: {1}, средних: {2}, низких: {3}.": "Critical: {0}, high: {1}, moderate: {2}, low: {3}.",
+ "Задачу это не останавливает, но выпускать приложение с высокими и критическими уязвимостями не стоит: попросите агента обновить или заменить эти пакеты следующим изменением приложения.": "This does not stop the task, but an application with high and critical vulnerabilities should not be released: ask the agent to upgrade or replace these packages with the next change of the application.",
+ "Серьёзных нет; средние и низкие стоит обновить при следующих изменениях.": "Nothing serious; moderate and low ones are worth updating with the next changes."
 }

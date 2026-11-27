@@ -188,7 +188,7 @@ export default function AgentPanel({ projectId, packageBuilt, canEdit }: { proje
                   <div className={styles.small} style={{ margin: "2px 0 4px 18px" }}>
                     {t("Критических: {0}, высоких: {1}, средних: {2}, низких: {3}.", [check.vulnerabilities.critical, check.vulnerabilities.high, check.vulnerabilities.moderate, check.vulnerabilities.low])}
                     <ul style={{ margin: "2px 0", paddingLeft: 18 }}>{check.vulnerabilities.packages.map((item) => <li key={item.name}><code>{item.name}</code> — {severityText[item.severity] ?? item.severity}{item.title ? `: ${item.title}` : ""}</li>)}</ul>
-                    {check.status === "failed" ? t("Задачу это не останавливает, но выпускать приложение с высокими и критическими уязвимостями не стоит: попросите агента обновить или заменить эти пакеты следующим изменением приложения.") : t("Серьёзных нет; средние и низкие стоит обновить при следующих изменениях.")}
+                    {check.status === "failed" ? t("Задачу это не останавливает. Но принять модуль или запустить приложение с такими пакетами можно будет, только письменно объяснив почему: лучше попросите агента обновить или заменить их следующим изменением приложения.") : t("Серьёзных нет; средние и низкие стоит обновить при следующих изменениях.")}
                   </div>
                 )}
                 {check.id !== "audit" && (check.status === "failed" || check.status === "timed_out") && check.output && <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, maxHeight: 160, overflow: "auto", margin: "4px 0" }}>{check.output}</pre>}

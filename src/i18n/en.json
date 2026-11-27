@@ -4891,7 +4891,7 @@
  "низкая": "low",
  "не проверено: база уязвимостей npm не ответила": "not checked: the npm advisory database did not answer",
  "Критических: {0}, высоких: {1}, средних: {2}, низких: {3}.": "Critical: {0}, high: {1}, moderate: {2}, low: {3}.",
- "Задачу это не останавливает, но выпускать приложение с высокими и критическими уязвимостями не стоит: попросите агента обновить или заменить эти пакеты следующим изменением приложения.": "This does not stop the task, but an application with high and critical vulnerabilities should not be released: ask the agent to upgrade or replace these packages with the next change of the application.",
+ "Задачу это не останавливает. Но принять модуль или запустить приложение с такими пакетами можно будет, только письменно объяснив почему: лучше попросите агента обновить или заменить их следующим изменением приложения.": "This does not stop the task. But a module with such packages can be accepted, or the application launched, only with a written explanation why: better ask the agent to upgrade or replace them with the next change of the application.",
  "Серьёзных нет; средние и низкие стоит обновить при следующих изменениях.": "Nothing serious; moderate and low ones are worth updating with the next changes.",
  "Отключить группу? Бот напишет в ней, что сообщений о проекте больше не будет.": "Disconnect the group? The bot will say in it that no more messages about the project will come.",
  "Группа в Telegram": "Telegram group",

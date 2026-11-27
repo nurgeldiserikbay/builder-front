@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import { explainError } from "@/lib/journey";
 import styles from "./projects/journey.module.css";
 
-const publicPrefixes = ["/login", "/legal", "/verify-email", "/invite"];
+const publicPrefixes = ["/login", "/legal", "/verify-email", "/invite", "/concept/"];
 type Info = { statement: string; termsVersion: string; privacyVersion: string };
 
 /** Asks a signed-in user to accept updated legal documents; the API refuses other work until then (CONSENT_REQUIRED). */

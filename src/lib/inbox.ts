@@ -1,7 +1,7 @@
 // «Входящие» and the project log («Журнал»): how items and events read on screen.
 import { t } from "@/lib/i18n";
 
-export type InboxKind = "stage_review" | "stage_changes" | "change_notice" | "change_proposal" | "time_entries" | "dispute" | "mention" | "request_responses" | "plan_tasks" | "plan_slip";
+export type InboxKind = "stage_review" | "stage_changes" | "change_notice" | "change_proposal" | "time_entries" | "dispute" | "mention" | "request_responses" | "plan_tasks" | "plan_slip" | "guest_remarks";
 export type InboxItem = {
   id: string; kind: InboxKind; projectId: string; projectName: string; projectType: string | null; stageKey: string | null;
   since: string; dueAt: string | null; count: number; who: string | null; text: string | null;
@@ -30,6 +30,7 @@ export function inboxLine(item: InboxItem, stageTitle: StageTitle): { title: str
     case "mention": return { title: t("Вас упомянули в замечании к этапу «{0}»", [stage]), action: t("Ответить"), href: `${stageHref}#comments-title` };
     case "request_responses": return { title: t("На заявку по этапу «{0}» откликнулись: {1}", [stage, item.count]), action: t("Сравнить"), href: `${stageHref}#requests-title` };
     case "plan_tasks": return { title: item.count === 1 ? t("Ваша задача плана реализации") : t("Ваши задачи плана реализации: {0}", [item.count]), action: t("Открыть"), href: stageHref };
+    case "guest_remarks": return { title: item.count === 1 ? t("Замечание к концепции по ссылке от {0}", [item.who ?? ""]) : t("Замечания к концепции по ссылке: {0}", [item.count]), action: t("Посмотреть"), href: stageHref };
     case "plan_slip": {
       const [promised, now] = (item.text ?? "").split("→");
       const day = (value: string | undefined) => (value ? new Date(`${value}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "long" }) : "");

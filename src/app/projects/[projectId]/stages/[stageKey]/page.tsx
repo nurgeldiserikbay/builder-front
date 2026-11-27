@@ -47,6 +47,7 @@ import StagePassport from "./passport";
 import { applyFix, type AutoFix } from "./process-changes";
 import { SitemapEditor, blankSitemap } from "./sitemap-editor";
 import { PathsEditor } from "./paths-editor";
+import { ConceptShare } from "./concept-share";
 import { IdeaEditor, blankIdea, type IdeaReview } from "./idea-editor";
 import { SuggestionsEditor, type Suggestions } from "./suggestions-editor";
 import { ConceptDocumentView, ConceptDownloads, ConceptEditor, blankConcept, withOwnerParts, type Concept, type ConceptDocument } from "./concept-editor";
@@ -552,6 +553,7 @@ export default function StagePage() {
           )}
           {draft !== null && <ConceptEditor value={draft as Concept} onChange={edit} disabled={!canType} issues={dirty ? [] : detail.issues.map((issue) => issue.message)} />}
           <ConceptDownloads projectId={projectId} saved={Boolean(detail.current)} dirty={dirty} title={detail.options.concept.title} />
+          <ConceptShare projectId={projectId} saved={Boolean(detail.current)} canManage={stage.canAccept} />
           <section className={styles.card} aria-label={t("Документ")}>
             <ConceptDocumentView document={draft !== null ? withOwnerParts(detail.options.concept as ConceptDocument, { ...blankConcept(), ...(draft as Concept) }) : detail.options.concept as ConceptDocument} />
           </section>

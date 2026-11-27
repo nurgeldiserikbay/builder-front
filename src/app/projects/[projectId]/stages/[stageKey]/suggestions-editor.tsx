@@ -13,7 +13,26 @@ export type Suggestion = {
   key: string; title: string; value: string; basis: string; source: "catalog" | "ai" | "owner"; catalogKey: string | null;
   support: SuggestionSupport; effort: "small" | "medium" | "large"; decision: SuggestionDecision; reason: string;
 };
-export type Suggestions = { items: Suggestion[] };
+export type Suggestions = { items: Suggestion[]; rate?: number | null };
+export type EstimateOptions = { hours: Record<Suggestion["effort"], [number, number]>; hoursPerDay: number; maxRate: number; rateHints: Array<{ label: string; rate: number }> };
+
+// The same rough estimate the server writes into the ТЗ and the concept (builder-back suggestions.ts estimateSuggestion).
+const days = (hours: number, perDay: number) => (hours ? Math.max(1, Math.ceil(hours / perDay)) : 0);
+const money = (value: number) => `${value.toLocaleString("ru-RU")} ₸`;
+const range = ([low, high]: [number, number], show: (value: number) => string | number = (value) => value) => (low === high ? `${show(low)}` : `${show(low)}–${show(high)}`);
+function estimate(items: Suggestion[], rate: number | null | undefined, options: EstimateOptions) {
+  const hours: [number, number] = [0, 0];
+  for (const item of items) if (item.support !== "site") { hours[0] += options.hours[item.effort][0]; hours[1] += options.hours[item.effort][1]; }
+  return { hours, days: [days(hours[0], options.hoursPerDay), days(hours[1], options.hoursPerDay)] as [number, number], price: rate ? [hours[0] * rate, hours[1] * rate] as [number, number] : null, fees: items.filter((item) => item.support === "account").length };
+}
+function estimateText(value: ReturnType<typeof estimate>, platformOnly: boolean): string {
+  if (platformOnly) return t("делает платформа, без разработчика");
+  const parts = [t("≈ {0} ч", [range(value.hours)]), t("{0} раб. дн.", [range(value.days)])];
+  if (value.price) parts.push(range(value.price, money));
+  if (value.fees === 1) parts.push(t("плюс плата сервиса по его тарифу"));
+  else if (value.fees > 1) parts.push(t("плюс плата сервисов по их тарифам ({0})", [value.fees]));
+  return parts.join(" · ");
+}
 
 const LIMIT = 20;
 const FIRST_VERSION_EXTRAS = 6;
@@ -38,10 +57,13 @@ function nextKey(items: Suggestion[]): string {
 
 type Filter = "all" | "open" | "now" | "later" | "no";
 
-export function SuggestionsEditor({ value, onChange, disabled, issues }: { value: Suggestions; onChange: (next: Suggestions) => void; disabled: boolean; issues: string[] }) {
+export function SuggestionsEditor({ value, onChange, disabled, issues, estimates }: { value: Suggestions; onChange: (next: Suggestions) => void; disabled: boolean; issues: string[]; estimates?: EstimateOptions }) {
   const items = value.items ?? [];
+  const rate = value.rate ?? null;
+  const [rateText, setRateText] = useState(rate ? String(rate) : "");
+  const setItems = (next: Suggestion[]) => onChange({ ...value, items: next });
   const [filter, setFilter] = useState<Filter>("all");
-  const set = (index: number, patch: Partial<Suggestion>) => onChange({ items: items.map((item, position) => (position === index ? { ...item, ...patch } : item)) });
+  const set = (index: number, patch: Partial<Suggestion>) => setItems(items.map((item, position) => (position === index ? { ...item, ...patch } : item)));
   const count = (decision: SuggestionDecision) => items.filter((item) => item.decision === decision).length;
   const now = count("now");
   const shown = items.map((item, index) => ({ item, index })).filter(({ item }) => filter === "all" || (filter === "open" ? !item.decision : item.decision === filter));
@@ -63,6 +85,32 @@ export function SuggestionsEditor({ value, onChange, disabled, issues }: { value
         )}
         {issues.length > 0 && <ul className={styles.list} style={{ marginTop: 10 }}>{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>}
       </section>
+
+      {estimates && (
+        <section className={styles.card} aria-labelledby="estimate-title">
+          <p id="estimate-title" className={styles.cardTitle}>{t("Срок и цена")}</p>
+          {now > 0
+            ? <p style={{ margin: "0 0 6px", fontSize: 17 }}><b>{t("Дополнительное в первой версии: {0}", [estimateText(estimate(items.filter((item) => item.decision === "now"), rate, estimates), false)])}</b></p>
+            : <p className={styles.small}>{t("Отметьте, что пойдёт в первую версию, — здесь появится, сколько это добавит.")}</p>}
+          <p className={styles.small} style={{ margin: "0 0 10px" }}>{t("Это оценка по типу работы, а не смета: «немного» — {0} ч, «заметная» — {1} ч, «большая» — {2} ч работы разработчика с ИИ; день — {3} ч, один разработчик. Точнее скажет архитектура и разработчик.", [range(estimates.hours.small), range(estimates.hours.medium), range(estimates.hours.large), estimates.hoursPerDay])}</p>
+          <label className={styles.field}><span className={styles.label}>{t("Ставка разработчика, ₸ в час (необязательно)")}</span>
+            <span className={styles.why}>{t("С ней рядом с часами появится цена. Ставка видна всем, кто видит этот этап, и попадает в ТЗ и концепцию.")}</span>
+            <input className={styles.input} inputMode="numeric" value={rateText} disabled={disabled} placeholder={t("Например: 5000")}
+              onChange={(event) => {
+                const clean = event.target.value.replace(/\D/g, "").slice(0, 7);
+                setRateText(clean);
+                const number = clean ? Math.min(Number(clean), estimates.maxRate) : null;
+                onChange({ ...value, rate: number || null });
+              }} /></label>
+          {!disabled && estimates.rateHints.length > 0 && (
+            <div className={styles.row} style={{ gap: 6, flexWrap: "wrap" }}>
+              {estimates.rateHints.map((hint) => (
+                <button key={hint.label} type="button" className={styles.ghost} onClick={() => { setRateText(String(hint.rate)); onChange({ ...value, rate: hint.rate }); }}>{t("Ставка {0}: {1}", [hint.label, money(hint.rate)])}</button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {items.length === 0 && <p className={styles.small}>{t("Предложений пока нет. Добавьте своё или попросите ИИ подобрать.")}</p>}
       {items.length > 0 && shown.length === 0 && <p className={styles.small}>{t("Здесь пока пусто.")}</p>}
@@ -87,8 +135,16 @@ export function SuggestionsEditor({ value, onChange, disabled, issues }: { value
             {item.basis && <p className={styles.small} style={{ margin: "0 0 8px" }}>{t("Откуда: {0}", [item.basis])}</p>}
             <p className={styles.small} style={{ margin: "0 0 10px", display: "flex", flexWrap: "wrap", gap: 6 }}>
               <span title={supportHint()[item.support]} style={{ color: supportColor[item.support], fontWeight: 600 }}>● {supportLabel()[item.support]}</span>
-              <span>· {effortLabel()[item.effort]}</span>
+              {item.source === "catalog" || disabled
+                ? <span>· {effortLabel()[item.effort]}</span>
+                : <select aria-label={t("Сколько работы: «{0}»", [item.title || t("своё")])} value={item.effort} onChange={(event) => set(index, { effort: event.target.value as Suggestion["effort"] })}
+                    style={{ font: "inherit", border: "1px solid var(--line, #d6dad7)", borderRadius: 8, padding: "2px 6px", background: "#fff" }}>
+                    {(Object.keys(effortLabel()) as Array<Suggestion["effort"]>).map((effort) => <option key={effort} value={effort}>{effortLabel()[effort]}</option>)}
+                  </select>}
             </p>
+            {estimates && item.decision !== "no" && (
+              <p className={styles.small} style={{ margin: "-4px 0 10px" }}>{t("Оценка: {0}", [estimateText(estimate([item], rate, estimates), item.support === "site")])}</p>
+            )}
             {(item.support === "account" || item.support === "not_yet") && item.decision === "now" && <p className={styles.small} style={{ margin: "0 0 10px" }}>{supportHint()[item.support]}</p>}
             <div role="group" aria-label={t("Решение по «{0}»", [item.title])} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
               {(Object.keys(decisionLabel()) as Array<Exclude<SuggestionDecision, "">>).map((decision) => (
@@ -102,7 +158,7 @@ export function SuggestionsEditor({ value, onChange, disabled, issues }: { value
                 <input className={styles.input} value={item.reason} maxLength={300} disabled={disabled} placeholder={t("Например: клиенты платят на месте")} onChange={(event) => set(index, { reason: event.target.value })} /></label>
             )}
             {!disabled && item.source !== "catalog" && (
-              <button type="button" className={styles.ghost} style={{ marginTop: 6 }} onClick={() => onChange({ items: items.filter((_, position) => position !== index) })}>{t("Убрать")}</button>
+              <button type="button" className={styles.ghost} style={{ marginTop: 6 }} onClick={() => setItems(items.filter((_, position) => position !== index))}>{t("Убрать")}</button>
             )}
           </article>
         ))}
@@ -110,7 +166,7 @@ export function SuggestionsEditor({ value, onChange, disabled, issues }: { value
 
       {!disabled && items.length < LIMIT && (
         <button type="button" className={`${styles.secondary} ${styles.block}`} style={{ marginTop: 12 }}
-          onClick={() => { setFilter("all"); onChange({ items: [...items, { key: nextKey(items), title: "", value: "", basis: "", source: "owner", catalogKey: null, support: "not_yet", effort: "medium", decision: "", reason: "" }] }); }}>
+          onClick={() => { setFilter("all"); setItems([...items, { key: nextKey(items), title: "", value: "", basis: "", source: "owner", catalogKey: null, support: "not_yet", effort: "medium", decision: "", reason: "" }]); }}>
           {t("+ Добавить своё")}
         </button>
       )}

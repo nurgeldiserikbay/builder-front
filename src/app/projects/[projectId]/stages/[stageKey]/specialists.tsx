@@ -6,10 +6,11 @@ import { api } from "@/lib/api";
 import { formatTenge } from "@/lib/money";
 import { isPlanMessage, explainError, type Suggestion } from "@/lib/journey";
 import AccessFields, { accessLines, type Access, type AccessOptions } from "./access-fields";
+import ConfidentialityFields, { confidentialityStatus, confidentialityValid, type ConfidentialityTerms } from "./confidentiality-fields";
 import styles from "../../../journey.module.css";
 
 type Assignment = {
-  id: string; email: string; name: string | null; profileId: string | null; role: "lead" | "consultant"; status: string; aiBudget: number | null; aiUsed: number; inviteExpired: boolean; readUntil: string | null; termsText: string; access: Access;
+  id: string; email: string; name: string | null; profileId: string | null; role: "lead" | "consultant"; status: string; aiBudget: number | null; aiUsed: number; inviteExpired: boolean; readUntil: string | null; termsText: string; access: Access; confidentiality: ConfidentialityTerms | null;
   review: { rating: number; text: string | null; reply: string | null; hidden: boolean; moderationNote: string | null } | null; canReview: boolean;
 };
 type Roles = { lead: { title: string; explanation: string; can: string[] }; consultant: { title: string; explanation: string; can: string[] }; cannot: string[]; afterAcceptance: string };
@@ -23,6 +24,9 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
   const [options, setOptions] = useState<AccessOptions | null>(null);
   const [access, setAccess] = useState<Access>({ extraReadStages: [], hiddenParts: [], allowDownload: false, readDays: 7 });
   const [editing, setEditing] = useState<{ id: string; access: Access } | null>(null);
+  const [template, setTemplate] = useState("");
+  const [confidentiality, setConfidentiality] = useState<string | null>(null);
+  const [editingTerms, setEditingTerms] = useState<{ id: string; text: string | null } | null>(null);
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<"lead" | "consultant">("lead");
   const [email, setEmail] = useState("");
@@ -45,8 +49,8 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
 
   const load = useCallback(async () => {
     try {
-      const data = await api<{ assignments: Assignment[]; roles: Roles; accessOptions: AccessOptions; defaultAccess: Access }>(`/projects/${projectId}/stages/${stageKey}/assignments`);
-      setList(data.assignments); setRoles(data.roles); setOptions(data.accessOptions);
+      const data = await api<{ assignments: Assignment[]; roles: Roles; accessOptions: AccessOptions; defaultAccess: Access; defaultConfidentiality: string }>(`/projects/${projectId}/stages/${stageKey}/assignments`);
+      setList(data.assignments); setRoles(data.roles); setOptions(data.accessOptions); setTemplate(data.defaultConfidentiality);
     } catch (caught) { setError(explainError(caught)); }
   }, [projectId, stageKey]);
   useEffect(() => { void load(); }, [load]);
@@ -69,9 +73,9 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
     setBusy(true); setError("");
     try {
       const result = await api<{ inviteUrl: string; emailSent: boolean }>(`/projects/${projectId}/stages/${stageKey}/assignments`, {
-        method: "POST", body: JSON.stringify({ ...(invitee ? { profileId: invitee.id } : { email: email.trim() }), role, aiBudget: role === "lead" && budget.trim() ? Number(budget) : null, ...termsBody(), access }),
+        method: "POST", body: JSON.stringify({ ...(invitee ? { profileId: invitee.id } : { email: email.trim() }), role, aiBudget: role === "lead" && budget.trim() ? Number(budget) : null, ...termsBody(), access, confidentiality: confidentiality?.trim() ?? null }),
       });
-      setLink({ url: result.inviteUrl, emailSent: result.emailSent }); setEmail(""); setInvitee(null); setOpen(false);
+      setLink({ url: result.inviteUrl, emailSent: result.emailSent }); setEmail(""); setInvitee(null); setOpen(false); setConfidentiality(null);
       window.history.replaceState(null, "", window.location.pathname);
       await load();
     } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
@@ -91,6 +95,16 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
     try {
       await api(`/projects/${projectId}/assignments/${editing.id}/access`, { method: "PUT", body: JSON.stringify(editing.access) });
       setEditing(null);
+      await load();
+    } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
+  }
+
+  async function saveTerms() {
+    if (!editingTerms) return;
+    setBusy(true); setError("");
+    try {
+      await api(`/projects/${projectId}/assignments/${editingTerms.id}/confidentiality`, { method: "PUT", body: JSON.stringify({ text: editingTerms.text?.trim() ?? null }) });
+      setEditingTerms(null);
       await load();
     } catch (caught) { setError(explainError(caught)); } finally { setBusy(false); }
   }
@@ -138,6 +152,22 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
                     <button type="button" className={styles.ghost} onClick={() => setEditing(null)}>{t("Отмена")}</button>
                   </div>
                   <p className={styles.small}>{t("Изменения действуют сразу.")}</p>
+                </div>
+              )}
+              {item.status !== "revoked" && editingTerms?.id !== item.id && (
+                <div className={styles.small}>{confidentialityStatus(item.confidentiality, item.status)}{editable && <>{" "}
+                  <button type="button" className={styles.inlineLinkButton} onClick={() => setEditingTerms({ id: item.id, text: item.confidentiality?.text ?? null })}>{item.confidentiality ? t("Изменить условия") : t("Добавить условия")}</button></>}</div>
+              )}
+              {editingTerms?.id === item.id && (
+                <div style={{ marginTop: 10 }}>
+                  <ConfidentialityFields value={editingTerms.text} template={template} onChange={(text) => setEditingTerms({ id: item.id, text })} disabled={busy} />
+                  {item.status !== "invited" && editingTerms.text !== (item.confidentiality?.text ?? null) && editingTerms.text !== null && (
+                    <p className={`${styles.notice} ${styles.info}`}>{t("После сохранения этап закроется для специалиста, пока он не примет новый текст.")}</p>
+                  )}
+                  <div className={styles.row} style={{ gap: 8 }}>
+                    <button type="button" className={styles.button} disabled={busy || !confidentialityValid(editingTerms.text)} onClick={() => void saveTerms()}>{t("Сохранить условия")}</button>
+                    <button type="button" className={styles.ghost} onClick={() => setEditingTerms(null)}>{t("Отмена")}</button>
+                  </div>
                 </div>
               )}
               {item.review && reviewing !== item.id && (
@@ -248,6 +278,7 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
             </div>
           )}
           {options && <AccessFields value={access} options={options} onChange={setAccess} disabled={busy} />}
+          {template && <ConfidentialityFields value={confidentiality} template={template} onChange={setConfidentiality} disabled={busy} />}
           {(() => {
             const lines = options ? accessLines(access, options) : { can: [], cannot: [], after: roles.afterAcceptance };
             return (
@@ -263,7 +294,7 @@ export function SpecialistsPanel({ projectId, stageKey, editable }: { projectId:
           <div className={styles.row}>
             <button className={styles.ghost} onClick={() => setOpen(false)}>{t("Отмена")}</button>
             <div className={styles.spacer} />
-            <button className={styles.button} disabled={busy || !termsValid || (!invitee && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))} onClick={invite}>{busy ? t("Создаём…") : t("Пригласить")}</button>
+            <button className={styles.button} disabled={busy || !termsValid || !confidentialityValid(confidentiality) || (!invitee && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))} onClick={invite}>{busy ? t("Создаём…") : t("Пригласить")}</button>
           </div>
         </div>
       )}

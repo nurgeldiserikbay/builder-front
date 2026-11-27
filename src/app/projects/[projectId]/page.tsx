@@ -1,5 +1,6 @@
 "use client";
 
+import ConfidentialityGate from "./confidentiality-gate";
 import { t } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -35,6 +36,8 @@ export default function JourneyPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [journey, setJourney] = useState<Journey | null>(null);
   const [error, setError] = useState("");
+  // A specialist whose confidentiality terms wait for acceptance sees them instead of the project.
+  const [gated, setGated] = useState(false);
   const [result, setResult] = useState<ResultPackage | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -68,11 +71,13 @@ export default function JourneyPage() {
       if (caught instanceof ApiError && caught.status === 401) { router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`); return; }
       // A project started as «Только анализ» has no stages: its home is the code analysis page.
       if (caught instanceof ApiError && caught.message === "PROJECT_HAS_NO_ROUTE") { router.replace(`/projects/${projectId}/analysis`); return; }
+      if (caught instanceof ApiError && caught.message === "CONFIDENTIALITY_NOT_ACCEPTED") { setGated(true); return; }
       setError(explainError(caught));
     }
   }, [projectId, router]);
 
   useEffect(() => { void load(); }, [load]);
+  const reopen = useCallback(() => { setGated(false); void load(); }, [load]);
 
   async function prepareResult() {
     setBusy(true);
@@ -102,7 +107,8 @@ export default function JourneyPage() {
       <AppHeader back={{ href: "/projects", label: t("← Проекты") }} title={journey?.project.name ?? ""} />
       <main className={styles.appMain}>
         {error && <p className={`${styles.notice} ${styles.error}`} role="alert">{error}{isPlanMessage(error) && <> <a href="/account/plan" style={{ color: "inherit", fontWeight: 700 }}>{t("Открыть тариф →")}</a></>}</p>}
-        {!journey && !error && <p className={styles.muted} style={{ padding: 24 }}>{t("Загружаем проект…")}</p>}
+        {gated && <ConfidentialityGate projectId={projectId} onAccepted={reopen} />}
+        {!journey && !error && !gated && <p className={styles.muted} style={{ padding: 24 }}>{t("Загружаем проект…")}</p>}
         {journey && (
           <>
             <div className={styles.projectBar}>

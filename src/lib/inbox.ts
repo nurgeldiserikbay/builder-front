@@ -99,6 +99,9 @@ export function activityLine(event: ActivityEvent, stageTitle: (key: string | nu
     case "specialist_joined": return t("Специалист присоединился к этапу «{0}»", [s]);
     case "specialist_revoked": return t("Доступ специалиста к этапу «{0}» закрыт", [s]);
     case "specialist_access_changed": return t("Изменён доступ специалиста к этапу «{0}»", [s]);
+    case "specialist_confidentiality_changed": return event.details.enabled === false ? t("Условия конфиденциальности специалиста на этапе «{0}» сняты", [s]) : t("Изменены условия конфиденциальности специалиста на этапе «{0}»", [s]);
+    case "specialist_confidentiality_accepted": return t("Специалист принял условия конфиденциальности на этапе «{0}»", [s]);
+    case "stage_file_downloaded": return event.details.watermarked ? t("Специалист скачал файл этапа «{0}» с водяным знаком", [s]) : t("Специалист скачал файл этапа «{0}»", [s]);
     case "assignments_completed": return t("Работа специалистов на этапе «{0}» завершена", [s]);
     case "specialist_reviewed": return t("Оставлен отзыв о специалисте");
     case "team_invited": return t("В команду проекта отправлено приглашение");
